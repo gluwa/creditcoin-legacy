@@ -1,0 +1,109 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{a4dc94f9-2e1c-4293-8ceb-da721442c925}</ProjectGuid>
+    <Keyword>Linux</Keyword>
+    <RootNamespace>ccprocessorLinux</RootNamespace>
+    <MinimumVisualStudioVersion>15.0</MinimumVisualStudioVersion>
+    <ApplicationType>Linux</ApplicationType>
+    <ApplicationTypeRevision>1.0</ApplicationTypeRevision>
+    <TargetLinuxPlatform>Generic</TargetLinuxPlatform>
+    <LinuxProjectType>{D51BCBC9-82E9-4017-911E-C93873C4EA2B}</LinuxProjectType>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <UseDebugLibraries>true</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <UseDebugLibraries>false</UseDebugLibraries>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros" />
+  <ItemGroup>
+    <ClInclude Include="..\ccprocessor\Address.pb.h" />
+    <ClInclude Include="..\ccprocessor\AskOrder.pb.h" />
+    <ClInclude Include="..\ccprocessor\BidOrder.pb.h" />
+    <ClInclude Include="..\ccprocessor\DealOrder.pb.h" />
+    <ClInclude Include="..\ccprocessor\Pledge.pb.h" />
+    <ClInclude Include="..\ccprocessor\RepaymentOrder.pb.h" />
+    <ClInclude Include="..\ccprocessor\stdafx.h" />
+    <ClInclude Include="..\ccprocessor\targetver.h" />
+    <ClInclude Include="..\ccprocessor\Transfer.pb.h" />
+    <ClInclude Include="..\ccprocessor\Wallet.pb.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\ccprocessor\Address.pb.cc" />
+    <ClCompile Include="..\ccprocessor\AskOrder.pb.cc" />
+    <ClCompile Include="..\ccprocessor\BidOrder.pb.cc" />
+    <ClCompile Include="..\ccprocessor\DealOrder.pb.cc" />
+    <ClCompile Include="..\ccprocessor\Pledge.pb.cc" />
+    <ClCompile Include="..\ccprocessor\processor.cpp" />
+    <ClCompile Include="..\ccprocessor\RepaymentOrder.pb.cc" />
+    <ClCompile Include="..\ccprocessor\stdafx.cpp" />
+    <ClCompile Include="..\ccprocessor\Transfer.pb.cc" />
+    <ClCompile Include="..\ccprocessor\Wallet.pb.cc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\proto\Address.proto">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="..\proto\AskOrder.proto">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="..\proto\BidOrder.proto">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="..\proto\DealOrder.proto">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="..\proto\Pledge.proto">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="..\proto\RepaymentOrder.proto">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="..\proto\Transfer.proto">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="..\proto\Wallet.proto">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+  </ItemGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\xtern;..\SDK\include;C:\local\boost_1_67_0</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_SCL_SECURE_NO_WARNINGS;ZMQ_STATIC;ZMQPP_STATIC_DEFINE;LOG4CXX_STATIC;_CONSOLE;IS_LINUX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>/user/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>/usr/lib/x86_64-linux-gnu/libaprutil-1.so;/usr/lib/x86_64-linux-gnu/libapr-1.so;/usr/local/lib/libcryptopp.a;/usr/local/lib/libboost_system.so;/usr/local/lib/libboost_thread.so;/usr/local/lib/libboost_filesystem.so;/usr/local/lib/libcppnetlib-uri.a;/usr/local/lib/libcppnetlib-client-connections.a;/usr/local/lib/libcppnetlib-server-parsers.a;/usr/local/lib/libprotobuf.so;/usr/local/lib/libzmq.so;/usr/local/lib/libzmqpp.so;/usr/local/lib/liblog4cxx.so;/usr/local/lib/libsawtooth.a;/usr/local/lib/libproto.a</AdditionalDependencies>
+      <AdditionalOptions>'-Wl,-rpath,$ORIGIN/lib' -pthread %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\xtern;..\SDK\include;C:\local\boost_1_67_0</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_SCL_SECURE_NO_WARNINGS;ZMQ_STATIC;ZMQPP_STATIC_DEFINE;LOG4CXX_STATIC;_CONSOLE;IS_LINUX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>/user/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>/usr/lib/x86_64-linux-gnu/libaprutil-1.so;/usr/lib/x86_64-linux-gnu/libapr-1.so;/usr/local/lib/libcryptopp.a;/usr/local/lib/libboost_system.so;/usr/local/lib/libboost_thread.so;/usr/local/lib/libboost_filesystem.so;/usr/local/lib/libcppnetlib-uri.a;/usr/local/lib/libcppnetlib-client-connections.a;/usr/local/lib/libcppnetlib-server-parsers.a;/usr/local/lib/libprotobuf.so;/usr/local/lib/libzmq.so;/usr/local/lib/libzmqpp.so;/usr/local/lib/liblog4cxx.so;/usr/local/lib/libsawtooth.a;/usr/local/lib/libproto.a</AdditionalDependencies>
+      <AdditionalOptions>'-Wl,-rpath,$ORIGIN/lib' -pthread %(AdditionalOptions)</AdditionalOptions>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+</Project>

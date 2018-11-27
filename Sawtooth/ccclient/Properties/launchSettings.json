@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "ccclient": {
+      "commandName": "Project",
+      "commandLineArgs": "bitcoin registerTransfer 8a1a04aa595e25f63564472cebc9337366bcd4495aee0c50130e0b32975d78313ff35b 0aa58f38fc5cc33abcf1d078c13849fa18edf47f526a5024289fe58b8f9e3c8d"
+    }
+  }
+}

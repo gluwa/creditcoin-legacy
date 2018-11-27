@@ -1,0 +1,317 @@
+------------------------------------------------------------------------------- Docker
+docker community edition (https://store.docker.com/editions/community/docker-ce-desktop-windows):
+	https://download.docker.com/win/stable/Docker%20for%20Windows%20Installer.exe
+
+docker compose file:
+	https://sawtooth.hyperledger.org/docs/core/releases/latest/app_developers_guide/sawtooth-default.yaml
+	remove:
+		intkey-tp-python
+		xo-tp-python
+
+------------------------------------------------------------------------------- Sawtooth sources
+sawtooth sources (in a development folder, say d:\Job\gluwa\Creditcoin\Sawtooth):
+	git clone https://github.com/hyperledger/sawtooth-core.git sawtooth-core
+
+---------------------------------------------------------------------------------------------------- building dynamic dependencies (begin)
+------------------------------------------------------------------------------- Installing tools and dependencies
+c++ package manager (in a tool folder, say D:\dev):
+	git clone https://github.com/Microsoft/vcpkg.git vcpkg
+	cd D:\dev\vcpkg
+	.\bootstrap-vcpkg.bat
+	.\vcpkg.exe integrate install
+
+protobuf 64-bit:
+	d:\dev\vcpkg\vcpkg.exe install protobuf[zlib]:x64-windows
+
+zeromq 64-bit:
+	D:\dev\vcpkg\vcpkg.exe install zeromq:x64-windows
+
+cryptopp 64-bit:
+	D:\dev\vcpkg\vcpkg.exe install cryptopp:x64-windows
+
+apr and apr-util:
+	D:\dev\vcpkg\vcpkg.exe install apr:x64-windows apr-util:x64-windows
+	change in D:\dev\vcpkg\installed\x64-windows\include\apr_ldap.h
+		#define APR_HAS_LDAP 1
+	to
+		#define APR_HAS_LDAP 0
+
+log4cxx (https://www.apache.org/dyn/closer.cgi/logging/log4cxx/0.10.0/apache-log4cxx-0.10.0.zip):
+	choose a mirror, say http://apache.mirror.iweb.ca/logging/log4cxx/0.10.0/apache-log4cxx-0.10.0.zip
+	unzip into say D:\dev
+	cd D:\dev\apache-log4cxx-0.10.0
+	./configure.bat
+	open D:\dev\apache-log4cxx-0.10.0\projects\log4cxx.dsw with VS2017 (converting to log4cxx.sln)
+	convert, ignore errors (three projects fail to load, because we don't need sources for them, we have installed the relevant packages)
+	remove unloaded projects
+	create x64 configuration
+	change include paths:
+		..\..\apr\include and ..\..\apr-util\include to ..\..\vcpkg\installed\x64-windows\include
+	move all LOG4CXX_LIST_DEF before class declaration and fix resulting bugs
+	add #include to fix other bugs
+
+zmqpp (https://github.com/zeromq/zmqpp)
+	D:\dev\vcpkg\downloads\cmake-3.10.2-win32-x86\bin\cmake.exe -G"Visual Studio 15 2017 Win64" -DZMQ_STATIC=1 -DZEROMQ_LIBRARY_STATIC=D:\dev\vcpkg\installed\x64-windows\lib\libzmq-mt-4_3_1.lib -DZEROMQ_LIBRARY_SHARED=D:\dev\vcpkg\installed\x64-windows\bin\libzmq-mt-4_3_1.dll -DCMAKE_TOOLCHAIN_FILE=D:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake .
+	build zmqpp-static
+
+cmake:
+	got by vcpkg when installing protobuf in D:\dev\vcpkg\downloads\cmake-3.10.2-win32-x86\bin
+
+------------------------------------------------------------------------------- Building sawtooth
+cd D:\Job\gluwa\Creditcoin\Sawtooth\sawtooth-core\sdk\cxx
+D:\dev\vcpkg\downloads\cmake-3.10.2-win32-x86\bin\cmake.exe -G"Visual Studio 15 2017 Win64" -DCMAKE_TOOLCHAIN_FILE=D:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake .
+open resulting solution
+add include directories:
+	D:\dev\apache-log4cxx-0.10.0\src\main\include
+	D:\dev\vcpkg\installed\x64-windows\include
+	D:\dev\zmqpp\src
+	D:\dev\zmqpp
+add #include <signal.h> in transaction_processor.cpp
+	and change implementation of s_catch_signals() replacing sigaction with:
+        signal(SIGINT, &s_signal_handler);
+        signal(SIGTERM, &s_signal_handler);
+replace ERROR in D:\Job\gluwa\Creditcoin\Sawtooth\sawtooth-core\protos\processor.proto and D:\Job\gluwa\Creditcoin\Sawtooth\sawtooth-core\protos\network.proto with ERR
+#define ZMQPP_STATIC_DEFINE
+
+------------------------------------------------------------------------------- Building the implementation
+link with:
+	Ws2_32.lib
+	D:\Job\gluwa\Creditcoin\Sawtooth\sawtooth-core\sdk\cxx\lib\Debug\sawtooth.lib
+	D:\Job\gluwa\Creditcoin\Sawtooth\sawtooth-core\sdk\cxx\lib\Debug\proto.lib
+	D:\dev\apache-log4cxx-0.10.0\projects\Debug\log4cxx.lib
+	D:\dev\zmqpp\Debug\zmqpp-static.lib
+if no vcpkg integration has been installed, link also with:
+	D:\dev\vcpkg\installed\x64-windows\debug\lib\cryptopp-static.lib
+	D:\dev\vcpkg\installed\x64-windows\debug\lib\libprotobufd.lib
+	D:\dev\vcpkg\installed\x64-windows\debug\lib\libzmq-mt-gd-4_3_1.lib
+
+------------------------------------------------------------------------------- Running
+docker-compose -f sawtooth-default.yaml up
+copy to D:\Job\gluwa\Creditcoin\Sawtooth\proto\Processor\x64\Debug
+	D:\dev\apache-log4cxx-0.10.0\projects\Debug\log4cxx.dll
+	D:\dev\vcpkg\installed\x64-windows\debug\bin\libapr-1.dll
+	D:\dev\vcpkg\installed\x64-windows\debug\bin\libaprutil-1.dll
+	D:\dev\vcpkg\installed\x64-windows\debug\bin\expatd.dll
+if no vcpkg integration has been installed, copy also:
+	D:\dev\vcpkg\installed\x64-windows\bin\libprotobufd.dll
+	D:\dev\vcpkg\installed\x64-windows\bin\libzmq-mt-gd-4_3_1.dll
+	D:\dev\vcpkg\installed\x64-windows\bin\zlibd1.dll
+==================================================================================================== building dynamic dependencies (end)
+
+---------------------------------------------------------------------------------------------------- building static dependencies (begin)
+------------------------------------------------------------------------------- Building static bandle
+zlib 1.2.11:
+	https://zlib.net/
+		https://zlib.net/zlib1211.zip
+
+expat 2.2.5:
+	https://github.com/libexpat/libexpat/releases
+		https://github.com/libexpat/libexpat/archive/R_2_2_5.zip
+
+apr 1.6.3, apr-util 1.6.1:
+	http://apr.apache.org/download.cgi
+		http://apache.parentingamerica.com//apr/apr-1.6.3-win32-src.zip
+		http://apache.parentingamerica.com//apr/apr-util-1.6.1-win32-src.zip
+
+log4cxx 0.10.0:
+	https://www.apache.org/dyn/closer.cgi/logging/log4cxx/0.10.0/apache-log4cxx-0.10.0.zip
+		http://mirror.dsrg.utoronto.ca/apache/logging/log4cxx/0.10.0/apache-log4cxx-0.10.0.zip
+
+zeromq 3.2.5:
+	http://zeromq.org/intro:get-the-software
+		https://github.com/zeromq/zeromq3-x/releases/download/v3.2.5/zeromq-3.2.5.zip
+
+zmqpp 4.2.0:
+	https://github.com/zeromq/zmqpp/tree/master
+		https://github.com/zeromq/zmqpp/archive/master.zip
+
+protobuf:
+	https://github.com/google/protobuf/releases/tag/v3.5.1
+		https://github.com/google/protobuf/releases/download/v3.5.1/protobuf-cpp-3.5.1.zip
+
+cryptopp:
+	https://cryptopp.com/#download
+		https://cryptopp.com/cryptopp700.zip
+
+put all zip files into D:\sawtooth folder
+
+build zlibstat.lib:
+	extract zlib1211.zip to get zlib-1.2.11 folder in D:\sawtooth
+	open D:\sawtooth\zlib-1.2.11\contrib\vstudio\vc14\zlibvc.sln
+		Retarget Projects
+			Windows SDK Version: 10.0.16299.0
+			Platform Toolset: Upgrade to v141
+			check all vcxproj
+	build zlibstat Debug x64
+		D:\sawtooth\zlib-1.2.11\contrib\vstudio\vc14\x64\ZlibStatDebug\zlibstat.lib
+
+build libzmq_d.lib:
+	extract zeromq-3.2.5.zip to get zeromq-3.2.5 folder in D:\sawtooth
+	open D:\sawtooth\zeromq-3.2.5\builds\msvc\properties\ZeroMQ.props
+		remove DLL_EXPORT
+	open D:\sawtooth\zeromq-3.2.5\builds\msvc\properties\Dynamic.props
+		remove _USRDLL
+	open D:\sawtooth\zeromq-3.2.5\builds\msvc\msvc10.sln
+		Retarget Projects
+			Windows SDK Version: 10.0.16299.0
+			Platform Toolset: Upgrade to v141
+			check all vcxproj
+	change Configuration Type to Static library (.lib) for Debug x64
+	change Target Extension to .lib
+	add _WIN32 Preprocessor Definition
+	in D:\sawtooth\zeromq-3.2.5\include\zmq_utils.h and D:\sawtooth\zeromq-3.2.5\include\zmq.h
+		replace
+			#   if defined DLL_EXPORT
+			#       define ZMQ_EXPORT __declspec(dllexport)
+			#   else
+			#       define ZMQ_EXPORT __declspec(dllimport)
+			#   endif
+		with
+			# define ZMQ_EXPORT
+	build libzmq Debug x64
+		D:\sawtooth\zeromq-3.2.5\bin\x64\libzmq_d.lib
+
+build zmqpp-static.lib:
+	extract zmqpp-master.zip to get zmqpp-master folder in D:\sawtooth
+	create D:\sawtooth\zmqpp-master\build
+	in D:\sawtooth\CMakeLists.txt
+		comment out ZMQPP_BUILD_SHARED branch, target_link_libraries(zmqpp ws2_32) and generate_export_header(zmqpp)
+	from D:\sawtooth\zmqpp-master\build
+		D:\dev\vcpkg\downloads\cmake-3.10.2-win32-x86\bin\cmake.exe -G"Visual Studio 15 2017 Win64" -DZMQ_STATIC=1 -DZEROMQ_INCLUDE=D:\sawtooth\zeromq-3.2.5\include -DZEROMQ_LIBRARY_STATIC=D:\sawtooth\zeromq-3.2.5\bin\x64\libzmq_d.lib ..
+	open D:\sawtooth\zmqpp-master\build\Project.sln
+	add NOMINMAX Preprocessor Definition
+	build zmqpp-static Debug x64
+		D:\sawtooth\zmqpp-master\build\Debug\zmqpp-static.lib
+
+build libexpatMT.lib:
+	extract libexpat-R_2_2_5.zip to get libexpat-R_2_2_5 folder in D:\sawtooth
+	open D:\sawtooth\libexpat-R_2_2_5\expat\expat.sln
+	add x64 configuration
+	build expat_static Debug x64
+		D:\sawtooth\libexpat-R_2_2_5\expat\win32\bin\Debug\libexpatMT.lib
+
+build cryptlib.lib:
+	extract cryptopp700.zip to cryptopp700 folder in D:\sawtooth
+	open D:\sawtooth\cryptopp700\
+	build cryptlib Debug x64
+		D:\sawtooth\cryptopp700\Win32\Output\Debug\cryptlib.lib
+
+build apr.lib, aprutil.lib, log4cxx.lib:
+	extract apache-log4cxx-0.10.0.zip to get apache-log4cxx-0.10.0 folder in D:\sawtooth
+	extract apr-1.6.3-win32-src.zip to get apr-1.6.3 folder in D:\sawtooth, then rename it to apr
+	extract apr-util-1.6.1-win32-src.zip to get apr-util-1.6.1 folder in D:\sawtooth, then rename it to apr-util
+	from D:\sawtooth\apache-log4cxx-0.10.0 run configure.bat
+	in D:\sawtooth\apr-util\include\apu.hw change APU_HAVE_APR_ICONV from 1 to 0
+	in D:\sawtooth\apr-util\include\apr_ldap.hw change APR_HAS_LDAP from 1 to 0
+	open D:\sawtooth\apache-log4cxx-0.10.0\projects\log4cxx.dsw (converts to D:\sawtooth\apache-log4cxx-0.10.0\projects\log4cxx.sln)
+	proceed to One-way upgrade
+	ignore failed conversion of xml project
+	remove xml project
+	add x64 configuration for log4cxx, make sure correct platform is used in Configuration Manager for all platforms
+	unload apr, edit apr.vcxproj
+		replace
+			<CustomBuild Include="include\apr_escape.h">
+			  <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">cl.exe /nologo /W3 /EHsc /Od /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /FD /I ".\include" /Fo.\x64\Debug\gen_test_char /Fe.\x64\Debug\gen_test_char.exe .\tools\gen_test_char.c 
+			.\x64\Debug\gen_test_char.exe &gt; .\include\apr_escape_test_char.h</Command>
+			  <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Creating gen_test_char.exe and apr_escape_test_char.h</Message>
+			  <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\include\apr_escape_test_char.h;.\include\apr_escape_test_char.h;.\include\apr_escape_test_char.h;.\include\apr_escape_test_char.h;%(Outputs)</Outputs>
+			</CustomBuild>
+		with
+			<ClInclude Include="include\apr_escape.h" />
+	reload apr
+	in D:\sawtooth\apr\encoding\apr_escape.c
+		replace
+			#include "apr_escape_test_char.h"
+		with
+			#define T_ESCAPE_SHELL_CMD     (1)
+			#define T_ESCAPE_PATH_SEGMENT  (2)
+			#define T_OS_ESCAPE_PATH       (4)
+			#define T_ESCAPE_ECHO          (8)
+			#define T_ESCAPE_URLENCODED    (16)
+			#define T_ESCAPE_XML           (32)
+			#define T_ESCAPE_LDAP_DN       (64)
+			#define T_ESCAPE_LDAP_FILTER   (128)
+
+			static const unsigned char test_char_table[256] = {
+				224,222,222,222,222,222,222,222,222,222,223,222,222,222,222,222,222,222,222,222,
+				222,222,222,222,222,222,222,222,222,222,222,222,6,16,127,22,17,22,49,17,
+				145,145,129,80,80,0,0,18,0,0,0,0,0,0,0,0,0,0,16,87,
+				119,16,119,23,16,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+				0,0,0,0,0,0,0,0,0,0,0,23,223,23,23,0,23,0,0,0,
+				0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+				0,0,0,23,23,23,17,222,222,222,222,222,222,222,222,222,222,222,222,222,
+				222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,
+				222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,
+				222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,
+				222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,
+				222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,
+				222,222,222,222,222,222,222,222,222,222,222,222,222,222,222,222 
+			};
+	build apr Debug x64
+		D:\sawtooth\apr\.\x64\LibD\apr-1.lib
+	build aprutil Debug x64
+		D:\sawtooth\apr-util\.\x64\LibD\aprutil-1.lib
+	in log4cxx
+		change Configuration Type to Static library (.lib) for Debug x64
+		change Target Extension to .lib
+		delete _USRDLL;DLL_EXPORTS; Preprocessor Definition
+		add LOG4CXX_STATIC; Preprocessor Definition
+	move all LOG4CXX_LIST_DEF before class declaration and fix resulting bugs by forward declaring the involved classes and removing class qualifiers from involved types
+	add #include to fix other bugs
+		#include <iterator> to D:\sawtooth\apache-log4cxx-0.10.0\src\main\cpp\stringhelper.cpp
+	build log4cxx Debug x64
+		D:\sawtooth\apache-log4cxx-0.10.0\projects\x64\Debug\log4cxx.lib
+
+build libprotobufd.lib:
+	extract protobuf-cpp-3.5.1.zip to get protobuf-3.5.1 folder in D:\sawtooth
+	go to D:\sawtooth\protobuf-3.5.1\cmake
+	create build folder
+	go to build and run
+		D:\dev\vcpkg\downloads\cmake-3.10.2-win32-x86\bin\cmake.exe -G"Visual Studio 15 2017 Win64" ..
+	open D:\sawtooth\protobuf-3.5.1\cmake\build\protobuf.sln
+	build libprotobuf Debug x64
+		D:\sawtooth\protobuf-3.5.1\cmake\build\Debug\libprotobufd.lib
+
+make sure all libs refer the same Runtime Library (i.e. Multi-threaded Debug DLL)
+
+------------------------------------------------------------------------------- Building sawtooth
+cd D:\Job\gluwa\Creditcoin\Sawtooth\sawtooth-core\sdk\cxx
+D:\dev\vcpkg\downloads\cmake-3.10.2-win32-x86\bin\cmake.exe -G"Visual Studio 15 2017 Win64" .
+open resulting solution
+add include directories:
+	D:\sawtooth\apache-log4cxx-0.10.0\src\main\include
+	D:\sawtooth\protobuf-3.5.1\src
+	D:\sawtooth\zmqpp-master\src
+	D:\sawtooth\zeromq-3.2.5\include
+	D:\sawtooth\zmqpp-master\build
+
+in src/message_stream.cpp on line 61
+	Replace
+	message.add(msg_data.data(), msg_data.length()); 
+
+	With
+	message.add(msg_data.data());
+
+add #include <signal.h> in transaction_processor.cpp
+	and change implementation of s_catch_signals() replacing sigaction with:
+        signal(SIGINT, &s_signal_handler);
+        signal(SIGTERM, &s_signal_handler);
+replace ERROR in D:\Job\gluwa\Creditcoin\Sawtooth\sawtooth-core\protos\processor.proto and D:\Job\gluwa\Creditcoin\Sawtooth\sawtooth-core\protos\network.proto with ERR
+#define ZMQ_STATIC;ZMQPP_STATIC_DEFINE;LOG4CXX_STATIC
+add dependencies:
+	D:\sawtooth\zeromq-3.2.5\bin\x64\libzmq_d.lib
+	D:\sawtooth\zmqpp-master\build\Debug\zmqpp-static.lib
+	D:\sawtooth\libexpat-R_2_2_5\expat\win32\bin\Debug\libexpatMT.lib
+	D:\sawtooth\apr\x64\LibD\apr-1.lib
+	D:\sawtooth\apr-util\x64\LibD\aprutil-1.lib
+	D:\sawtooth\apache-log4cxx-0.10.0\projects\x64\Debug\log4cxx.lib
+	D:\sawtooth\protobuf-3.5.1\cmake\build\Debug\libprotobufd.lib
+	D:\Job\gluwa\Creditcoin\Sawtooth\sawtooth-core\sdk\cxx\lib\Debug\proto.lib
+
+the client will need to refer these additional libraries:
+	sawtooth.lib;Rpcrt4.lib;Mswsock.lib;Ws2_32.lib;
+
+SDK files:
+	D:\Job\gluwa\Creditcoin\Sawtooth\sawtooth-core\sdk\cxx\include
+	D:\Job\gluwa\Creditcoin.bak\Sawtooth\sawtooth-core\sdk\cxx\lib\Debug\sawtooth.lib
+==================================================================================================== building static dependencies (end)

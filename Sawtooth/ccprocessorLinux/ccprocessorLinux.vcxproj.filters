@@ -1,0 +1,104 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{8e04b714-e0a4-4239-8fa8-71086c9f2653}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{5de92bab-9c75-48c6-ac48-f7bec31636ea}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="proto">
+      <UniqueIdentifier>{085afd7e-34a8-456a-9b2b-22917e43fc2d}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\ccprocessor\stdafx.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ccprocessor\targetver.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ccprocessor\Address.pb.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ccprocessor\AskOrder.pb.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ccprocessor\BidOrder.pb.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ccprocessor\DealOrder.pb.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ccprocessor\Pledge.pb.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ccprocessor\RepaymentOrder.pb.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ccprocessor\Transfer.pb.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ccprocessor\Wallet.pb.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\ccprocessor\processor.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ccprocessor\stdafx.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ccprocessor\Address.pb.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ccprocessor\AskOrder.pb.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ccprocessor\BidOrder.pb.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ccprocessor\DealOrder.pb.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ccprocessor\Pledge.pb.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ccprocessor\RepaymentOrder.pb.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ccprocessor\Transfer.pb.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ccprocessor\Wallet.pb.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\proto\Address.proto">
+      <Filter>proto</Filter>
+    </None>
+    <None Include="..\proto\AskOrder.proto">
+      <Filter>proto</Filter>
+    </None>
+    <None Include="..\proto\BidOrder.proto">
+      <Filter>proto</Filter>
+    </None>
+    <None Include="..\proto\DealOrder.proto">
+      <Filter>proto</Filter>
+    </None>
+    <None Include="..\proto\Pledge.proto">
+      <Filter>proto</Filter>
+    </None>
+    <None Include="..\proto\RepaymentOrder.proto">
+      <Filter>proto</Filter>
+    </None>
+    <None Include="..\proto\Transfer.proto">
+      <Filter>proto</Filter>
+    </None>
+    <None Include="..\proto\Wallet.proto">
+      <Filter>proto</Filter>
+    </None>
+  </ItemGroup>
+</Project>
