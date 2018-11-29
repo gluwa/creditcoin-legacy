@@ -3,7 +3,7 @@
 
 Creditcoin is licensed under the [GNU Lesser General Public License](COPYING.LESSER) software license.
 
-Licenses of dependencies distributed with this repository are provided under the Sawtooth\DependencyLicense directory.
+Licenses of dependencies distributed with this repository are provided under the Creditcoin\DependencyLicense directory.
 
 
 # Prerequisite for Windows
@@ -84,7 +84,7 @@ cppnetlib-uri
 
 ### Sawtooth:
 
-Follow the instructions in `\Sawtooth\SDK\sawtooth.lib rebuild instructions.txt` to build the sawtooth.lib file
+Follow the instructions in `\Creditcoin\SDK\sawtooth.lib rebuild instructions.txt` to build the sawtooth.lib file
 
 
 # Prerequisite for Ubuntu 16.04
@@ -143,7 +143,7 @@ With
 
     Build and install on the Ubuntu 16.04 vm
 
-4. Upload headers in Sawtooth\SDK and Sawtooth\xtern to /usr/local/include on the Ubuntu 16.04 vm
+4. Upload headers in Creditcoin\SDK and Creditcoin\xtern to /usr/local/include on the Ubuntu 16.04 vm
 
 ## Building the processsor
 
