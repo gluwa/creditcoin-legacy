@@ -1,26 +1,39 @@
-# License
+https://www.gluwa.com/creditcoin
+
+# Gluwa Creditcoin
+
+## What is Creditcoin?
+---------------------
+
+Creditcoin is a network that enables cross-blockchain credit transaction and credit history building. Creditcoin uses blockchain technology to ensure the objectivity of its credit transaction history: each transaction on the network is distributed and verified by the network.
+
+The Creditcoin protocol was created by Gluwa. Gluwa Creditcoin is the official implementation of the Creditcoin protocol by Gluwa.
+
+For more information, see https://www.gluwa.com/creditcoin, or read the original whitepaper.
+
+## License
 -----------
 
 Creditcoin is licensed under the [GNU Lesser General Public License](COPYING.LESSER) software license.
 
-Licenses of dependencies distributed with this repository are provided under the Creditcoin\DependencyLicense directory.
+Licenses of dependencies distributed with this repository are provided under the Sawtooth\DependencyLicense directory.
 
 
-# Prerequisite for Windows
+## Prerequisite for Windows
 ------------------------
 
-### Boost 1.67.0 source
+#### Boost 1.67.0 source
 
 Place the source of boost 1.67.0 to `C:\local\boost_1_67_0`.
 
 If you would like to use your own directory, you can change the setting in the project properties under
 C/C++ => Generals => Additional Include Directories.
 
-## Static Library 
+### Static Library 
 
 Place the following `.lib` into `\SDK\lib\Debug` folder.  
 
-### Boost 1.67.0:
+#### Boost 1.67.0:
 
 1. Download pre-build binaries for boost 1.67.0  
 
@@ -33,7 +46,7 @@ Place the following `.lib` into `\SDK\lib\Debug` folder.
 `libboost_thread-vc141-mt-gd-x64-1_67.lib`
 
 
-### Cryptopp:
+#### Cryptopp:
 
 1. Download and install vcpkg
 
@@ -51,7 +64,7 @@ Place the following `.lib` into `\SDK\lib\Debug` folder.
     The `.lib` file will be in vcpkg\installed\x64-windows\debug\lib\cryptopp-static.lib 
 
 
-### cpp-netlib 0.13.rc1:
+#### cpp-netlib 0.13.rc1:
 
 1. clone cpp-netlib 0.13.rc1 from git branch release 0.13 
 
@@ -82,19 +95,19 @@ cppnetlib-uri
     build above project with x64 platform, and take the `.lib` files
 
 
-### Sawtooth:
+#### Sawtooth:
 
-Follow the instructions in `\Creditcoin\SDK\sawtooth.lib rebuild instructions.txt` to build the sawtooth.lib file
+Follow the instructions in `\Sawtooth\SDK\sawtooth.lib rebuild instructions.txt` to build the sawtooth.lib file
 
 
-# Prerequisite for Ubuntu 16.04
+## Prerequisite for Ubuntu 16.04
 -----------------------------
 
-## Visual Studio's Workload for Linux development with C++
+### Visual Studio's Workload for Linux development with C++
 
 https://blogs.msdn.microsoft.com/vcblog/2017/04/11/linux-development-with-c-in-visual-studio/ 
 
-## Ubuntu 16.04 vm.
+### Ubuntu 16.04 vm.
 
 
 1. The following dependencies need to be installed via apt-get to the Ubuntu 16.04 vm
@@ -143,8 +156,8 @@ With
 
     Build and install on the Ubuntu 16.04 vm
 
-4. Upload headers in Creditcoin\SDK and Creditcoin\xtern to /usr/local/include on the Ubuntu 16.04 vm
+4. Upload headers in Sawtooth\SDK and Sawtooth\xtern to /usr/local/include on the Ubuntu 16.04 vm
 
-## Building the processsor
+### Building the processsor
 
 To create the Ubuntu 16.04 ccprocessor, build the ccprocessorLinux project
