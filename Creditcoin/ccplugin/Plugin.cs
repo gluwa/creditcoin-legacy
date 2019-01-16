@@ -63,8 +63,8 @@ namespace ccplugin
                     {
                         types = assembly.GetTypes();
                     }
-                    catch(ReflectionTypeLoadException e)
-                    { 
+                    catch (ReflectionTypeLoadException e)
+                    {
                         types = e.Types;
                     }
 
@@ -115,30 +115,40 @@ namespace ccplugin
 
         public static string CompleteBatch(HttpClient httpClient, string url, ByteArrayContent content)
         {
-            var responseMessage = httpClient.PostAsync(url, content).Result;
-            var json = responseMessage.Content.ReadAsStringAsync().Result;
-            var response = JObject.Parse(json);
-            Debug.Assert(response.ContainsKey(LINK));
-            var link = (string)response[LINK];
-            for (; ; )
+            using (var responseMessage = httpClient.PostAsync(url, content).Result)
             {
-                responseMessage = httpClient.GetAsync(link).Result;
-                json = responseMessage.Content.ReadAsStringAsync().Result;
-                response = JObject.Parse(json);
-                Debug.Assert(response.ContainsKey(DATA));
-                var data = (JArray)response[DATA];
-                Debug.Assert(data.Count == 1);
-                var obj = (JObject)data[0];
-                Debug.Assert(obj.ContainsKey(STATUS));
-                var status = (string)obj[STATUS];
-                if (status.Equals("INVALID"))
-                    return "Error: request rejected";
-                else if (status.Equals("COMMITTED"))
-                    break;
-                else
-                    System.Threading.Thread.Sleep(500);
+                var json = responseMessage.Content.ReadAsStringAsync().Result;
+                var response = JObject.Parse(json);
+                Debug.Assert(response.ContainsKey(LINK));
+                var link = (string)response[LINK];
+                while (true)
+                {
+                    using (var linkResponseMessage = httpClient.GetAsync(link).Result)
+                    {
+                        json = linkResponseMessage.Content.ReadAsStringAsync().Result;
+                        response = JObject.Parse(json);
+                        Debug.Assert(response.ContainsKey(DATA));
+                        var data = (JArray)response[DATA];
+                        Debug.Assert(data.Count == 1);
+                        var obj = (JObject)data[0];
+                        Debug.Assert(obj.ContainsKey(STATUS));
+                        var status = (string)obj[STATUS];
+                        if (status.Equals("INVALID"))
+                        {
+                            return "Error: request rejected";
+                        }
+                        else if (status.Equals("COMMITTED"))
+                        {
+                            break;
+                        }
+                        else
+                        {
+                            System.Threading.Thread.Sleep(500);
+                        }
+                    }
+                }
+                return "Success";
             }
-            return "Success";
         }
 
         public static byte[] ReadProtobuf(HttpClient httpClient, string url, out string msg)
@@ -159,13 +169,15 @@ namespace ccplugin
             return protobuf;
         }
 
-        public static byte[] Hex2Bytes(string input)
+        public static byte[] HexToBytes(string input)
         {
             Debug.Assert(input.Length % 2 == 0);
             var outputLength = input.Length / 2;
             var output = new byte[outputLength];
             for (var i = 0; i < outputLength; i++)
+            {
                 output[i] = Convert.ToByte(input.Substring(i * 2, 2), 16);
+            }
             return output;
         }
     }
@@ -177,6 +189,6 @@ namespace ccplugin
 
     public interface ICCGatewayPlugin
     {
-        bool Run(IConfiguration cfg, string[] command, out string msg);
+        bool Run(IConfiguration cfg, string signerHexStr, string[] command, out string msg);
     }
 }

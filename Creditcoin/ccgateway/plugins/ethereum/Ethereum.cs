@@ -33,7 +33,7 @@ namespace gethereum
     {
         private static string creditcoinUrl = "http://localhost:8008";
 
-        public bool Run(IConfiguration cfg, string[] command, out string msg)
+        public bool Run(IConfiguration cfg, string signerHexStr, string[] command, out string msg)
         {
             Debug.Assert(command != null);
             Debug.Assert(command.Length > 0);
@@ -47,8 +47,9 @@ namespace gethereum
                 string sourceAddressString = command[5];
                 string networkId = command[6];
 
+                // TODO disable confirmation count config for release build
                 string confirmationsCount = cfg["confirmationsCount"];
-                if (string.IsNullOrEmpty(confirmationsCount))
+                if (string.IsNullOrWhiteSpace(confirmationsCount))
                 {
                     msg = "ethereum.confirmationsCount is not set";
 
@@ -62,7 +63,7 @@ namespace gethereum
                 }
 
                 string rpcUrl = cfg["rpc"];
-                if (string.IsNullOrEmpty(rpcUrl))
+                if (string.IsNullOrWhiteSpace(rpcUrl))
                 {
                     msg = "ethereum.rpc is not set";
 
@@ -94,20 +95,34 @@ namespace gethereum
                 if (networkId.Equals("creditcoin"))
                 {
                     string creditcoinContract = cfg["creditcoinContract"];
+
+                    if (string.IsNullOrWhiteSpace(creditcoinContract))
+                    {
+                        msg = "ethereum.creditcoinContract is not set";
+
+                        return false;
+                    }
+
                     string creditcoinContractAbi = cfg["creditcoinContractAbi"];
+                    if (string.IsNullOrWhiteSpace(creditcoinContractAbi))
+                    {
+                        msg = "ethereum.creditcoinContractAbi is not set";
+
+                        return false;
+                    }
 
                     var contract = web3.Eth.GetContract(creditcoinContractAbi, creditcoinContract);
-                    var burn = contract.GetFunction("burn");
+                    var burn = contract.GetFunction("exchange");
                     var inputs = burn.DecodeInput(tx.Input);
                     Debug.Assert(inputs.Count == 2);
-                    var value = inputs[0].ToString();
+                    var value = inputs[0].Result.ToString();
                     if (destinationAmount != value)
                     {
                         msg = "Invalid transaction: wrong amount";
                         return false;
                     }
 
-                    var tag = inputs[1].ToString();
+                    var tag = inputs[1].Result.ToString();
                     if (!tag.Equals(sighash))
                     {
                         msg = "Invalid transaction: wrong sighash";
@@ -150,13 +165,7 @@ namespace gethereum
             }
             else if (command[0].Equals("unlock"))
             {
-                string signerHexStr = cfg["signer"];
-                if (signerHexStr == null)
-                {
-                    msg = "Signer is not configured";
-                    return false;
-                }
-                var ccSigner = new Signer(RpcHelper.Hex2Bytes(signerHexStr));
+                var ccSigner = new Signer(RpcHelper.HexToBytes(signerHexStr));
                 var txBuilder = new TxBuilder(ccSigner);
 
                 Debug.Assert(command.Length == 5);
@@ -180,23 +189,31 @@ namespace gethereum
 
                     var protobuf = RpcHelper.ReadProtobuf(httpClient, $"{creditcoinUrl}/state/{dealOrderId}", out msg);
                     if (protobuf == null)
+                    {
                         return false;
+                    }
                     var dealOrder = DealOrder.Parser.ParseFrom(protobuf);
                     protobuf = RpcHelper.ReadProtobuf(httpClient, $"{creditcoinUrl}/state/{dealOrder.AskOrderId}", out msg);
                     if (protobuf == null)
+                    {
                         return false;
+                    }
                     var askOrder = AskOrder.Parser.ParseFrom(protobuf);
                     protobuf = RpcHelper.ReadProtobuf(httpClient, $"{creditcoinUrl}/state/{askOrder.TransferId}", out msg);
                     if (protobuf == null)
+                    {
                         return false;
+                    }
                     var transfer = Transfer.Parser.ParseFrom(protobuf);
                     protobuf = RpcHelper.ReadProtobuf(httpClient, $"{creditcoinUrl}/state/{addressToUnlockFundsTo}", out msg);
                     if (protobuf == null)
+                    {
                         return false;
+                    }
                     var address = Address.Parser.ParseFrom(protobuf);
                     if (!askOrder.Sighash.Equals(address.Sighash))
                     {
-                        msg = "The adress doesn't match the ask order";
+                        msg = "The address doesn't match the ask order";
                         return false;
                     }
                     txFrom = transfer.Txid;
@@ -213,27 +230,37 @@ namespace gethereum
 
                     var protobuf = RpcHelper.ReadProtobuf(httpClient, $"{creditcoinUrl}/state/{repaymentOrderId}", out msg);
                     if (protobuf == null)
+                    {
                         return false;
+                    }
                     var repaymentOrder = RepaymentOrder.Parser.ParseFrom(protobuf);
                     protobuf = RpcHelper.ReadProtobuf(httpClient, $"{creditcoinUrl}/state/{repaymentOrder.DealId}", out msg);
                     if (protobuf == null)
+                    {
                         return false;
+                    }
                     var dealOrder = DealOrder.Parser.ParseFrom(protobuf);
                     protobuf = RpcHelper.ReadProtobuf(httpClient, $"{creditcoinUrl}/state/{dealOrder.AskOrderId}", out msg);
                     if (protobuf == null)
+                    {
                         return false;
+                    }
                     var askOrder = AskOrder.Parser.ParseFrom(protobuf);
                     protobuf = RpcHelper.ReadProtobuf(httpClient, $"{creditcoinUrl}/state/{askOrder.TransferId}", out msg);
                     if (protobuf == null)
+                    {
                         return false;
+                    }
                     var transfer = Transfer.Parser.ParseFrom(protobuf);
                     protobuf = RpcHelper.ReadProtobuf(httpClient, $"{creditcoinUrl}/state/{addressToUnlockCollateralsTo}", out msg);
                     if (protobuf == null)
+                    {
                         return false;
+                    }
                     var address = Address.Parser.ParseFrom(protobuf);
                     if (!askOrder.Sighash.Equals(address.Sighash))
                     {
-                        msg = "The adress doesn't match the ask order";
+                        msg = "The address doesn't match the ask order";
                         return false;
                     }
                     txFrom = transfer.Txid;
@@ -250,15 +277,16 @@ namespace gethereum
                 }
 
                 string secret = cfg["secret"];
-                if (string.IsNullOrEmpty(secret))
+                if (string.IsNullOrWhiteSpace(secret))
                 {
                     msg = "ethereum.secret is not set";
                     return false;
                 }
                 var ethereumPrivateKey = secret;
 
+                // TODO disable confirmation count config for release build
                 string confirmationsCount = cfg["confirmationsCount"];
-                if (string.IsNullOrEmpty(confirmationsCount))
+                if (string.IsNullOrWhiteSpace(confirmationsCount))
                 {
                     msg = "ethereum.confirmationsCount is not set";
                     return false;
@@ -270,7 +298,7 @@ namespace gethereum
                 }
 
                 string rpcUrl = cfg["rpc"];
-                if (string.IsNullOrEmpty(rpcUrl))
+                if (string.IsNullOrWhiteSpace(rpcUrl))
                 {
                     msg = "ethereum.rpc is not set";
                     return false;
@@ -302,19 +330,21 @@ namespace gethereum
 
                 var txCount = web3.Eth.Transactions.GetTransactionCount.SendRequestAsync(sourceAddress).Result;
                 TransactionSigner signer = new TransactionSigner();
-                var gasLimit = web3.Eth.Transactions.EstimateGas.SendRequestAsync(new Nethereum.RPC.Eth.DTOs.CallInput("", addressToString, new Nethereum.Hex.HexTypes.HexBigInteger(transferAmount))).Result;
+                var gasLimit = web3.Eth.Transactions.EstimateGas.SendRequestAsync(new Nethereum.RPC.Eth.DTOs.CallInput(string.Empty, addressToString, new Nethereum.Hex.HexTypes.HexBigInteger(transferAmount))).Result;
                 var gasPrice = web3.Eth.GasPrice.SendRequestAsync().Result;
-                string txRaw = signer.SignTransaction(ethereumPrivateKey, addressToString, transferAmount + fee, txCount, gasPrice, gasLimit, "");
+                string txRaw = signer.SignTransaction(ethereumPrivateKey, addressToString, transferAmount + fee, txCount, gasPrice, gasLimit, string.Empty);
                 string payTxId = web3.Eth.Transactions.SendRawTransaction.SendRequestAsync("0x" + txRaw).Result;
 
-                for (; ; )
+                while (true)
                 {
                     var receipt = web3.Eth.TransactionManager.TransactionReceiptService.PollForReceiptAsync(payTxId).Result;
                     if (receipt.BlockNumber != null)
                     {
                         var blockNumber = web3.Eth.Blocks.GetBlockNumber.SendRequestAsync().Result;
                         if (blockNumber.Value - receipt.BlockNumber.Value >= confirmationsExpected)
+                        {
                             break;
+                        }
                     }
                     Thread.Sleep(1000);
                 }

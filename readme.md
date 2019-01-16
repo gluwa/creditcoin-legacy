@@ -35,7 +35,7 @@ Place the following `.lib` into `\SDK\lib\Debug` folder.
 
 #### Boost 1.67.0:
 
-1. Download pre-build binaries for boost 1.67.0  
+1. Download pre-built binaries for boost 1.67.0  
 
 2. Take the following the `.libs` from the lib64-msvc-14.1 folder
 
@@ -59,7 +59,7 @@ Place the following `.lib` into `\SDK\lib\Debug` folder.
 
 2. Install Cryptopp
 
-    `.\vcpkg istall cryptopp:x64-windows`
+    `.\vcpkg install cryptopp:x64-windows`
  
     The `.lib` file will be in vcpkg\installed\x64-windows\debug\lib\cryptopp-static.lib 
 
@@ -107,10 +107,10 @@ Follow the instructions in `\Creditcoin\SDK\sawtooth.lib rebuild instructions.tx
 
 https://blogs.msdn.microsoft.com/vcblog/2017/04/11/linux-development-with-c-in-visual-studio/ 
 
-### Ubuntu 16.04 vm.
+### Ubuntu 16.04
 
 
-1. The following dependencies need to be installed via apt-get to the Ubuntu 16.04 vm
+1. The following dependencies need to be installed using `apt-get`:
 
     `gcc`  
 `g++`  
@@ -134,7 +134,7 @@ https://blogs.msdn.microsoft.com/vcblog/2017/04/11/linux-development-with-c-in-v
 `zip` 
 
 
-2. Acquire the source code of following dependencies, then build and install them on the Ubuntu 16.04 vm:
+2. Acquire the source code of following dependencies, then build and install them:
 
     `Boost 1.67.0`  
 `Cpp-netlib 0.13.rc1`  
@@ -154,10 +154,10 @@ Replace
 With  
 `message.add(msg_data.data());`
 
-    Build and install on the Ubuntu 16.04 vm
+    Build and install
 
-4. Upload headers in Creditcoin\SDK and Creditcoin\xtern to /usr/local/include on the Ubuntu 16.04 vm
+4. Copy headers from `Creditcoin\SDK` and `Creditcoin\xtern` to `/usr/local/include`
 
-### Building the processsor
+### Building the processor
 
 To create the Ubuntu 16.04 ccprocessor, build the ccprocessorLinux project

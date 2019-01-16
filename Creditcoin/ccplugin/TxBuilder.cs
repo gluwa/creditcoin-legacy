@@ -27,7 +27,7 @@ namespace ccplugin
 {
     public class TxBuilder : ITxBuilder
     {
-        private Signer signer;
+        private Signer mSigner;
         private const string CREDITCOIN = "CREDITCOIN";
         private const string version = "1.0";
         private const string pluginsFolderName = "plugins";
@@ -35,7 +35,7 @@ namespace ccplugin
 
         public TxBuilder(Signer signer)
         {
-            this.signer = signer;
+            this.mSigner = signer;
         }
 
         public static string GetPluginsFolder(string root)
@@ -47,7 +47,9 @@ namespace ccplugin
                 folder = Path.Combine(root, pluginsFolderName);
             }
             if (!Directory.Exists(folder))
+            {
                 folder = null;
+            }
             return folder;
         }
 
@@ -69,7 +71,7 @@ namespace ccplugin
                 map.Add("p" + i.ToString(), command[i]); // params
             }
 
-            var pubKeyHexStr = signer.GetPublicKey().ToHexString();
+            var pubKeyHexStr = mSigner.GetPublicKey().ToHexString();
             var settings = new EncoderSettings()
             {
                 BatcherPublicKey = pubKeyHexStr,
@@ -79,7 +81,7 @@ namespace ccplugin
             };
             settings.Inputs.Add(prefix);
             settings.Outputs.Add(prefix);
-            var encoder = new Encoder(settings, signer.GetPrivateKey());
+            var encoder = new Encoder(settings, mSigner.GetPrivateKey());
 
             msg = null;
             return encoder.EncodeSingleTransaction(map.EncodeToBytes());

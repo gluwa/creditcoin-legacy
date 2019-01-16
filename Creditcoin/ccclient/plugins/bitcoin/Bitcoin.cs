@@ -65,27 +65,28 @@ namespace cbitcoin
                 string sourceTxIdString = command[3];
 
                 string secret = cfg["secret"];
-                if (string.IsNullOrEmpty(secret))
+                if (string.IsNullOrWhiteSpace(secret))
                 {
                     msg = "bitcoin.secret is not set";
                     return false;
                 }
                 string rpcAddress = cfg["rpc"];
-                if (string.IsNullOrEmpty(rpcAddress))
+                if (string.IsNullOrWhiteSpace(rpcAddress))
                 {
                     msg = "bitcoin.rpc is not set";
                     return false;
                 }
 
                 string credential = cfg["credential"];
-                if (string.IsNullOrEmpty(credential))
+                if (string.IsNullOrWhiteSpace(credential))
                 {
                     msg = "bitcoin.credential is not set";
                     return false;
                 }
 
+                //TODO disable confirmation count config for release build
                 string confirmationsCount = cfg["confirmationsCount"];
-                if (string.IsNullOrEmpty(confirmationsCount))
+                if (string.IsNullOrWhiteSpace(confirmationsCount))
                 {
                     msg = "bitcoin.confirmationsCount is not set";
                     return false;
@@ -98,7 +99,7 @@ namespace cbitcoin
                 }
 
                 string feeString = cfg["fee"];
-                if (string.IsNullOrEmpty(feeString))
+                if (string.IsNullOrWhiteSpace(feeString))
                 {
                     msg = "bitcoin.fee is not set";
                     return false;
@@ -129,7 +130,10 @@ namespace cbitcoin
                 {
                     var protobuf = RpcHelper.ReadProtobuf(httpClient, $"{url}/state/{registeredSourceId}", out msg);
                     if (protobuf == null)
+                    {
                         return false;
+                    }
+
                     var address = Address.Parser.ParseFrom(protobuf);
 
                     string destinationAddress;
@@ -239,11 +243,13 @@ namespace cbitcoin
                 }
 
                 inProgress = true;
-                for (; ; )
+                while (true)
                 {
                     var transactionResponse = rpcClient.GetRawTransactionInfo(payTxId);
                     if (transactionResponse != null && transactionResponse.BlockHash != null && transactionResponse.Confirmations >= confirmationsExpected)
+                    {
                         break;
+                    }
 
                     Thread.Sleep(1000);
                 }

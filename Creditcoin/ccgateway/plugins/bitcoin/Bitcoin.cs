@@ -35,7 +35,7 @@ namespace gbitcoin
     {
         private static string creditcoinUrl = "http://localhost:8008";
 
-        public bool Run(IConfiguration cfg, string[] command, out string msg)
+        public bool Run(IConfiguration cfg, string signerHexStr, string[] command, out string msg)
         {
             Debug.Assert(command != null);
             Debug.Assert(command.Length > 0);
@@ -50,21 +50,22 @@ namespace gbitcoin
                 string networkId = command[6];
 
                 string rpcAddress = cfg["rpc"];
-                if (string.IsNullOrEmpty(rpcAddress))
+                if (string.IsNullOrWhiteSpace(rpcAddress))
                 {
                     msg = "bitcoin.rpc is not set";
                     return false;
                 }
 
                 string credential = cfg["credential"];
-                if (string.IsNullOrEmpty(credential))
+                if (string.IsNullOrWhiteSpace(credential))
                 {
                     msg = "bitcoin.credential is not set";
                     return false;
                 }
 
+                // TODO disable confirmation customization for release build
                 string confirmationsCount = cfg["confirmationsCount"];
-                if (string.IsNullOrEmpty(confirmationsCount))
+                if (string.IsNullOrWhiteSpace(confirmationsCount))
                 {
                     msg = "bitcoin.confirmationsCount is not set";
                     return false;
@@ -78,7 +79,11 @@ namespace gbitcoin
 
                 Network network = ((networkId == "1") ? Network.Main : Network.TestNet);
                 var rpcClient = new RPCClient(credential, new Uri(rpcAddress), network);
-                var transactionId = uint256.Parse(txId);
+                if (!uint256.TryParse(txId, out var transactionId))
+                {
+                    msg = "Invalid transaction: transaction ID invalid";
+                    return false;
+                }
 
                 var transactionInfoResponse = rpcClient.GetRawTransactionInfo(transactionId);
                 if (transactionInfoResponse.Confirmations < confirmationsExpected)
@@ -135,13 +140,7 @@ namespace gbitcoin
             }
             else if (command[0].Equals("unlock"))
             {
-                string signerHexStr = cfg["signer"];
-                if (signerHexStr == null)
-                {
-                    msg = "Signer is not configured";
-                    return false;
-                }
-                var ccSigner = new Signer(RpcHelper.Hex2Bytes(signerHexStr));
+                var ccSigner = new Signer(RpcHelper.HexToBytes(signerHexStr));
                 var txBuilder = new TxBuilder(ccSigner);
 
                 Debug.Assert(command.Length == 5);
@@ -165,19 +164,27 @@ namespace gbitcoin
 
                     var protobuf = RpcHelper.ReadProtobuf(httpClient, $"{creditcoinUrl}/state/{dealOrderId}", out msg);
                     if (protobuf == null)
+                    {
                         return false;
+                    }
                     var dealOrder = DealOrder.Parser.ParseFrom(protobuf);
                     protobuf = RpcHelper.ReadProtobuf(httpClient, $"{creditcoinUrl}/state/{dealOrder.AskOrderId}", out msg);
                     if (protobuf == null)
+                    {
                         return false;
+                    }
                     var askOrder = AskOrder.Parser.ParseFrom(protobuf);
                     protobuf = RpcHelper.ReadProtobuf(httpClient, $"{creditcoinUrl}/state/{askOrder.TransferId}", out msg);
                     if (protobuf == null)
+                    {
                         return false;
+                    }
                     var transfer = Transfer.Parser.ParseFrom(protobuf);
                     protobuf = RpcHelper.ReadProtobuf(httpClient, $"{creditcoinUrl}/state/{addressToUnlockFundsTo}", out msg);
                     if (protobuf == null)
+                    {
                         return false;
+                    }
                     var address = Address.Parser.ParseFrom(protobuf);
                     if (!askOrder.Sighash.Equals(address.Sighash))
                     {
@@ -198,23 +205,33 @@ namespace gbitcoin
 
                     var protobuf = RpcHelper.ReadProtobuf(httpClient, $"{creditcoinUrl}/state/{repaymentOrderId}", out msg);
                     if (protobuf == null)
+                    {
                         return false;
+                    }
                     var repaymentOrder = RepaymentOrder.Parser.ParseFrom(protobuf);
                     protobuf = RpcHelper.ReadProtobuf(httpClient, $"{creditcoinUrl}/state/{repaymentOrder.DealId}", out msg);
                     if (protobuf == null)
+                    {
                         return false;
+                    }
                     var dealOrder = DealOrder.Parser.ParseFrom(protobuf);
                     protobuf = RpcHelper.ReadProtobuf(httpClient, $"{creditcoinUrl}/state/{dealOrder.AskOrderId}", out msg);
                     if (protobuf == null)
+                    {
                         return false;
+                    }
                     var askOrder = AskOrder.Parser.ParseFrom(protobuf);
                     protobuf = RpcHelper.ReadProtobuf(httpClient, $"{creditcoinUrl}/state/{askOrder.TransferId}", out msg);
                     if (protobuf == null)
+                    {
                         return false;
+                    }
                     var transfer = Transfer.Parser.ParseFrom(protobuf);
                     protobuf = RpcHelper.ReadProtobuf(httpClient, $"{creditcoinUrl}/state/{addressToUnlockCollateralsTo}", out msg);
                     if (protobuf == null)
+                    {
                         return false;
+                    }
                     var address = Address.Parser.ParseFrom(protobuf);
                     if (!askOrder.Sighash.Equals(address.Sighash))
                     {
@@ -235,28 +252,29 @@ namespace gbitcoin
                 }
 
                 string rpcAddress = cfg["rpc"];
-                if (string.IsNullOrEmpty(rpcAddress))
+                if (string.IsNullOrWhiteSpace(rpcAddress))
                 {
                     msg = "bitcoin.rpc is not set";
                     return false;
                 }
 
                 string credential = cfg["credential"];
-                if (string.IsNullOrEmpty(credential))
+                if (string.IsNullOrWhiteSpace(credential))
                 {
                     msg = "bitcoin.credential is not set";
                     return false;
                 }
 
                 string secret = cfg["secret"];
-                if (string.IsNullOrEmpty(secret))
+                if (string.IsNullOrWhiteSpace(secret))
                 {
                     msg = "bitcoin.secret is not set";
                     return false;
                 }
 
+                // TODO disable confirmation config for release build
                 string confirmationsCount = cfg["confirmationsCount"];
-                if (string.IsNullOrEmpty(confirmationsCount))
+                if (string.IsNullOrWhiteSpace(confirmationsCount))
                 {
                     msg = "bitcoin.confirmationsCount is not set";
                     return false;
@@ -355,11 +373,13 @@ namespace gbitcoin
                     return false;
                 }
 
-                for (; ; ) //TODO: this may lock for a very long time or forever, fix ---------------------------------------------------------------------------------------------------------------------------------------
+                while (true) //TODO: this may lock for a very long time or forever, fix ---------------------------------------------------------------------------------------------------------------------------------------
                 {
                     var transactionInfo = rpcClient.GetRawTransactionInfo(payTxId);
                     if (transactionInfo != null && transactionInfo.BlockHash != null && transactionInfo.Confirmations >= confirmationsExpected)
+                    {
                         break;
+                    }
 
                     Thread.Sleep(1000);
                 }

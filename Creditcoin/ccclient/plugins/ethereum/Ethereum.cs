@@ -19,6 +19,7 @@
 
 using ccplugin;
 using Microsoft.Extensions.Configuration;
+using Nethereum.Hex.HexTypes;
 using Nethereum.Signer;
 using Newtonsoft.Json.Linq;
 using PeterO.Cbor;
@@ -68,7 +69,7 @@ namespace cethereum
                 bool erc20 = command.Length == 4;
 
                 string secret = cfg["secret"];
-                if (string.IsNullOrEmpty(secret))
+                if (string.IsNullOrWhiteSpace(secret))
                 {
                     msg = "ethereum.secret is not set";
 
@@ -76,8 +77,9 @@ namespace cethereum
                 }
                 var ethereumPrivateKey = secret;
 
+                // TODO disable confirmation count config for release build
                 string confirmationsCount = cfg["confirmationsCount"];
-                if (string.IsNullOrEmpty(confirmationsCount))
+                if (string.IsNullOrWhiteSpace(confirmationsCount))
                 {
                     msg = "ethereum.confirmationsCount is not set";
 
@@ -91,7 +93,7 @@ namespace cethereum
                 }
 
                 string rpcUrl = cfg["rpc"];
-                if (string.IsNullOrEmpty(rpcUrl))
+                if (string.IsNullOrWhiteSpace(rpcUrl))
                 {
                     msg = "ethereum.rpc is not set";
 
@@ -122,7 +124,9 @@ namespace cethereum
                 {
                     var protobuf = RpcHelper.ReadProtobuf(httpClient, $"{url}/state/{registeredSourceId}", out msg);
                     if (protobuf == null)
+                    {
                         return false;
+                    }
                     var address = Address.Parser.ParseFrom(protobuf);
 
                     string destinationAddress;
@@ -157,16 +161,13 @@ namespace cethereum
                     TransactionSigner signer = new TransactionSigner();
 
                     // TODO maybe add a y/n choice for user to decline or configurable gas price override
-                    var gasLimit = web3.Eth.Transactions.EstimateGas.SendRequestAsync(new Nethereum.RPC.Eth.DTOs.CallInput(registeredSourceId, destinationAddress, new Nethereum.Hex.HexTypes.HexBigInteger(transferAmount))).Result;
                     var gasPrice = web3.Eth.GasPrice.SendRequestAsync().Result;
-                    Console.WriteLine("gasLimit: " + gasLimit.Value.ToString());
                     Console.WriteLine("gasPrice: " + gasPrice.Value.ToString());
-
-                    fee = gasLimit.Value * gasPrice.Value;
 
                     string to;
                     string data;
                     BigInteger amount;
+                    HexBigInteger gasLimit;
                     if (erc20)
                     {
                         string creditcoinContract = cfg["creditcoinContract"];
@@ -175,12 +176,19 @@ namespace cethereum
                         to = creditcoinContract;
 
                         var contract = web3.Eth.GetContract(creditcoinContractAbi, creditcoinContract);
-                        var burn = contract.GetFunction("burn");
-                        data = burn.GetData(new object[] { transferAmount, address.Sighash });
+                        var burn = contract.GetFunction("exchange");
+                        var functionInput = new object[] { transferAmount, address.Sighash };
+                        data = burn.GetData(functionInput);
+                        gasLimit = burn.EstimateGasAsync(functionInput).Result;
+                        fee = gasLimit.Value * gasPrice.Value;
                         amount = 0;
                     }
                     else
                     {
+                        gasLimit = web3.Eth.Transactions.EstimateGas.SendRequestAsync(new Nethereum.RPC.Eth.DTOs.CallInput(registeredSourceId, destinationAddress, new Nethereum.Hex.HexTypes.HexBigInteger(transferAmount))).Result;
+                        Console.WriteLine("gasLimit: " + gasLimit.Value.ToString());
+
+                        fee = gasLimit.Value * gasPrice.Value;
                         to = destinationAddress;
                         data = address.Sighash;
                         amount = transferAmount + fee;
@@ -194,24 +202,28 @@ namespace cethereum
                 }
 
                 inProgress = true;
-                for (; ; )
+                while (true)
                 {
                     var receipt = web3.Eth.TransactionManager.TransactionReceiptService.PollForReceiptAsync(payTxId).Result;
                     if (receipt.BlockNumber != null)
                     {
                         var blockNumber = web3.Eth.Blocks.GetBlockNumber.SendRequestAsync().Result;
                         if (blockNumber.Value - receipt.BlockNumber.Value >= confirmationsExpected)
+                        {
                             break;
+                        }
                     }
                     Thread.Sleep(1000);
                 }
                 File.Delete(progress);
                 inProgress = false;
 
-                command = new string[] { command[0], registeredSourceId, amountString, erc20? "0": fee.ToString(), payTxId, erc20? "creditcoin": "1" };
+                command = new string[] { command[0], registeredSourceId, amountString, erc20 ? "0" : fee.ToString(), payTxId, erc20 ? "creditcoin" : "1" };
                 var tx = txBuilder.BuildTx(command, out msg);
                 if (tx == null)
+                {
                     return false;
+                }
 
                 Debug.Assert(msg == null);
 

@@ -60,8 +60,9 @@ const size_t PREFIX_LENGTH = 4;
 const int SKIP_TO_GET_60 = 512 / 8 * 2 - 60; // 512 - hash size in bits, 8 - bits in byte, 2 - hex digits for byte, 60 - merkle address length (70) without namespace length (6) and prexix length (4)
 
 const char* URL_PREFIX = "tcp://";
-static const std::string URL_DEFAULT = "tcp://127.0.0.1:4004";
-static const std::string URL_GATEWAY = "tcp://127.0.0.1:55555";
+static std::string URL_GATEWAY = "tcp://127.0.0.1:55555";
+static std::string URL_REST_API = "http://localhost:8008";
+static std::string URL_VALIDATOR = "tcp://127.0.0.1:4004";
 static const std::string TRANSFERS_ROOT = "TRANSFERS_ROOT";
 static const std::string NAMESPACE = "CREDITCOIN";
 static const std::string SETTINGS_NAMESPACE = "000000";
@@ -87,6 +88,7 @@ static char const* ADDRESS = "address";
 static char const* ERR = "error";
 
 static const int SOCKET_TIMEOUT_MILLISECONDS = 5000000; // TODO make configurable or set a more reasonable time for prod env
+static const int LOCAL_SOCKET_TIMEOUT_MILLISECONDS = 5000; // TODO re-evaluate the need for this after gateway changes
 
 static std::map<std::string, std::string> settings;
 static std::string externalGatewayAddress = "";
@@ -107,14 +109,18 @@ static bool testConnectString(const char* str)
     const char* ptr = str;
 
     if (strncmp(str, URL_PREFIX, URL_PREFIX_LEN))
+    {
         return false;
+    }
 
     ptr = str + URL_PREFIX_LEN;
 
     if (!isdigit(*ptr))
     {
         if (*ptr == ':' || (ptr = strchr(ptr, ':')) == NULL)
+        {
             return false;
+        }
         ptr++;
     }
     else
@@ -122,25 +128,33 @@ static bool testConnectString(const char* str)
         for (int i = 0; i < 4; i++)
         {
             if (!isdigit(*ptr))
+            {
                 return false;
+            }
 
             ptr++;
             if (isdigit(*ptr))
             {
                 ptr++;
                 if (isdigit(*ptr))
+                {
                     ptr++;
+                }
             }
 
             if (i < 3)
             {
                 if (*ptr != '.')
+                {
                     return false;
+                }
             }
             else
             {
                 if (*ptr != ':')
+                {
                     return false;
+                }
             }
             ptr++;
         }
@@ -151,32 +165,48 @@ static bool testConnectString(const char* str)
         if (!isdigit(*ptr))
         {
             if (!i)
+            {
                 return false;
+            }
             break;
         }
         ptr++;
     }
 
     if (*ptr)
+    {
         return false;
+    }
 
     return true;
 }
 
-static std::string parseArgs(int argc, char** argv)
+static void parseArgs(int argc, char** argv)
 {
-    if (argc == 1)
+    if (argc >= 2)
     {
-        std::cout << "Connecting to " << URL_DEFAULT << std::endl;
-        return URL_DEFAULT;
+		/* tmp hax, remove url test to support docker endpoints
+		if (!testConnectString(argv[1]))
+		{
+			std::cerr << "Connect string is not in format host:port - " << argv[1] << std::endl;
+			usage();
+		}
+		*/
+		URL_VALIDATOR = argv[1];
     }
+	std::cout << "Connecting to " << URL_VALIDATOR << std::endl;
 
-    if (!testConnectString(argv[1]))
-    {
-        std::cerr << "Connect string is not in format host:port - " << argv[1] << std::endl;
-        usage();
-    }
-    return argv[1];
+	if (argc >= 3)
+	{
+		URL_GATEWAY = argv[2];
+	}
+	std::cout << "Using gateway URL: " << URL_GATEWAY << std::endl;
+
+	if (argc >= 4)
+	{
+		URL_REST_API = argv[3];
+	}
+	std::cout << "Using rest api URL: " << URL_REST_API << std::endl;
 }
 
 class AddressFormatError : public std::runtime_error
@@ -238,7 +268,9 @@ static std::vector<int> MakeBase64lookupTable()
 {
     std::vector<int> ret(256, -1);
     for (int i = 0; i < 64; i++)
+    {
         ret[base64lookupString[i]] = i;
+    }
     return ret;
 }
 std::vector<int> base64lookupTable = MakeBase64lookupTable();
@@ -247,7 +279,7 @@ static std::string encodeBase64(std::vector<std::uint8_t> const& in)
 {
     std::stringstream out;
 
-    unsigned val = 0;
+    unsigned int val = 0;
     int valb = -6;
     for (unsigned char c : in)
     {
@@ -260,24 +292,32 @@ static std::string encodeBase64(std::vector<std::uint8_t> const& in)
         }
     }
     if (valb > -6)
+    {
         out << (base64lookupString[((val << 8) >> (valb + 8)) & 0x3F]);
+    }
     for (int i = 0, rest = in.size() % 3; i < rest; ++i)
+    {
         out << '=';
+    }
     return out.str();
 }
 
 static std::vector<std::uint8_t> decodeBase64(std::string const& in)
 {
     std::vector<std::uint8_t> ret;
-    unsigned val = 0;
+    unsigned int val = 0;
     int valb = -8;
     for (unsigned char c : in)
     {
         if (c == '=')
+        {
             break;
+        }
         int lookup = base64lookupTable[c];
         if (lookup == -1)
+        {
             throw sawtooth::InvalidTransaction("Invalid character in base64");
+        }
         val = (val << 6) + lookup;
         valb += 6;
         if (valb >= 0)
@@ -302,11 +342,11 @@ static std::vector<std::uint8_t> toVector(const std::string& in)
     return out;
 }
 
-static std::string trimQuotes(std::string qoutedStr)
+static std::string trimQuotes(std::string quotedStr)
 {
-    auto qoutedStrLen = qoutedStr.length();
-    assert(qoutedStr[0] == '"' && qoutedStr[qoutedStrLen - 1] == '"');
-    return qoutedStr.substr(1, qoutedStrLen - 2);
+    auto quotedStrLen = quotedStr.length();
+    assert(quotedStr[0] == '"' && quotedStr[quotedStrLen - 1] == '"');
+    return quotedStr.substr(1, quotedStrLen - 2);
 }
 
 static unsigned long parseUlong(std::string numberString) {
@@ -317,14 +357,18 @@ static unsigned long parseUlong(std::string numberString) {
         size_t pos = 0;
         number = std::stoul(numberString, &pos, 10);
         if (pos < numberString.length())
+        {
             error = true;
+        }
     }
     catch (...)
     {
         error = true;
     }
     if (error)
+    {
         throw sawtooth::InvalidTransaction("Invalid number");
+    }
 
     return number;
 }
@@ -333,7 +377,9 @@ static std::string getParam(nlohmann::json const& query, std::string const& id, 
 {
     auto param = query.find(id);
     if (param == query.end())
+    {
         throw sawtooth::InvalidTransaction("Expecting " + name);
+    }
     return param->dump();
 }
 
@@ -357,10 +403,13 @@ static unsigned long getUlong(nlohmann::json const& query, std::string const& id
 static boost::multiprecision::cpp_int getBigint(std::string bigint)
 {
     boost::multiprecision::cpp_int ret;
-    try {
+    try 
+    {
         ret = boost::multiprecision::cpp_int(bigint);
         if (ret < 0)
+        {
             throw sawtooth::InvalidTransaction("Expecting a positive value");
+        }
     }
     catch (std::runtime_error const&)
     {
@@ -374,7 +423,9 @@ static std::string getBigint(nlohmann::json const& query, std::string const& id,
     std::string bigint = getString(query, id, name);
     boost::multiprecision::cpp_int result = getBigint(bigint);
     if (value)
+    {
         *value = result;
+    }
     return bigint;
 }
 
@@ -386,7 +437,9 @@ static unsigned long getDate(nlohmann::json const& query, std::string const& id,
     tm* timeInfo = gmtime(&localTime);
     time_t utcTime = mktime(timeInfo);
     if (utcTime >= date)
+    {
         throw std::runtime_error("Expired");
+    }
     return date;
 }
 
@@ -404,20 +457,26 @@ static void filter(std::string prefix, std::function<void(std::string const&, st
 
     try
     {
-        http::client::request request("http://localhost:8008/state?address=" + prefix);
+        http::client::request request(URL_REST_API + "/state?address=" + prefix);
         request << header("Connection", "close");
         std::string json = body(client.get(request));
         nlohmann::json response = nlohmann::json::parse(json);
         if (response.count(ERR) || response.count(DATA) != 1)
+        {
             throw sawtooth::InvalidTransaction(RPC_FAILURE);
+        }
         auto data = response[DATA];
         if (!data.is_array())
+        {
             throw sawtooth::InvalidTransaction(RPC_FAILURE);
+        }
         auto arr = data.get<std::vector<nlohmann::json::value_type>>();
         for (auto datum : arr)
         {
             if (datum.count(ADDRESS) != 1 || datum.count(DATA) != 1)
+            {
                 throw sawtooth::InvalidTransaction(RPC_FAILURE);
+            }
             std::string address = datum[ADDRESS];
             std::string content = datum[DATA];
             auto protobuf = decodeBase64(content);
@@ -517,11 +576,15 @@ private:
         nlohmann::json query = nlohmann::json::from_cbor(dataVector);
 
         if (!query.is_object())
+        {
             throw sawtooth::InvalidTransaction("CBOR Object as the encoded command");
+        }
 
         auto verb = query.find("v");
         if (verb == query.end())
+        {
             throw sawtooth::InvalidTransaction("verb is required");
+        }
         *cmd = trimQuotes(verb->dump());
 
         return query;
@@ -531,9 +594,13 @@ private:
     {
         std::string stateData;
         if (!state->GetState(&stateData, id))
+        {
             throw sawtooth::InvalidTransaction("Failed to retrieve the state");
+        }
         if (existing && stateData.empty())
+        {
             throw sawtooth::InvalidTransaction("Existing state expected");
+        }
         return stateData;
     }
 
@@ -543,9 +610,13 @@ private:
         const std::string mySighash = sha512id(signer);
         auto setting = settings.find("sawtooth.gateway.sighash");
         if (setting == settings.end())
+        {
             throw sawtooth::InvalidTransaction("Gateway sighash is not configured");
+        }
         if (mySighash != setting->second)
+        {
             throw sawtooth::InvalidTransaction("Only gateway sighash can perform this operation");
+        }
     }
 
     void addState(std::vector<sawtooth::GlobalState::KeyValue>* states, std::string id, google::protobuf::Message const& message)
@@ -575,9 +646,9 @@ private:
         else
         {
             wallet.ParseFromString(stateData);
-            boost::multiprecision::cpp_int ballance = getBigint(wallet.amount());
-            ballance += amount;
-            wallet.set_amount(toString(ballance));
+            boost::multiprecision::cpp_int balance = getBigint(wallet.amount());
+            balance += amount;
+            wallet.set_amount(toString(balance));
         }
 
         wallet.SerializeToString(&stateData);
@@ -596,19 +667,23 @@ private:
         const std::string signer = txn->header()->GetValue(sawtooth::TransactionHeaderField::TransactionHeaderSignerPublicKey);
         const std::string mySighash = sha512id(signer);
         if (sighash == mySighash)
+        {
             throw sawtooth::InvalidTransaction("Invalid destination");
+        }
 
         const std::string srcWalletId = namespacePrefix + WALLET + mySighash;
         std::string stateData = getStateData(srcWalletId, true);
 
         Wallet srcWallet;
         srcWallet.ParseFromString(stateData);
-        boost::multiprecision::cpp_int srcBallance = getBigint(srcWallet.amount());
-        if (srcBallance - amount < 0)
+        boost::multiprecision::cpp_int srcBalance = getBigint(srcWallet.amount());
+        if (srcBalance - amount < 0)
+        {
             throw sawtooth::InvalidTransaction("Insufficient funds");
+        }
 
-        srcBallance -= amount;
-        srcWallet.set_amount(toString(srcBallance));
+        srcBalance -= amount;
+        srcWallet.set_amount(toString(srcBalance));
 
         const std::string dstWalletId = namespacePrefix + WALLET + sighash;
         stateData = getStateData(dstWalletId);
@@ -621,9 +696,9 @@ private:
         else
         {
             dstWallet.ParseFromString(stateData);
-            boost::multiprecision::cpp_int dstBallance = getBigint(dstWallet.amount());
-            dstBallance += amount;
-            dstWallet.set_amount(toString(dstBallance));
+            boost::multiprecision::cpp_int dstBalance = getBigint(dstWallet.amount());
+            dstBalance += amount;
+            dstWallet.set_amount(toString(dstBalance));
         }
 
         std::vector<sawtooth::GlobalState::KeyValue> states;
@@ -635,12 +710,14 @@ private:
     void RegisterAddress(nlohmann::json const& query)
     {
         const std::string blockchain = getStringLower(query, "p1", "blockchain");
-        const std::string addressString = getStringLower(query, "p2", "address");
+        const std::string addressString = getString(query, "p2", "address");
         const std::string id = makeAddress(SOURCE, blockchain + addressString);
 
         std::string stateData = getStateData(id);
         if (!stateData.empty())
+        {
             throw sawtooth::InvalidTransaction("The address has been already registered");
+        }
 
         const std::string signer = txn->header()->GetValue(sawtooth::TransactionHeaderField::TransactionHeaderSignerPublicKey);
 
@@ -670,18 +747,24 @@ private:
         std::string signer = txn->header()->GetValue(sawtooth::TransactionHeaderField::TransactionHeaderSignerPublicKey);
         std::string sighash = sha512id(signer);
         if (address.sighash() != sighash)
+        {
             throw sawtooth::InvalidTransaction("Only the owner can register");
+        }
         const std::string blockchain = address.blockchain();
 
         const std::string transferId = makeAddress(TRANSFER, blockchain + blockchainTxId);
         stateData = getStateData(transferId);
         if (!stateData.empty())
+        {
             throw sawtooth::InvalidTransaction("The transfer has been already registered");
+        }
 
         std::stringstream gatewayCommand;
         auto escrow = settings.find("sawtooth.escrow." + blockchain);
         if (escrow == settings.end())
+        {
             throw sawtooth::InvalidTransaction("Escrow service is not configured for " + blockchain);
+        }
         gatewayCommand << blockchain << " verify " << blockchainTxId << " " << escrow->second << " " << (amount + fee) << " " << sighash << " " << address.address() << " " << networkId;
         std::string response = "";
         bool rc = localGateway->send(gatewayCommand.str());
@@ -697,7 +780,7 @@ private:
             delete localGateway;
             localGateway = new zmqpp::socket(*socketContext, zmqpp::socket_type::request);
             localGateway->connect(URL_GATEWAY);
-            localGateway->set(zmqpp::socket_option::receive_timeout, SOCKET_TIMEOUT_MILLISECONDS);
+            localGateway->set(zmqpp::socket_option::receive_timeout, LOCAL_SOCKET_TIMEOUT_MILLISECONDS);
 
             if (!externalGatewayAddress.empty())
             {
@@ -710,7 +793,9 @@ private:
             }
         }
         if (response != "good")
+        {
             throw sawtooth::InvalidTransaction("Couldn't validate the transaction");
+        }
 
         Transfer transfer;
         transfer.set_blockchain(blockchain);
@@ -742,15 +827,21 @@ private:
 
         std::string stateData = getStateData(askOrderId);
         if (!stateData.empty())
+        {
             throw sawtooth::InvalidTransaction("Duplicate id");
+        }
 
         stateData = getStateData(transferId, true);
         Transfer transfer;
         transfer.ParseFromString(stateData);
         if (transfer.amount() != amountString)
+        {
             throw sawtooth::InvalidTransaction("Invalid amount locked");
+        }
         if (!transfer.orderid().empty())
+        {
             throw sawtooth::InvalidTransaction("The transfer has been already used");
+        }
         transfer.set_orderid(askOrderId);
 
         AskOrder askOrder;
@@ -761,6 +852,7 @@ private:
         askOrder.set_collateral(collateral);
         askOrder.set_fee(fee);
         askOrder.set_expiration(expiration);
+        askOrder.set_transfer_id(transferId);
         askOrder.set_sighash(sha512id(signer));
 
         std::vector<sawtooth::GlobalState::KeyValue> states;
@@ -784,7 +876,9 @@ private:
         const std::string id = makeAddress(BID_ORDER, ordinal + signer);
         std::string stateData = getStateData(id);
         if (!stateData.empty())
+        {
             throw sawtooth::InvalidTransaction("Duplicate id");
+        }
 
         BidOrder bidOrder;
         bidOrder.set_blockchain(blockchain);
@@ -809,7 +903,9 @@ private:
         const std::string id = makeAddress(DEAL_ORDER, askOrderId + bidOrderId);
         std::string stateData = getStateData(id);
         if (!stateData.empty())
+        {
             throw sawtooth::InvalidTransaction("Duplicate id");
+        }
 
         const std::string signer = txn->header()->GetValue(sawtooth::TransactionHeaderField::TransactionHeaderSignerPublicKey);
         const std::string mySighash = sha512id(signer);
@@ -818,13 +914,17 @@ private:
         AskOrder askOrder;
         askOrder.ParseFromString(stateData);
         if (askOrder.sighash() != mySighash)
+        {
             throw sawtooth::InvalidTransaction("Only an investor can add a deal order");
+        }
 
         stateData = getStateData(bidOrderId, true);
         BidOrder bidOrder;
         bidOrder.ParseFromString(stateData);
         if (bidOrder.sighash() == mySighash)
+        {
             throw sawtooth::InvalidTransaction("The ask and bid orders are from the same party");
+        }
 
         DealOrder dealOrder;
         dealOrder.set_ask_order_id(askOrderId);
@@ -845,13 +945,17 @@ private:
         DealOrder dealOrder;
         dealOrder.ParseFromString(stateData);
         if (!dealOrder.collateral_transfer_id().empty())
+        {
             throw sawtooth::InvalidTransaction("The deal has been already completed");
+        }
 
         stateData = getStateData(collateralTransferId, true);
         Transfer collateralTransfer;
         collateralTransfer.ParseFromString(stateData);
         if (!collateralTransfer.orderid().empty())
+        {
             throw sawtooth::InvalidTransaction("The transfer has been already used");
+        }
 
         const std::string signer = txn->header()->GetValue(sawtooth::TransactionHeaderField::TransactionHeaderSignerPublicKey);
         const std::string mySighash = sha512id(signer);
@@ -860,11 +964,15 @@ private:
         BidOrder bidOrder;
         bidOrder.ParseFromString(stateData);
         if (bidOrder.sighash() != mySighash)
+        {
             throw sawtooth::InvalidTransaction("Only a fundraiser can complete a deal");
+        }
         boost::multiprecision::cpp_int fee = getBigint(bidOrder.fee());
 
         if (bidOrder.collateral_blockchain() != collateralTransfer.blockchain() || bidOrder.collateral() != collateralTransfer.amount())
+        {
             throw sawtooth::InvalidTransaction("The transfer doesn't match the bid order");
+        }
 
         stateData = getStateData(dealOrder.ask_order_id(), true);
         AskOrder askOrder;
@@ -873,16 +981,20 @@ private:
         const std::string srcWalletId = namespacePrefix + WALLET + mySighash;
         stateData = getStateData(srcWalletId, true);
         if (stateData.empty())
+        {
             throw sawtooth::InvalidTransaction("Insufficient funds");
+        }
 
         Wallet srcWallet;
         srcWallet.ParseFromString(stateData);
-        boost::multiprecision::cpp_int srcBallance = getBigint(srcWallet.amount());
-        if (srcBallance - fee < 0)
+        boost::multiprecision::cpp_int srcBalance = getBigint(srcWallet.amount());
+        if (srcBalance - fee < 0)
+        {
             throw sawtooth::InvalidTransaction("Insufficient funds");
+        }
 
-        srcBallance -= fee;
-        srcWallet.set_amount(toString(srcBallance));
+        srcBalance -= fee;
+        srcWallet.set_amount(toString(srcBalance));
 
         const std::string dstWalletId = namespacePrefix + WALLET + askOrder.sighash();
         stateData = getStateData(dstWalletId);
@@ -895,9 +1007,9 @@ private:
         else
         {
             dstWallet.ParseFromString(stateData);
-            boost::multiprecision::cpp_int dstBallance = getBigint(dstWallet.amount());
-            dstBallance += fee;
-            dstWallet.set_amount(toString(dstBallance));
+            boost::multiprecision::cpp_int dstBalance = getBigint(dstWallet.amount());
+            dstBalance += fee;
+            dstWallet.set_amount(toString(dstBalance));
         }
 
         dealOrder.set_collateral_transfer_id(collateralTransferId);
@@ -919,7 +1031,9 @@ private:
         const std::string id = namespacePrefix + REPAYMENT_ORDER + dealOrderId.substr(NAMESPACE_PREFIX_LENGTH + PREFIX_LENGTH, std::string::npos);
         std::string stateData = getStateData(id);
         if (!stateData.empty())
+        {
             throw sawtooth::InvalidTransaction("A repayment order already exist for the deal order");
+        }
 
         RepaymentOrder repaymentOrder;
         repaymentOrder.set_deal_id(dealOrderId);
@@ -950,11 +1064,15 @@ private:
         Transfer transfer;
         transfer.ParseFromString(stateData);
         if (!transfer.orderid().empty())
-            throw sawtooth::InvalidTransaction("The transfer has been alredy used");
+        {
+            throw sawtooth::InvalidTransaction("The transfer has been already used");
+        }
         transfer.set_orderid(repaymentOrderId);
 
         if (transfer.blockchain() != askOrder.blockchain() || transfer.amount() < askOrder.amount())
+        {
             throw sawtooth::InvalidTransaction("The transfer doesn't match the ask order");
+        }
 
         repaymentOrder.set_transfer_id(transferId);
 
@@ -975,7 +1093,9 @@ private:
         DealOrder dealOrder;
         dealOrder.ParseFromString(stateData);
         if (!dealOrder.unlock_funds_destination_address_id().empty())
+        {
             throw sawtooth::InvalidTransaction("The funds have been already unlocked for the deal");
+        }
 
         dealOrder.set_unlock_funds_destination_address_id(addressId);
 
@@ -998,7 +1118,9 @@ private:
         DealOrder dealOrder;
         dealOrder.ParseFromString(stateData);
         if (!dealOrder.unlock_collateral_destination_address_id().empty())
+        {
             throw sawtooth::InvalidTransaction("The collateral has been already unlocked for the deal");
+        }
 
         dealOrder.set_unlock_collateral_destination_address_id(addressId);
 
@@ -1014,15 +1136,21 @@ private:
         Transfer transfer;
         transfer.ParseFromString(stateData);
         if (transfer.blockchain() != "ethereum" || transfer.network() != "creditcoin")
+        {
             throw sawtooth::InvalidTransaction("Invalid blockchain");
+        }
         if (!transfer.orderid().empty())
+        {
             throw sawtooth::InvalidTransaction("The coins have been already collected");
+        }
 
         const std::string signer = txn->header()->GetValue(sawtooth::TransactionHeaderField::TransactionHeaderSignerPublicKey);
         const std::string mySighash = sha512id(signer);
 
         if (transfer.sighash() != mySighash)
+        {
             throw sawtooth::InvalidTransaction("Only the owner can collect");
+        }
 
         transfer.set_orderid("$");
 
@@ -1037,9 +1165,9 @@ private:
         else
         {
             wallet.ParseFromString(stateData);
-            boost::multiprecision::cpp_int ballance = getBigint(wallet.amount());
-            ballance += getBigint(transfer.amount());
-            wallet.set_amount(toString(ballance));
+            boost::multiprecision::cpp_int balance = getBigint(wallet.amount());
+            balance += getBigint(transfer.amount());
+            wallet.set_amount(toString(balance));
         }
 
         std::vector<sawtooth::GlobalState::KeyValue> states;
@@ -1134,7 +1262,7 @@ int main(int argc, char** argv)
     // console4> ccprocessor
     // console5> ccclient creditcoin tmpAddDeal bitcoin mvJr4KdZdx7NzJL87Xx5FNstP1tttbGvq2 10500 bitcoin mp3PRSq1ZKtSDxTqSwWSBLCm3EauHcVD7g 10000
     // console5> ccclient bitcoin registerTransfer 8a1a04aa595e25f63564472cebc9337366bcd4495aee0c50130e0b32975d78313ff35b
-
+	parseArgs(argc, argv);
     setupSettingsAndExternalGatewayAddress();
 
     try
@@ -1144,15 +1272,14 @@ int main(int argc, char** argv)
 
         localGateway = new zmqpp::socket(context, zmqpp::socket_type::request);
         localGateway->connect(URL_GATEWAY);
-        localGateway->set(zmqpp::socket_option::receive_timeout, SOCKET_TIMEOUT_MILLISECONDS);
+        localGateway->set(zmqpp::socket_option::receive_timeout, LOCAL_SOCKET_TIMEOUT_MILLISECONDS);
 
         externalGateway = new zmqpp::socket(context, zmqpp::socket_type::request);
         externalGateway->set(zmqpp::socket_option::receive_timeout, SOCKET_TIMEOUT_MILLISECONDS);
 
         log4cxx::BasicConfigurator::configure();
-        std::string connectString = parseArgs(argc, argv);
-
-        sawtooth::TransactionProcessorUPtr processor(sawtooth::TransactionProcessor::Create(connectString));
+        
+        sawtooth::TransactionProcessorUPtr processor(sawtooth::TransactionProcessor::Create(URL_VALIDATOR));
         sawtooth::TransactionHandlerUPtr transactionHandler(new Handler());
         processor->RegisterHandler(std::move(transactionHandler));
 

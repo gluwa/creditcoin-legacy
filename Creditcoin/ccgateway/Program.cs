@@ -37,8 +37,15 @@ namespace ccgateway
                     .AddJsonFile("appsettings.dev.json", true, true)
                 .Build();
 
+            string signerHexStr = config["signer"];
+            if (string.IsNullOrWhiteSpace(signerHexStr))
+            {
+                Console.WriteLine("Signer is not configured");
+                return;
+            }
+
             string ip = config["bindIP"];
-            if (string.IsNullOrEmpty(ip))
+            if (string.IsNullOrWhiteSpace(ip))
             {
                 Console.WriteLine("bindIP is not set.. defaulting to 127.0.0.1 local connection only");
                 ip = "127.0.0.1";
@@ -59,7 +66,7 @@ namespace ccgateway
                     if (command.Length < 2)
                     {
                         response = "poor";
-                        Console.WriteLine("");
+                        Console.WriteLine(string.Empty);
                     }
                     else
                     {
@@ -92,11 +99,13 @@ namespace ccgateway
                             else
                             {
                                 string msg;
-                                bool done = plugin.Run(pluginConfig, command, out msg);
+                                bool done = plugin.Run(pluginConfig, signerHexStr, command, out msg);
                                 if (done)
                                 {
                                     if (msg == null)
+                                    {
                                         msg = "Success!";
+                                    }
                                     response = "good";
                                 }
                                 else
