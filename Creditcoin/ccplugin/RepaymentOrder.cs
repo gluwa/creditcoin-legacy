@@ -22,12 +22,16 @@ public static partial class RepaymentOrderReflection {
   static RepaymentOrderReflection() {
     byte[] descriptorData = global::System.Convert.FromBase64String(
         string.Concat(
-          "ChRSZXBheW1lbnRPcmRlci5wcm90byI2Cg5SZXBheW1lbnRPcmRlchIPCgdk",
-          "ZWFsX2lkGAEgASgJEhMKC3RyYW5zZmVyX2lkGAIgASgJYgZwcm90bzM="));
+          "ChRSZXBheW1lbnRPcmRlci5wcm90byLKAQoOUmVwYXltZW50T3JkZXISEgoK",
+          "YmxvY2tjaGFpbhgBIAEoCRITCgtzcmNfYWRkcmVzcxgCIAEoCRITCgtkc3Rf",
+          "YWRkcmVzcxgDIAEoCRIOCgZhbW91bnQYBCABKAkSEgoKZXhwaXJhdGlvbhgF",
+          "IAEoBBINCgVibG9jaxgGIAEoCRIMCgRkZWFsGAcgASgJEhYKDnByZXZpb3Vz",
+          "X293bmVyGAggASgJEhAKCHRyYW5zZmVyGAkgASgJEg8KB3NpZ2hhc2gYCiAB",
+          "KAliBnByb3RvMw=="));
     descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
         new pbr::FileDescriptor[] { },
         new pbr::GeneratedClrTypeInfo(null, new pbr::GeneratedClrTypeInfo[] {
-          new pbr::GeneratedClrTypeInfo(typeof(global::RepaymentOrder), global::RepaymentOrder.Parser, new[]{ "DealId", "TransferId" }, null, null, null)
+          new pbr::GeneratedClrTypeInfo(typeof(global::RepaymentOrder), global::RepaymentOrder.Parser, new[]{ "Blockchain", "SrcAddress", "DstAddress", "Amount", "Expiration", "Block", "Deal", "PreviousOwner", "Transfer", "Sighash" }, null, null, null)
         }));
   }
   #endregion
@@ -59,8 +63,16 @@ public sealed partial class RepaymentOrder : pb::IMessage<RepaymentOrder> {
 
   [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
   public RepaymentOrder(RepaymentOrder other) : this() {
-    dealId_ = other.dealId_;
-    transferId_ = other.transferId_;
+    blockchain_ = other.blockchain_;
+    srcAddress_ = other.srcAddress_;
+    dstAddress_ = other.dstAddress_;
+    amount_ = other.amount_;
+    expiration_ = other.expiration_;
+    block_ = other.block_;
+    deal_ = other.deal_;
+    previousOwner_ = other.previousOwner_;
+    transfer_ = other.transfer_;
+    sighash_ = other.sighash_;
     _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
   }
 
@@ -69,25 +81,113 @@ public sealed partial class RepaymentOrder : pb::IMessage<RepaymentOrder> {
     return new RepaymentOrder(this);
   }
 
-  /// <summary>Field number for the "deal_id" field.</summary>
-  public const int DealIdFieldNumber = 1;
-  private string dealId_ = "";
+  /// <summary>Field number for the "blockchain" field.</summary>
+  public const int BlockchainFieldNumber = 1;
+  private string blockchain_ = "";
   [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-  public string DealId {
-    get { return dealId_; }
+  public string Blockchain {
+    get { return blockchain_; }
     set {
-      dealId_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+      blockchain_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
     }
   }
 
-  /// <summary>Field number for the "transfer_id" field.</summary>
-  public const int TransferIdFieldNumber = 2;
-  private string transferId_ = "";
+  /// <summary>Field number for the "src_address" field.</summary>
+  public const int SrcAddressFieldNumber = 2;
+  private string srcAddress_ = "";
   [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-  public string TransferId {
-    get { return transferId_; }
+  public string SrcAddress {
+    get { return srcAddress_; }
     set {
-      transferId_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+      srcAddress_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+    }
+  }
+
+  /// <summary>Field number for the "dst_address" field.</summary>
+  public const int DstAddressFieldNumber = 3;
+  private string dstAddress_ = "";
+  [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+  public string DstAddress {
+    get { return dstAddress_; }
+    set {
+      dstAddress_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+    }
+  }
+
+  /// <summary>Field number for the "amount" field.</summary>
+  public const int AmountFieldNumber = 4;
+  private string amount_ = "";
+  [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+  public string Amount {
+    get { return amount_; }
+    set {
+      amount_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+    }
+  }
+
+  /// <summary>Field number for the "expiration" field.</summary>
+  public const int ExpirationFieldNumber = 5;
+  private ulong expiration_;
+  [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+  public ulong Expiration {
+    get { return expiration_; }
+    set {
+      expiration_ = value;
+    }
+  }
+
+  /// <summary>Field number for the "block" field.</summary>
+  public const int BlockFieldNumber = 6;
+  private string block_ = "";
+  [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+  public string Block {
+    get { return block_; }
+    set {
+      block_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+    }
+  }
+
+  /// <summary>Field number for the "deal" field.</summary>
+  public const int DealFieldNumber = 7;
+  private string deal_ = "";
+  [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+  public string Deal {
+    get { return deal_; }
+    set {
+      deal_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+    }
+  }
+
+  /// <summary>Field number for the "previous_owner" field.</summary>
+  public const int PreviousOwnerFieldNumber = 8;
+  private string previousOwner_ = "";
+  [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+  public string PreviousOwner {
+    get { return previousOwner_; }
+    set {
+      previousOwner_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+    }
+  }
+
+  /// <summary>Field number for the "transfer" field.</summary>
+  public const int TransferFieldNumber = 9;
+  private string transfer_ = "";
+  [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+  public string Transfer {
+    get { return transfer_; }
+    set {
+      transfer_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+    }
+  }
+
+  /// <summary>Field number for the "sighash" field.</summary>
+  public const int SighashFieldNumber = 10;
+  private string sighash_ = "";
+  [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+  public string Sighash {
+    get { return sighash_; }
+    set {
+      sighash_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
     }
   }
 
@@ -104,16 +204,32 @@ public sealed partial class RepaymentOrder : pb::IMessage<RepaymentOrder> {
     if (ReferenceEquals(other, this)) {
       return true;
     }
-    if (DealId != other.DealId) return false;
-    if (TransferId != other.TransferId) return false;
+    if (Blockchain != other.Blockchain) return false;
+    if (SrcAddress != other.SrcAddress) return false;
+    if (DstAddress != other.DstAddress) return false;
+    if (Amount != other.Amount) return false;
+    if (Expiration != other.Expiration) return false;
+    if (Block != other.Block) return false;
+    if (Deal != other.Deal) return false;
+    if (PreviousOwner != other.PreviousOwner) return false;
+    if (Transfer != other.Transfer) return false;
+    if (Sighash != other.Sighash) return false;
     return Equals(_unknownFields, other._unknownFields);
   }
 
   [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
   public override int GetHashCode() {
     int hash = 1;
-    if (DealId.Length != 0) hash ^= DealId.GetHashCode();
-    if (TransferId.Length != 0) hash ^= TransferId.GetHashCode();
+    if (Blockchain.Length != 0) hash ^= Blockchain.GetHashCode();
+    if (SrcAddress.Length != 0) hash ^= SrcAddress.GetHashCode();
+    if (DstAddress.Length != 0) hash ^= DstAddress.GetHashCode();
+    if (Amount.Length != 0) hash ^= Amount.GetHashCode();
+    if (Expiration != 0UL) hash ^= Expiration.GetHashCode();
+    if (Block.Length != 0) hash ^= Block.GetHashCode();
+    if (Deal.Length != 0) hash ^= Deal.GetHashCode();
+    if (PreviousOwner.Length != 0) hash ^= PreviousOwner.GetHashCode();
+    if (Transfer.Length != 0) hash ^= Transfer.GetHashCode();
+    if (Sighash.Length != 0) hash ^= Sighash.GetHashCode();
     if (_unknownFields != null) {
       hash ^= _unknownFields.GetHashCode();
     }
@@ -127,13 +243,45 @@ public sealed partial class RepaymentOrder : pb::IMessage<RepaymentOrder> {
 
   [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
   public void WriteTo(pb::CodedOutputStream output) {
-    if (DealId.Length != 0) {
+    if (Blockchain.Length != 0) {
       output.WriteRawTag(10);
-      output.WriteString(DealId);
+      output.WriteString(Blockchain);
     }
-    if (TransferId.Length != 0) {
+    if (SrcAddress.Length != 0) {
       output.WriteRawTag(18);
-      output.WriteString(TransferId);
+      output.WriteString(SrcAddress);
+    }
+    if (DstAddress.Length != 0) {
+      output.WriteRawTag(26);
+      output.WriteString(DstAddress);
+    }
+    if (Amount.Length != 0) {
+      output.WriteRawTag(34);
+      output.WriteString(Amount);
+    }
+    if (Expiration != 0UL) {
+      output.WriteRawTag(40);
+      output.WriteUInt64(Expiration);
+    }
+    if (Block.Length != 0) {
+      output.WriteRawTag(50);
+      output.WriteString(Block);
+    }
+    if (Deal.Length != 0) {
+      output.WriteRawTag(58);
+      output.WriteString(Deal);
+    }
+    if (PreviousOwner.Length != 0) {
+      output.WriteRawTag(66);
+      output.WriteString(PreviousOwner);
+    }
+    if (Transfer.Length != 0) {
+      output.WriteRawTag(74);
+      output.WriteString(Transfer);
+    }
+    if (Sighash.Length != 0) {
+      output.WriteRawTag(82);
+      output.WriteString(Sighash);
     }
     if (_unknownFields != null) {
       _unknownFields.WriteTo(output);
@@ -143,11 +291,35 @@ public sealed partial class RepaymentOrder : pb::IMessage<RepaymentOrder> {
   [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
   public int CalculateSize() {
     int size = 0;
-    if (DealId.Length != 0) {
-      size += 1 + pb::CodedOutputStream.ComputeStringSize(DealId);
+    if (Blockchain.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(Blockchain);
     }
-    if (TransferId.Length != 0) {
-      size += 1 + pb::CodedOutputStream.ComputeStringSize(TransferId);
+    if (SrcAddress.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(SrcAddress);
+    }
+    if (DstAddress.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(DstAddress);
+    }
+    if (Amount.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(Amount);
+    }
+    if (Expiration != 0UL) {
+      size += 1 + pb::CodedOutputStream.ComputeUInt64Size(Expiration);
+    }
+    if (Block.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(Block);
+    }
+    if (Deal.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(Deal);
+    }
+    if (PreviousOwner.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(PreviousOwner);
+    }
+    if (Transfer.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(Transfer);
+    }
+    if (Sighash.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(Sighash);
     }
     if (_unknownFields != null) {
       size += _unknownFields.CalculateSize();
@@ -160,11 +332,35 @@ public sealed partial class RepaymentOrder : pb::IMessage<RepaymentOrder> {
     if (other == null) {
       return;
     }
-    if (other.DealId.Length != 0) {
-      DealId = other.DealId;
+    if (other.Blockchain.Length != 0) {
+      Blockchain = other.Blockchain;
     }
-    if (other.TransferId.Length != 0) {
-      TransferId = other.TransferId;
+    if (other.SrcAddress.Length != 0) {
+      SrcAddress = other.SrcAddress;
+    }
+    if (other.DstAddress.Length != 0) {
+      DstAddress = other.DstAddress;
+    }
+    if (other.Amount.Length != 0) {
+      Amount = other.Amount;
+    }
+    if (other.Expiration != 0UL) {
+      Expiration = other.Expiration;
+    }
+    if (other.Block.Length != 0) {
+      Block = other.Block;
+    }
+    if (other.Deal.Length != 0) {
+      Deal = other.Deal;
+    }
+    if (other.PreviousOwner.Length != 0) {
+      PreviousOwner = other.PreviousOwner;
+    }
+    if (other.Transfer.Length != 0) {
+      Transfer = other.Transfer;
+    }
+    if (other.Sighash.Length != 0) {
+      Sighash = other.Sighash;
     }
     _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
   }
@@ -178,11 +374,43 @@ public sealed partial class RepaymentOrder : pb::IMessage<RepaymentOrder> {
           _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
           break;
         case 10: {
-          DealId = input.ReadString();
+          Blockchain = input.ReadString();
           break;
         }
         case 18: {
-          TransferId = input.ReadString();
+          SrcAddress = input.ReadString();
+          break;
+        }
+        case 26: {
+          DstAddress = input.ReadString();
+          break;
+        }
+        case 34: {
+          Amount = input.ReadString();
+          break;
+        }
+        case 40: {
+          Expiration = input.ReadUInt64();
+          break;
+        }
+        case 50: {
+          Block = input.ReadString();
+          break;
+        }
+        case 58: {
+          Deal = input.ReadString();
+          break;
+        }
+        case 66: {
+          PreviousOwner = input.ReadString();
+          break;
+        }
+        case 74: {
+          Transfer = input.ReadString();
+          break;
+        }
+        case 82: {
+          Sighash = input.ReadString();
           break;
         }
       }

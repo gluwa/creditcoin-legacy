@@ -30,9 +30,6 @@
     <ClInclude Include="..\ccprocessor\DealOrder.pb.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\ccprocessor\Pledge.pb.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\ccprocessor\RepaymentOrder.pb.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -40,6 +37,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\ccprocessor\Wallet.pb.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ccprocessor\Offer.pb.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ccprocessor\Fee.pb.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -62,9 +65,6 @@
     <ClCompile Include="..\ccprocessor\DealOrder.pb.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\ccprocessor\Pledge.pb.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\ccprocessor\RepaymentOrder.pb.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -72,6 +72,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\ccprocessor\Wallet.pb.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ccprocessor\Offer.pb.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ccprocessor\Fee.pb.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -88,9 +94,6 @@
     <None Include="..\proto\DealOrder.proto">
       <Filter>proto</Filter>
     </None>
-    <None Include="..\proto\Pledge.proto">
-      <Filter>proto</Filter>
-    </None>
     <None Include="..\proto\RepaymentOrder.proto">
       <Filter>proto</Filter>
     </None>
@@ -98,6 +101,12 @@
       <Filter>proto</Filter>
     </None>
     <None Include="..\proto\Wallet.proto">
+      <Filter>proto</Filter>
+    </None>
+    <None Include="..\proto\Offer.proto">
+      <Filter>proto</Filter>
+    </None>
+    <None Include="..\proto\Fee.proto">
       <Filter>proto</Filter>
     </None>
   </ItemGroup>

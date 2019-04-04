@@ -150,23 +150,37 @@ class Address : public ::google::protobuf::Message /* @@protoc_insertion_point(c
   ::std::string* release_blockchain();
   void set_allocated_blockchain(::std::string* blockchain);
 
-  // string address = 2;
-  void clear_address();
-  static const int kAddressFieldNumber = 2;
-  const ::std::string& address() const;
-  void set_address(const ::std::string& value);
+  // string value = 2;
+  void clear_value();
+  static const int kValueFieldNumber = 2;
+  const ::std::string& value() const;
+  void set_value(const ::std::string& value);
   #if LANG_CXX11
-  void set_address(::std::string&& value);
+  void set_value(::std::string&& value);
   #endif
-  void set_address(const char* value);
-  void set_address(const char* value, size_t size);
-  ::std::string* mutable_address();
-  ::std::string* release_address();
-  void set_allocated_address(::std::string* address);
+  void set_value(const char* value);
+  void set_value(const char* value, size_t size);
+  ::std::string* mutable_value();
+  ::std::string* release_value();
+  void set_allocated_value(::std::string* value);
 
-  // string sighash = 3;
+  // string network = 3;
+  void clear_network();
+  static const int kNetworkFieldNumber = 3;
+  const ::std::string& network() const;
+  void set_network(const ::std::string& value);
+  #if LANG_CXX11
+  void set_network(::std::string&& value);
+  #endif
+  void set_network(const char* value);
+  void set_network(const char* value, size_t size);
+  ::std::string* mutable_network();
+  ::std::string* release_network();
+  void set_allocated_network(::std::string* network);
+
+  // string sighash = 4;
   void clear_sighash();
-  static const int kSighashFieldNumber = 3;
+  static const int kSighashFieldNumber = 4;
   const ::std::string& sighash() const;
   void set_sighash(const ::std::string& value);
   #if LANG_CXX11
@@ -183,7 +197,8 @@ class Address : public ::google::protobuf::Message /* @@protoc_insertion_point(c
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::ArenaStringPtr blockchain_;
-  ::google::protobuf::internal::ArenaStringPtr address_;
+  ::google::protobuf::internal::ArenaStringPtr value_;
+  ::google::protobuf::internal::ArenaStringPtr network_;
   ::google::protobuf::internal::ArenaStringPtr sighash_;
   mutable int _cached_size_;
   friend struct ::protobuf_Address_2eproto::TableStruct;
@@ -253,60 +268,113 @@ inline void Address::set_allocated_blockchain(::std::string* blockchain) {
   // @@protoc_insertion_point(field_set_allocated:Address.blockchain)
 }
 
-// string address = 2;
-inline void Address::clear_address() {
-  address_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+// string value = 2;
+inline void Address::clear_value() {
+  value_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline const ::std::string& Address::address() const {
-  // @@protoc_insertion_point(field_get:Address.address)
-  return address_.GetNoArena();
+inline const ::std::string& Address::value() const {
+  // @@protoc_insertion_point(field_get:Address.value)
+  return value_.GetNoArena();
 }
-inline void Address::set_address(const ::std::string& value) {
+inline void Address::set_value(const ::std::string& value) {
   
-  address_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:Address.address)
+  value_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:Address.value)
 }
 #if LANG_CXX11
-inline void Address::set_address(::std::string&& value) {
+inline void Address::set_value(::std::string&& value) {
   
-  address_.SetNoArena(
+  value_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:Address.address)
+  // @@protoc_insertion_point(field_set_rvalue:Address.value)
 }
 #endif
-inline void Address::set_address(const char* value) {
+inline void Address::set_value(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   
-  address_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:Address.address)
+  value_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:Address.value)
 }
-inline void Address::set_address(const char* value, size_t size) {
+inline void Address::set_value(const char* value, size_t size) {
   
-  address_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+  value_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:Address.address)
+  // @@protoc_insertion_point(field_set_pointer:Address.value)
 }
-inline ::std::string* Address::mutable_address() {
+inline ::std::string* Address::mutable_value() {
   
-  // @@protoc_insertion_point(field_mutable:Address.address)
-  return address_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  // @@protoc_insertion_point(field_mutable:Address.value)
+  return value_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline ::std::string* Address::release_address() {
-  // @@protoc_insertion_point(field_release:Address.address)
+inline ::std::string* Address::release_value() {
+  // @@protoc_insertion_point(field_release:Address.value)
   
-  return address_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  return value_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline void Address::set_allocated_address(::std::string* address) {
-  if (address != NULL) {
+inline void Address::set_allocated_value(::std::string* value) {
+  if (value != NULL) {
     
   } else {
     
   }
-  address_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), address);
-  // @@protoc_insertion_point(field_set_allocated:Address.address)
+  value_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set_allocated:Address.value)
 }
 
-// string sighash = 3;
+// string network = 3;
+inline void Address::clear_network() {
+  network_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline const ::std::string& Address::network() const {
+  // @@protoc_insertion_point(field_get:Address.network)
+  return network_.GetNoArena();
+}
+inline void Address::set_network(const ::std::string& value) {
+  
+  network_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:Address.network)
+}
+#if LANG_CXX11
+inline void Address::set_network(::std::string&& value) {
+  
+  network_.SetNoArena(
+    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
+  // @@protoc_insertion_point(field_set_rvalue:Address.network)
+}
+#endif
+inline void Address::set_network(const char* value) {
+  GOOGLE_DCHECK(value != NULL);
+  
+  network_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:Address.network)
+}
+inline void Address::set_network(const char* value, size_t size) {
+  
+  network_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+  // @@protoc_insertion_point(field_set_pointer:Address.network)
+}
+inline ::std::string* Address::mutable_network() {
+  
+  // @@protoc_insertion_point(field_mutable:Address.network)
+  return network_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline ::std::string* Address::release_network() {
+  // @@protoc_insertion_point(field_release:Address.network)
+  
+  return network_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline void Address::set_allocated_network(::std::string* network) {
+  if (network != NULL) {
+    
+  } else {
+    
+  }
+  network_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), network);
+  // @@protoc_insertion_point(field_set_allocated:Address.network)
+}
+
+// string sighash = 4;
 inline void Address::clear_sighash() {
   sighash_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }

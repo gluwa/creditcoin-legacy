@@ -19,6 +19,14 @@
 syntax = "proto3";
 
 message RepaymentOrder {
-    string deal_id = 1;
-    string transfer_id = 2;
+    string blockchain = 1;
+    string src_address = 2;
+    string dst_address = 3;
+    string amount = 4;
+    uint64 expiration = 5;
+    string block = 6;
+    string deal = 7;
+    string previous_owner = 8;
+    string transfer = 9;
+    string sighash = 10;
 }

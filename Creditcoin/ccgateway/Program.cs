@@ -25,6 +25,8 @@ using System.Linq;
 using NetMQ;
 using NetMQ.Sockets;
 using Microsoft.Extensions.Configuration;
+using System.Diagnostics;
+using System.Text;
 
 namespace ccgateway
 {
@@ -37,10 +39,11 @@ namespace ccgateway
                     .AddJsonFile("appsettings.dev.json", true, true)
                 .Build();
 
-            string signerHexStr = config["signer"];
-            if (string.IsNullOrWhiteSpace(signerHexStr))
+            string root = Directory.GetCurrentDirectory();
+            string folder = TxBuilder.GetPluginsFolder(root);
+            if (folder == null)
             {
-                Console.WriteLine("Signer is not configured");
+                Console.WriteLine("Failed to locate plugin folder");
                 return;
             }
 
@@ -57,30 +60,24 @@ namespace ccgateway
 
                 while (true)
                 {
-                    Console.WriteLine("running");
-                    string requestString = socket.ReceiveFrameString();
-
-                    string[] command = requestString.Split();
                     string response;
-
-                    if (command.Length < 2)
+                    string requestString = null;
+                    try
                     {
-                        response = "poor";
-                        Console.WriteLine(string.Empty);
-                    }
-                    else
-                    {
-                        var loader = new Loader<ICCGatewayPlugin>();
-                        var msgs = new List<string>();
+                        requestString = socket.ReceiveFrameString();
 
-                        string root = Directory.GetCurrentDirectory();
-                        string folder = TxBuilder.GetPluginsFolder(root);
-                        if (folder == null)
+                        string[] command = requestString.Split();
+
+                        if (command.Length < 2)
                         {
-                            response = "fail";
+                            response = "poor";
+                            Console.WriteLine(requestString + ": not enough parameters");
                         }
                         else
                         {
+                            var loader = new Loader<ICCGatewayPlugin>();
+                            var msgs = new List<string>();
+
                             loader.Load(folder, msgs);
                             foreach (var msg in msgs)
                             {
@@ -99,24 +96,34 @@ namespace ccgateway
                             else
                             {
                                 string msg;
-                                bool done = plugin.Run(pluginConfig, signerHexStr, command, out msg);
+                                bool done = plugin.Run(pluginConfig, command, out msg);
                                 if (done)
                                 {
-                                    if (msg == null)
-                                    {
-                                        msg = "Success!";
-                                    }
+                                    Debug.Assert(msg == null);
                                     response = "good";
                                 }
                                 else
                                 {
+                                    Debug.Assert(msg != null);
+                                    StringBuilder err = new StringBuilder();
+                                    err.Append(requestString).Append(": ").Append(msg);
+                                    Console.WriteLine(err.ToString());
                                     response = "fail";
                                 }
                             }
                         }
                     }
-
-                    Console.WriteLine(response);
+                    catch (Exception x)
+                    {
+                        StringBuilder err = new StringBuilder();
+                        if (requestString != null)
+                        {
+                            err.Append(requestString).Append(": ");
+                        }
+                        err.Append(x.Message);
+                        Console.WriteLine(err.ToString());
+                        response = "fail";
+                    }
                     socket.SendFrame(response);
                 }
             }

@@ -55,7 +55,8 @@ const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_PROTOBUF_ATTRIBUT
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::Address, blockchain_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::Address, address_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::Address, value_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::Address, network_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::Address, sighash_),
 };
 static const ::google::protobuf::internal::MigrationSchema schemas[] GOOGLE_PROTOBUF_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
@@ -88,12 +89,12 @@ void protobuf_RegisterTypes(const ::std::string&) {
 void AddDescriptorsImpl() {
   InitDefaults();
   static const char descriptor[] GOOGLE_PROTOBUF_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
-      "\n\rAddress.proto\"\?\n\007Address\022\022\n\nblockchain"
-      "\030\001 \001(\t\022\017\n\007address\030\002 \001(\t\022\017\n\007sighash\030\003 \001(\t"
-      "b\006proto3"
+      "\n\rAddress.proto\"N\n\007Address\022\022\n\nblockchain"
+      "\030\001 \001(\t\022\r\n\005value\030\002 \001(\t\022\017\n\007network\030\003 \001(\t\022\017"
+      "\n\007sighash\030\004 \001(\tb\006proto3"
   };
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-      descriptor, 88);
+      descriptor, 103);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "Address.proto", &protobuf_RegisterTypes);
 }
@@ -116,7 +117,8 @@ void Address::InitAsDefaultInstance() {
 }
 #if !defined(_MSC_VER) || _MSC_VER >= 1900
 const int Address::kBlockchainFieldNumber;
-const int Address::kAddressFieldNumber;
+const int Address::kValueFieldNumber;
+const int Address::kNetworkFieldNumber;
 const int Address::kSighashFieldNumber;
 #endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
 
@@ -137,9 +139,13 @@ Address::Address(const Address& from)
   if (from.blockchain().size() > 0) {
     blockchain_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.blockchain_);
   }
-  address_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  if (from.address().size() > 0) {
-    address_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.address_);
+  value_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (from.value().size() > 0) {
+    value_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.value_);
+  }
+  network_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (from.network().size() > 0) {
+    network_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.network_);
   }
   sighash_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   if (from.sighash().size() > 0) {
@@ -150,7 +156,8 @@ Address::Address(const Address& from)
 
 void Address::SharedCtor() {
   blockchain_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  address_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  value_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  network_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   sighash_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   _cached_size_ = 0;
 }
@@ -162,7 +169,8 @@ Address::~Address() {
 
 void Address::SharedDtor() {
   blockchain_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  address_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  value_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  network_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   sighash_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 
@@ -196,7 +204,8 @@ void Address::Clear() {
   (void) cached_has_bits;
 
   blockchain_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  address_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  value_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  network_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   sighash_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   _internal_metadata_.Clear();
 }
@@ -227,26 +236,42 @@ bool Address::MergePartialFromCodedStream(
         break;
       }
 
-      // string address = 2;
+      // string value = 2;
       case 2: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(18u /* 18 & 0xFF */)) {
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
-                input, this->mutable_address()));
+                input, this->mutable_value()));
           DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-            this->address().data(), static_cast<int>(this->address().length()),
+            this->value().data(), static_cast<int>(this->value().length()),
             ::google::protobuf::internal::WireFormatLite::PARSE,
-            "Address.address"));
+            "Address.value"));
         } else {
           goto handle_unusual;
         }
         break;
       }
 
-      // string sighash = 3;
+      // string network = 3;
       case 3: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(26u /* 26 & 0xFF */)) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_network()));
+          DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+            this->network().data(), static_cast<int>(this->network().length()),
+            ::google::protobuf::internal::WireFormatLite::PARSE,
+            "Address.network"));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
+      // string sighash = 4;
+      case 4: {
+        if (static_cast< ::google::protobuf::uint8>(tag) ==
+            static_cast< ::google::protobuf::uint8>(34u /* 34 & 0xFF */)) {
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
                 input, this->mutable_sighash()));
           DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
@@ -295,24 +320,34 @@ void Address::SerializeWithCachedSizes(
       1, this->blockchain(), output);
   }
 
-  // string address = 2;
-  if (this->address().size() > 0) {
+  // string value = 2;
+  if (this->value().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->address().data(), static_cast<int>(this->address().length()),
+      this->value().data(), static_cast<int>(this->value().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "Address.address");
+      "Address.value");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
-      2, this->address(), output);
+      2, this->value(), output);
   }
 
-  // string sighash = 3;
+  // string network = 3;
+  if (this->network().size() > 0) {
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+      this->network().data(), static_cast<int>(this->network().length()),
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
+      "Address.network");
+    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
+      3, this->network(), output);
+  }
+
+  // string sighash = 4;
   if (this->sighash().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
       this->sighash().data(), static_cast<int>(this->sighash().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
       "Address.sighash");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
-      3, this->sighash(), output);
+      4, this->sighash(), output);
   }
 
   if ((_internal_metadata_.have_unknown_fields() &&  ::google::protobuf::internal::GetProto3PreserveUnknownsDefault())) {
@@ -340,18 +375,29 @@ void Address::SerializeWithCachedSizes(
         1, this->blockchain(), target);
   }
 
-  // string address = 2;
-  if (this->address().size() > 0) {
+  // string value = 2;
+  if (this->value().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->address().data(), static_cast<int>(this->address().length()),
+      this->value().data(), static_cast<int>(this->value().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "Address.address");
+      "Address.value");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        2, this->address(), target);
+        2, this->value(), target);
   }
 
-  // string sighash = 3;
+  // string network = 3;
+  if (this->network().size() > 0) {
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+      this->network().data(), static_cast<int>(this->network().length()),
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
+      "Address.network");
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        3, this->network(), target);
+  }
+
+  // string sighash = 4;
   if (this->sighash().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
       this->sighash().data(), static_cast<int>(this->sighash().length()),
@@ -359,7 +405,7 @@ void Address::SerializeWithCachedSizes(
       "Address.sighash");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        3, this->sighash(), target);
+        4, this->sighash(), target);
   }
 
   if ((_internal_metadata_.have_unknown_fields() &&  ::google::protobuf::internal::GetProto3PreserveUnknownsDefault())) {
@@ -386,14 +432,21 @@ size_t Address::ByteSizeLong() const {
         this->blockchain());
   }
 
-  // string address = 2;
-  if (this->address().size() > 0) {
+  // string value = 2;
+  if (this->value().size() > 0) {
     total_size += 1 +
       ::google::protobuf::internal::WireFormatLite::StringSize(
-        this->address());
+        this->value());
   }
 
-  // string sighash = 3;
+  // string network = 3;
+  if (this->network().size() > 0) {
+    total_size += 1 +
+      ::google::protobuf::internal::WireFormatLite::StringSize(
+        this->network());
+  }
+
+  // string sighash = 4;
   if (this->sighash().size() > 0) {
     total_size += 1 +
       ::google::protobuf::internal::WireFormatLite::StringSize(
@@ -433,9 +486,13 @@ void Address::MergeFrom(const Address& from) {
 
     blockchain_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.blockchain_);
   }
-  if (from.address().size() > 0) {
+  if (from.value().size() > 0) {
 
-    address_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.address_);
+    value_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.value_);
+  }
+  if (from.network().size() > 0) {
+
+    network_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.network_);
   }
   if (from.sighash().size() > 0) {
 
@@ -468,7 +525,8 @@ void Address::Swap(Address* other) {
 void Address::InternalSwap(Address* other) {
   using std::swap;
   blockchain_.Swap(&other->blockchain_);
-  address_.Swap(&other->address_);
+  value_.Swap(&other->value_);
+  network_.Swap(&other->network_);
   sighash_.Swap(&other->sighash_);
   _internal_metadata_.Swap(&other->_internal_metadata_);
   swap(_cached_size_, other->_cached_size_);

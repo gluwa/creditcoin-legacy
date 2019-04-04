@@ -21,8 +21,6 @@ using ccplugin;
 using Microsoft.Extensions.Configuration;
 using Nethereum.Hex.HexTypes;
 using Nethereum.Signer;
-using Newtonsoft.Json.Linq;
-using PeterO.Cbor;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -51,89 +49,159 @@ namespace cethereum
         private const string DATA = "data";
         private const string MESSAGE = "message";
 
-        public bool Run(IConfiguration cfg, HttpClient httpClient, ITxBuilder txBuilder, Dictionary<string, string> settings, string pluginsFolder, string url, string[] command, out bool inProgress, out string msg)
+        private int mConfirmationsExpected = 12;
+
+        public bool Run(bool txid, IConfiguration cfg, HttpClient httpClient, ITxBuilder txBuilder, Dictionary<string, string> settings, string progressId, string pluginsFolder, string url, string[] command, out bool inProgress, out string msg)
         {
             Debug.Assert(command != null);
-            Debug.Assert(command.Length > 1);
-            if (command[0].Equals("registerTransfer", StringComparison.OrdinalIgnoreCase))
+            if (command.Length < 2)
             {
-                // ethereum RegisterTransfer registeredSourceId amount
+                inProgress = false;
+                msg = "invalid parameter count";
+                return false;
+            }
 
-                string progress = Path.Combine(pluginsFolder, $"{name}_progress.txt");
+            bool erc20 = command[0].Equals("collectCoins", StringComparison.OrdinalIgnoreCase);
+            if (erc20 || command[0].Equals("registerTransfer", StringComparison.OrdinalIgnoreCase))
+            {
+                // ethereum RegisterTransfer gain orderId
+                // ethereum CollectCoins amount
+
+                string progress = Path.Combine(pluginsFolder, $"{name}_progress{progressId}.txt");
 
                 inProgress = false;
 
-                Debug.Assert(command.Length == 3 || command.Length == 4);
-                string registeredSourceId = command[1];
-                string amountString = command[2];
-                bool erc20 = command.Length == 4;
+                if (erc20 && command.Length != 2 || !erc20 && command.Length != 3)
+                {
+                    msg = "invalid parameter count";
+                    return false;
+                }
+
+                string gainString = "0";
+                string orderId = null;
+                string amountString = null;
+                if (erc20)
+                {
+                    amountString = command[1];
+                }
+                else
+                {
+                    gainString = command[1];
+                    orderId = command[2];
+                }
 
                 string secret = cfg["secret"];
                 if (string.IsNullOrWhiteSpace(secret))
                 {
                     msg = "ethereum.secret is not set";
-
                     return false;
                 }
                 var ethereumPrivateKey = secret;
 
-                // TODO disable confirmation count config for release build
+#if DEBUG
                 string confirmationsCount = cfg["confirmationsCount"];
-                if (string.IsNullOrWhiteSpace(confirmationsCount))
+                if (int.TryParse(confirmationsCount, out int parsedCount))
                 {
-                    msg = "ethereum.confirmationsCount is not set";
-
-                    return false;
+                    mConfirmationsExpected = parsedCount;
                 }
-                if (!int.TryParse(confirmationsCount, out int confirmationsExpected))
-                {
-                    msg = "ethereum.confirmationsCount is not an int";
-
-                    return false;
-                }
+#endif
 
                 string rpcUrl = cfg["rpc"];
                 if (string.IsNullOrWhiteSpace(rpcUrl))
                 {
                     msg = "ethereum.rpc is not set";
-
                     return false;
                 }
 
+                string ethSrcAddress = EthECKey.GetPublicAddress(ethereumPrivateKey);
                 var web3 = new Nethereum.Web3.Web3(rpcUrl);
 
-                string payTxId;
-                BigInteger fee;
-                if (File.Exists(progress))
+                string srcAddressId = null;
+                string dstAddressId = null;
+                if (!erc20)
                 {
-                    Console.WriteLine("Found unfinished action, retrying...");
-                    var data = File.ReadAllText(progress).Split(':');
-                    if (data.Length != 2)
+                    var protobuf = RpcHelper.ReadProtobuf(httpClient, $"{url}/state/{orderId}", out msg);
+                    if (protobuf == null)
                     {
-                        msg = "Invalid progress data";
+                        msg = "failed to extract address data through RPC";
                         return false;
                     }
-                    payTxId = data[0];
-                    if (!BigInteger.TryParse(data[1], out fee))
+                    if (orderId.StartsWith(RpcHelper.creditCoinNamespace + RpcHelper.dealOrderPrefix))
                     {
-                        msg = "Invalid progress data";
+                        var dealOrder = DealOrder.Parser.ParseFrom(protobuf);
+                        if (gainString.Equals("0"))
+                        {
+                            srcAddressId = dealOrder.SrcAddress;
+                            dstAddressId = dealOrder.DstAddress;
+                        }
+                        else
+                        {
+                            dstAddressId = dealOrder.SrcAddress;
+                            srcAddressId = dealOrder.DstAddress;
+                        }
+                        amountString = dealOrder.Amount;
+                    }
+                    else if (orderId.StartsWith(RpcHelper.creditCoinNamespace + RpcHelper.repaymentOrderPrefix))
+                    {
+                        var repaymentOrder = RepaymentOrder.Parser.ParseFrom(protobuf);
+                        if (gainString.Equals("0"))
+                        {
+                            srcAddressId = repaymentOrder.SrcAddress;
+                            dstAddressId = repaymentOrder.DstAddress;
+                        }
+                        else
+                        {
+                            dstAddressId = repaymentOrder.SrcAddress;
+                            srcAddressId = repaymentOrder.DstAddress;
+                        }
+                        amountString = repaymentOrder.Amount;
+                    }
+                    else
+                    {
+                        msg = "unexpected referred order";
                         return false;
                     }
                 }
+
+                string payTxId;
+                if (File.Exists(progress))
+                {
+                    Console.WriteLine("Found unfinished action, retrying...");
+                    payTxId = File.ReadAllText(progress);
+                }
                 else
                 {
-                    var protobuf = RpcHelper.ReadProtobuf(httpClient, $"{url}/state/{registeredSourceId}", out msg);
-                    if (protobuf == null)
+                    string ethDstAddress = null;
+                    if (!erc20)
                     {
-                        return false;
-                    }
-                    var address = Address.Parser.ParseFrom(protobuf);
+                        var protobuf = RpcHelper.ReadProtobuf(httpClient, $"{url}/state/{srcAddressId}", out msg);
+                        if (protobuf == null)
+                        {
+                            msg = "failed to extract address data through RPC";
+                            return false;
+                        }
+                        var srcAddress = Address.Parser.ParseFrom(protobuf);
 
-                    string destinationAddress;
-                    if (!settings.TryGetValue("sawtooth.escrow." + name, out destinationAddress))
-                    {
-                        msg = "Escrow not found for " + name;
-                        return false;
+                        protobuf = RpcHelper.ReadProtobuf(httpClient, $"{url}/state/{dstAddressId}", out msg);
+                        if (protobuf == null)
+                        {
+                            msg = "failed to extract address data through RPC";
+                            return false;
+                        }
+                        Address dstAddress = Address.Parser.ParseFrom(protobuf);
+
+                        if (!srcAddress.Blockchain.Equals(name) || !dstAddress.Blockchain.Equals(name))
+                        {
+                            msg = $"ethereum RegisterTransfer can only transfer ether.\nThis source is registered for {srcAddress.Blockchain} and destination for {dstAddress.Blockchain}";
+                            return false;
+                        }
+                        ethDstAddress = dstAddress.Value;
+
+                        if (!ethSrcAddress.Equals(srcAddress.Value, StringComparison.OrdinalIgnoreCase))
+                        {
+                            msg = "The deal is for a different client";
+                            return false;
+                        }
                     }
 
                     BigInteger transferAmount;
@@ -142,26 +210,33 @@ namespace cethereum
                         msg = "Invalid amount";
                         return false;
                     }
-
-                    if (!address.Blockchain.Equals(name))
+                    BigInteger gain;
+                    if (!BigInteger.TryParse(gainString, out gain))
                     {
-                        msg = $"ethereum RegisterTransfer can only transfer ether.\nThis source is registered for {address.Blockchain}";
+                        msg = "Invalid amount";
+                        return false;
+                    }
+                    transferAmount = transferAmount + gain;
+                    if (transferAmount < 0)
+                    {
+                        msg = "Invalid amount";
                         return false;
                     }
 
-                    string sourceAddress = EthECKey.GetPublicAddress(ethereumPrivateKey);
-
-                    if (!sourceAddress.Equals(address.Address_, StringComparison.OrdinalIgnoreCase))
-                    {
-                        msg = "The deal is for a different client";
-                        return false;
-                    }
-
-                    var txCount = web3.Eth.Transactions.GetTransactionCount.SendRequestAsync(sourceAddress).Result;
+                    var txCount = web3.Eth.Transactions.GetTransactionCount.SendRequestAsync(ethSrcAddress).Result;
                     TransactionSigner signer = new TransactionSigner();
 
-                    // TODO maybe add a y/n choice for user to decline or configurable gas price override
-                    var gasPrice = web3.Eth.GasPrice.SendRequestAsync().Result;
+                    HexBigInteger gasPrice;
+
+                    string gasPriceInGweiString = cfg["gasPriceInGwei"];
+                    if (int.TryParse(gasPriceInGweiString, out int gasPriceOverride))
+                    {
+                        gasPrice = new HexBigInteger(Nethereum.Util.UnitConversion.Convert.ToWei(gasPriceOverride, Nethereum.Util.UnitConversion.EthUnit.Gwei));
+                    }
+                    else
+                    {
+                        gasPrice = web3.Eth.GasPrice.SendRequestAsync().Result;
+                    }
                     Console.WriteLine("gasPrice: " + gasPrice.Value.ToString());
 
                     string to;
@@ -177,28 +252,26 @@ namespace cethereum
 
                         var contract = web3.Eth.GetContract(creditcoinContractAbi, creditcoinContract);
                         var burn = contract.GetFunction("exchange");
-                        var functionInput = new object[] { transferAmount, address.Sighash };
+                        var functionInput = new object[] { transferAmount, txBuilder.getSighash() };
                         data = burn.GetData(functionInput);
                         gasLimit = burn.EstimateGasAsync(functionInput).Result;
-                        fee = gasLimit.Value * gasPrice.Value;
                         amount = 0;
                     }
                     else
                     {
-                        gasLimit = web3.Eth.Transactions.EstimateGas.SendRequestAsync(new Nethereum.RPC.Eth.DTOs.CallInput(registeredSourceId, destinationAddress, new Nethereum.Hex.HexTypes.HexBigInteger(transferAmount))).Result;
+                        gasLimit = web3.Eth.Transactions.EstimateGas.SendRequestAsync(new Nethereum.RPC.Eth.DTOs.CallInput(orderId, ethDstAddress, new Nethereum.Hex.HexTypes.HexBigInteger(transferAmount))).Result;
                         Console.WriteLine("gasLimit: " + gasLimit.Value.ToString());
 
-                        fee = gasLimit.Value * gasPrice.Value;
-                        to = destinationAddress;
-                        data = address.Sighash;
-                        amount = transferAmount + fee;
+                        to = ethDstAddress;
+                        data = orderId;
+                        amount = transferAmount;
                     }
 
                     string txRaw = signer.SignTransaction(ethereumPrivateKey, to, amount, txCount, gasPrice, gasLimit, data);
                     payTxId = web3.Eth.Transactions.SendRawTransaction.SendRequestAsync("0x" + txRaw).Result;
                     Console.WriteLine("Ethereum Transaction ID: " + payTxId);
 
-                    File.WriteAllText(progress, $"{payTxId}:{fee.ToString()}");
+                    File.WriteAllText(progress, $"{payTxId}");
                 }
 
                 inProgress = true;
@@ -208,7 +281,7 @@ namespace cethereum
                     if (receipt.BlockNumber != null)
                     {
                         var blockNumber = web3.Eth.Blocks.GetBlockNumber.SendRequestAsync().Result;
-                        if (blockNumber.Value - receipt.BlockNumber.Value >= confirmationsExpected)
+                        if (blockNumber.Value - receipt.BlockNumber.Value >= mConfirmationsExpected)
                         {
                             break;
                         }
@@ -218,7 +291,14 @@ namespace cethereum
                 File.Delete(progress);
                 inProgress = false;
 
-                command = new string[] { command[0], registeredSourceId, amountString, erc20 ? "0" : fee.ToString(), payTxId, erc20 ? "creditcoin" : "1" };
+                if (erc20)
+                {
+                    command = new string[] { command[0], ethSrcAddress, amountString, payTxId };
+                }
+                else
+                {
+                    command = new string[] { command[0], gainString, orderId, payTxId };
+                }
                 var tx = txBuilder.BuildTx(command, out msg);
                 if (tx == null)
                 {
@@ -230,7 +310,7 @@ namespace cethereum
                 var content = new ByteArrayContent(tx);
                 content.Headers.Add("Content-Type", "application/octet-stream");
 
-                msg = RpcHelper.CompleteBatch(httpClient, $"{url}/batches", content);
+                msg = RpcHelper.CompleteBatch(httpClient, url, "batches", content, txid);
 
                 return true;
             }

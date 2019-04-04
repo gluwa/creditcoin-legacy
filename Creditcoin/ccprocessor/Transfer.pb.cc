@@ -55,11 +55,13 @@ const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_PROTOBUF_ATTRIBUT
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::Transfer, blockchain_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::Transfer, src_address_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::Transfer, dst_address_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::Transfer, order_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::Transfer, amount_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::Transfer, fee_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::Transfer, txid_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::Transfer, network_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::Transfer, orderid_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::Transfer, tx_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::Transfer, block_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::Transfer, processed_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::Transfer, sighash_),
 };
 static const ::google::protobuf::internal::MigrationSchema schemas[] GOOGLE_PROTOBUF_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
@@ -92,13 +94,14 @@ void protobuf_RegisterTypes(const ::std::string&) {
 void AddDescriptorsImpl() {
   InitDefaults();
   static const char descriptor[] GOOGLE_PROTOBUF_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
-      "\n\016Transfer.proto\"|\n\010Transfer\022\022\n\nblockcha"
-      "in\030\001 \001(\t\022\016\n\006amount\030\002 \001(\t\022\013\n\003fee\030\003 \001(\t\022\014\n"
-      "\004txid\030\004 \001(\t\022\017\n\007network\030\005 \001(\t\022\017\n\007orderid\030"
-      "\006 \001(\t\022\017\n\007sighash\030\007 \001(\tb\006proto3"
+      "\n\016Transfer.proto\"\246\001\n\010Transfer\022\022\n\nblockch"
+      "ain\030\001 \001(\t\022\023\n\013src_address\030\002 \001(\t\022\023\n\013dst_ad"
+      "dress\030\003 \001(\t\022\r\n\005order\030\004 \001(\t\022\016\n\006amount\030\005 \001"
+      "(\t\022\n\n\002tx\030\006 \001(\t\022\r\n\005block\030\007 \001(\t\022\021\n\tprocess"
+      "ed\030\010 \001(\010\022\017\n\007sighash\030\t \001(\tb\006proto3"
   };
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-      descriptor, 150);
+      descriptor, 193);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "Transfer.proto", &protobuf_RegisterTypes);
 }
@@ -121,11 +124,13 @@ void Transfer::InitAsDefaultInstance() {
 }
 #if !defined(_MSC_VER) || _MSC_VER >= 1900
 const int Transfer::kBlockchainFieldNumber;
+const int Transfer::kSrcAddressFieldNumber;
+const int Transfer::kDstAddressFieldNumber;
+const int Transfer::kOrderFieldNumber;
 const int Transfer::kAmountFieldNumber;
-const int Transfer::kFeeFieldNumber;
-const int Transfer::kTxidFieldNumber;
-const int Transfer::kNetworkFieldNumber;
-const int Transfer::kOrderidFieldNumber;
+const int Transfer::kTxFieldNumber;
+const int Transfer::kBlockFieldNumber;
+const int Transfer::kProcessedFieldNumber;
 const int Transfer::kSighashFieldNumber;
 #endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
 
@@ -146,41 +151,48 @@ Transfer::Transfer(const Transfer& from)
   if (from.blockchain().size() > 0) {
     blockchain_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.blockchain_);
   }
+  src_address_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (from.src_address().size() > 0) {
+    src_address_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.src_address_);
+  }
+  dst_address_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (from.dst_address().size() > 0) {
+    dst_address_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.dst_address_);
+  }
+  order_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (from.order().size() > 0) {
+    order_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.order_);
+  }
   amount_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   if (from.amount().size() > 0) {
     amount_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.amount_);
   }
-  fee_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  if (from.fee().size() > 0) {
-    fee_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.fee_);
+  tx_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (from.tx().size() > 0) {
+    tx_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.tx_);
   }
-  txid_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  if (from.txid().size() > 0) {
-    txid_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.txid_);
-  }
-  network_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  if (from.network().size() > 0) {
-    network_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.network_);
-  }
-  orderid_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  if (from.orderid().size() > 0) {
-    orderid_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.orderid_);
+  block_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (from.block().size() > 0) {
+    block_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.block_);
   }
   sighash_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   if (from.sighash().size() > 0) {
     sighash_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.sighash_);
   }
+  processed_ = from.processed_;
   // @@protoc_insertion_point(copy_constructor:Transfer)
 }
 
 void Transfer::SharedCtor() {
   blockchain_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  src_address_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  dst_address_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  order_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   amount_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  fee_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  txid_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  network_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  orderid_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  tx_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  block_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   sighash_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  processed_ = false;
   _cached_size_ = 0;
 }
 
@@ -191,11 +203,12 @@ Transfer::~Transfer() {
 
 void Transfer::SharedDtor() {
   blockchain_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  src_address_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  dst_address_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  order_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   amount_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  fee_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  txid_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  network_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  orderid_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  tx_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  block_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   sighash_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 
@@ -229,12 +242,14 @@ void Transfer::Clear() {
   (void) cached_has_bits;
 
   blockchain_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  src_address_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  dst_address_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  order_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   amount_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  fee_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  txid_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  network_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  orderid_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  tx_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  block_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   sighash_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  processed_ = false;
   _internal_metadata_.Clear();
 }
 
@@ -264,10 +279,58 @@ bool Transfer::MergePartialFromCodedStream(
         break;
       }
 
-      // string amount = 2;
+      // string src_address = 2;
       case 2: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(18u /* 18 & 0xFF */)) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_src_address()));
+          DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+            this->src_address().data(), static_cast<int>(this->src_address().length()),
+            ::google::protobuf::internal::WireFormatLite::PARSE,
+            "Transfer.src_address"));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
+      // string dst_address = 3;
+      case 3: {
+        if (static_cast< ::google::protobuf::uint8>(tag) ==
+            static_cast< ::google::protobuf::uint8>(26u /* 26 & 0xFF */)) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_dst_address()));
+          DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+            this->dst_address().data(), static_cast<int>(this->dst_address().length()),
+            ::google::protobuf::internal::WireFormatLite::PARSE,
+            "Transfer.dst_address"));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
+      // string order = 4;
+      case 4: {
+        if (static_cast< ::google::protobuf::uint8>(tag) ==
+            static_cast< ::google::protobuf::uint8>(34u /* 34 & 0xFF */)) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_order()));
+          DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+            this->order().data(), static_cast<int>(this->order().length()),
+            ::google::protobuf::internal::WireFormatLite::PARSE,
+            "Transfer.order"));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
+      // string amount = 5;
+      case 5: {
+        if (static_cast< ::google::protobuf::uint8>(tag) ==
+            static_cast< ::google::protobuf::uint8>(42u /* 42 & 0xFF */)) {
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
                 input, this->mutable_amount()));
           DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
@@ -280,74 +343,56 @@ bool Transfer::MergePartialFromCodedStream(
         break;
       }
 
-      // string fee = 3;
-      case 3: {
-        if (static_cast< ::google::protobuf::uint8>(tag) ==
-            static_cast< ::google::protobuf::uint8>(26u /* 26 & 0xFF */)) {
-          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
-                input, this->mutable_fee()));
-          DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-            this->fee().data(), static_cast<int>(this->fee().length()),
-            ::google::protobuf::internal::WireFormatLite::PARSE,
-            "Transfer.fee"));
-        } else {
-          goto handle_unusual;
-        }
-        break;
-      }
-
-      // string txid = 4;
-      case 4: {
-        if (static_cast< ::google::protobuf::uint8>(tag) ==
-            static_cast< ::google::protobuf::uint8>(34u /* 34 & 0xFF */)) {
-          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
-                input, this->mutable_txid()));
-          DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-            this->txid().data(), static_cast<int>(this->txid().length()),
-            ::google::protobuf::internal::WireFormatLite::PARSE,
-            "Transfer.txid"));
-        } else {
-          goto handle_unusual;
-        }
-        break;
-      }
-
-      // string network = 5;
-      case 5: {
-        if (static_cast< ::google::protobuf::uint8>(tag) ==
-            static_cast< ::google::protobuf::uint8>(42u /* 42 & 0xFF */)) {
-          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
-                input, this->mutable_network()));
-          DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-            this->network().data(), static_cast<int>(this->network().length()),
-            ::google::protobuf::internal::WireFormatLite::PARSE,
-            "Transfer.network"));
-        } else {
-          goto handle_unusual;
-        }
-        break;
-      }
-
-      // string orderid = 6;
+      // string tx = 6;
       case 6: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(50u /* 50 & 0xFF */)) {
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
-                input, this->mutable_orderid()));
+                input, this->mutable_tx()));
           DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-            this->orderid().data(), static_cast<int>(this->orderid().length()),
+            this->tx().data(), static_cast<int>(this->tx().length()),
             ::google::protobuf::internal::WireFormatLite::PARSE,
-            "Transfer.orderid"));
+            "Transfer.tx"));
         } else {
           goto handle_unusual;
         }
         break;
       }
 
-      // string sighash = 7;
+      // string block = 7;
       case 7: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(58u /* 58 & 0xFF */)) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_block()));
+          DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+            this->block().data(), static_cast<int>(this->block().length()),
+            ::google::protobuf::internal::WireFormatLite::PARSE,
+            "Transfer.block"));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
+      // bool processed = 8;
+      case 8: {
+        if (static_cast< ::google::protobuf::uint8>(tag) ==
+            static_cast< ::google::protobuf::uint8>(64u /* 64 & 0xFF */)) {
+
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   bool, ::google::protobuf::internal::WireFormatLite::TYPE_BOOL>(
+                 input, &processed_)));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
+      // string sighash = 9;
+      case 9: {
+        if (static_cast< ::google::protobuf::uint8>(tag) ==
+            static_cast< ::google::protobuf::uint8>(74u /* 74 & 0xFF */)) {
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
                 input, this->mutable_sighash()));
           DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
@@ -396,64 +441,79 @@ void Transfer::SerializeWithCachedSizes(
       1, this->blockchain(), output);
   }
 
-  // string amount = 2;
+  // string src_address = 2;
+  if (this->src_address().size() > 0) {
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+      this->src_address().data(), static_cast<int>(this->src_address().length()),
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
+      "Transfer.src_address");
+    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
+      2, this->src_address(), output);
+  }
+
+  // string dst_address = 3;
+  if (this->dst_address().size() > 0) {
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+      this->dst_address().data(), static_cast<int>(this->dst_address().length()),
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
+      "Transfer.dst_address");
+    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
+      3, this->dst_address(), output);
+  }
+
+  // string order = 4;
+  if (this->order().size() > 0) {
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+      this->order().data(), static_cast<int>(this->order().length()),
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
+      "Transfer.order");
+    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
+      4, this->order(), output);
+  }
+
+  // string amount = 5;
   if (this->amount().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
       this->amount().data(), static_cast<int>(this->amount().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
       "Transfer.amount");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
-      2, this->amount(), output);
+      5, this->amount(), output);
   }
 
-  // string fee = 3;
-  if (this->fee().size() > 0) {
+  // string tx = 6;
+  if (this->tx().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->fee().data(), static_cast<int>(this->fee().length()),
+      this->tx().data(), static_cast<int>(this->tx().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "Transfer.fee");
+      "Transfer.tx");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
-      3, this->fee(), output);
+      6, this->tx(), output);
   }
 
-  // string txid = 4;
-  if (this->txid().size() > 0) {
+  // string block = 7;
+  if (this->block().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->txid().data(), static_cast<int>(this->txid().length()),
+      this->block().data(), static_cast<int>(this->block().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "Transfer.txid");
+      "Transfer.block");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
-      4, this->txid(), output);
+      7, this->block(), output);
   }
 
-  // string network = 5;
-  if (this->network().size() > 0) {
-    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->network().data(), static_cast<int>(this->network().length()),
-      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "Transfer.network");
-    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
-      5, this->network(), output);
+  // bool processed = 8;
+  if (this->processed() != 0) {
+    ::google::protobuf::internal::WireFormatLite::WriteBool(8, this->processed(), output);
   }
 
-  // string orderid = 6;
-  if (this->orderid().size() > 0) {
-    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->orderid().data(), static_cast<int>(this->orderid().length()),
-      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "Transfer.orderid");
-    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
-      6, this->orderid(), output);
-  }
-
-  // string sighash = 7;
+  // string sighash = 9;
   if (this->sighash().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
       this->sighash().data(), static_cast<int>(this->sighash().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
       "Transfer.sighash");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
-      7, this->sighash(), output);
+      9, this->sighash(), output);
   }
 
   if ((_internal_metadata_.have_unknown_fields() &&  ::google::protobuf::internal::GetProto3PreserveUnknownsDefault())) {
@@ -481,7 +541,40 @@ void Transfer::SerializeWithCachedSizes(
         1, this->blockchain(), target);
   }
 
-  // string amount = 2;
+  // string src_address = 2;
+  if (this->src_address().size() > 0) {
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+      this->src_address().data(), static_cast<int>(this->src_address().length()),
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
+      "Transfer.src_address");
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        2, this->src_address(), target);
+  }
+
+  // string dst_address = 3;
+  if (this->dst_address().size() > 0) {
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+      this->dst_address().data(), static_cast<int>(this->dst_address().length()),
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
+      "Transfer.dst_address");
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        3, this->dst_address(), target);
+  }
+
+  // string order = 4;
+  if (this->order().size() > 0) {
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+      this->order().data(), static_cast<int>(this->order().length()),
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
+      "Transfer.order");
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        4, this->order(), target);
+  }
+
+  // string amount = 5;
   if (this->amount().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
       this->amount().data(), static_cast<int>(this->amount().length()),
@@ -489,54 +582,37 @@ void Transfer::SerializeWithCachedSizes(
       "Transfer.amount");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        2, this->amount(), target);
+        5, this->amount(), target);
   }
 
-  // string fee = 3;
-  if (this->fee().size() > 0) {
+  // string tx = 6;
+  if (this->tx().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->fee().data(), static_cast<int>(this->fee().length()),
+      this->tx().data(), static_cast<int>(this->tx().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "Transfer.fee");
+      "Transfer.tx");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        3, this->fee(), target);
+        6, this->tx(), target);
   }
 
-  // string txid = 4;
-  if (this->txid().size() > 0) {
+  // string block = 7;
+  if (this->block().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->txid().data(), static_cast<int>(this->txid().length()),
+      this->block().data(), static_cast<int>(this->block().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "Transfer.txid");
+      "Transfer.block");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        4, this->txid(), target);
+        7, this->block(), target);
   }
 
-  // string network = 5;
-  if (this->network().size() > 0) {
-    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->network().data(), static_cast<int>(this->network().length()),
-      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "Transfer.network");
-    target =
-      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        5, this->network(), target);
+  // bool processed = 8;
+  if (this->processed() != 0) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteBoolToArray(8, this->processed(), target);
   }
 
-  // string orderid = 6;
-  if (this->orderid().size() > 0) {
-    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->orderid().data(), static_cast<int>(this->orderid().length()),
-      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "Transfer.orderid");
-    target =
-      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        6, this->orderid(), target);
-  }
-
-  // string sighash = 7;
+  // string sighash = 9;
   if (this->sighash().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
       this->sighash().data(), static_cast<int>(this->sighash().length()),
@@ -544,7 +620,7 @@ void Transfer::SerializeWithCachedSizes(
       "Transfer.sighash");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        7, this->sighash(), target);
+        9, this->sighash(), target);
   }
 
   if ((_internal_metadata_.have_unknown_fields() &&  ::google::protobuf::internal::GetProto3PreserveUnknownsDefault())) {
@@ -571,46 +647,58 @@ size_t Transfer::ByteSizeLong() const {
         this->blockchain());
   }
 
-  // string amount = 2;
+  // string src_address = 2;
+  if (this->src_address().size() > 0) {
+    total_size += 1 +
+      ::google::protobuf::internal::WireFormatLite::StringSize(
+        this->src_address());
+  }
+
+  // string dst_address = 3;
+  if (this->dst_address().size() > 0) {
+    total_size += 1 +
+      ::google::protobuf::internal::WireFormatLite::StringSize(
+        this->dst_address());
+  }
+
+  // string order = 4;
+  if (this->order().size() > 0) {
+    total_size += 1 +
+      ::google::protobuf::internal::WireFormatLite::StringSize(
+        this->order());
+  }
+
+  // string amount = 5;
   if (this->amount().size() > 0) {
     total_size += 1 +
       ::google::protobuf::internal::WireFormatLite::StringSize(
         this->amount());
   }
 
-  // string fee = 3;
-  if (this->fee().size() > 0) {
+  // string tx = 6;
+  if (this->tx().size() > 0) {
     total_size += 1 +
       ::google::protobuf::internal::WireFormatLite::StringSize(
-        this->fee());
+        this->tx());
   }
 
-  // string txid = 4;
-  if (this->txid().size() > 0) {
+  // string block = 7;
+  if (this->block().size() > 0) {
     total_size += 1 +
       ::google::protobuf::internal::WireFormatLite::StringSize(
-        this->txid());
+        this->block());
   }
 
-  // string network = 5;
-  if (this->network().size() > 0) {
-    total_size += 1 +
-      ::google::protobuf::internal::WireFormatLite::StringSize(
-        this->network());
-  }
-
-  // string orderid = 6;
-  if (this->orderid().size() > 0) {
-    total_size += 1 +
-      ::google::protobuf::internal::WireFormatLite::StringSize(
-        this->orderid());
-  }
-
-  // string sighash = 7;
+  // string sighash = 9;
   if (this->sighash().size() > 0) {
     total_size += 1 +
       ::google::protobuf::internal::WireFormatLite::StringSize(
         this->sighash());
+  }
+
+  // bool processed = 8;
+  if (this->processed() != 0) {
+    total_size += 1 + 1;
   }
 
   int cached_size = ::google::protobuf::internal::ToCachedSize(total_size);
@@ -646,29 +734,36 @@ void Transfer::MergeFrom(const Transfer& from) {
 
     blockchain_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.blockchain_);
   }
+  if (from.src_address().size() > 0) {
+
+    src_address_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.src_address_);
+  }
+  if (from.dst_address().size() > 0) {
+
+    dst_address_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.dst_address_);
+  }
+  if (from.order().size() > 0) {
+
+    order_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.order_);
+  }
   if (from.amount().size() > 0) {
 
     amount_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.amount_);
   }
-  if (from.fee().size() > 0) {
+  if (from.tx().size() > 0) {
 
-    fee_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.fee_);
+    tx_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.tx_);
   }
-  if (from.txid().size() > 0) {
+  if (from.block().size() > 0) {
 
-    txid_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.txid_);
-  }
-  if (from.network().size() > 0) {
-
-    network_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.network_);
-  }
-  if (from.orderid().size() > 0) {
-
-    orderid_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.orderid_);
+    block_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.block_);
   }
   if (from.sighash().size() > 0) {
 
     sighash_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.sighash_);
+  }
+  if (from.processed() != 0) {
+    set_processed(from.processed());
   }
 }
 
@@ -697,12 +792,14 @@ void Transfer::Swap(Transfer* other) {
 void Transfer::InternalSwap(Transfer* other) {
   using std::swap;
   blockchain_.Swap(&other->blockchain_);
+  src_address_.Swap(&other->src_address_);
+  dst_address_.Swap(&other->dst_address_);
+  order_.Swap(&other->order_);
   amount_.Swap(&other->amount_);
-  fee_.Swap(&other->fee_);
-  txid_.Swap(&other->txid_);
-  network_.Swap(&other->network_);
-  orderid_.Swap(&other->orderid_);
+  tx_.Swap(&other->tx_);
+  block_.Swap(&other->block_);
   sighash_.Swap(&other->sighash_);
+  swap(processed_, other->processed_);
   _internal_metadata_.Swap(&other->_internal_metadata_);
   swap(_cached_size_, other->_cached_size_);
 }

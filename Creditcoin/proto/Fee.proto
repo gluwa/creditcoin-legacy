@@ -18,18 +18,7 @@
 */
 syntax = "proto3";
 
-message DealOrder {
-    string blockchain = 1;
-    string src_address = 2;
-    string dst_address = 3;
-    string amount = 4;
-    string interest = 5;
-    string maturity = 6;
-    string fee = 7;
-    uint64 expiration = 8;
-    string block = 9;
-    string loan_transfer = 10;
-    string repayment_transfer = 11;
-    string lock = 12;
-    string sighash = 13;
+message Fee {
+    string sighash = 1;
+    string block = 2;
 }

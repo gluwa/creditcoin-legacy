@@ -20,10 +20,12 @@ syntax = "proto3";
 
 message Transfer {
     string blockchain = 1;
-    string amount = 2;
-    string fee = 3;
-    string txid = 4;
-    string network = 5;
-    string orderid = 6;
-    string sighash = 7;
+    string src_address = 2;
+    string dst_address = 3;
+    string order = 4;
+    string amount = 5;
+    string tx = 6;
+    string block = 7;
+    bool processed = 8;
+    string sighash = 9;
 }

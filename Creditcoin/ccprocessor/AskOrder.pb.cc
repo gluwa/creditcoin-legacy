@@ -55,13 +55,13 @@ const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_PROTOBUF_ATTRIBUT
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::AskOrder, blockchain_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::AskOrder, address_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::AskOrder, amount_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::AskOrder, interest_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::AskOrder, collateral_blockchain_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::AskOrder, collateral_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::AskOrder, maturity_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::AskOrder, fee_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::AskOrder, expiration_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::AskOrder, transfer_id_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::AskOrder, block_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::AskOrder, sighash_),
 };
 static const ::google::protobuf::internal::MigrationSchema schemas[] GOOGLE_PROTOBUF_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
@@ -94,15 +94,14 @@ void protobuf_RegisterTypes(const ::std::string&) {
 void AddDescriptorsImpl() {
   InitDefaults();
   static const char descriptor[] GOOGLE_PROTOBUF_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
-      "\n\016AskOrder.proto\"\272\001\n\010AskOrder\022\022\n\nblockch"
-      "ain\030\001 \001(\t\022\016\n\006amount\030\002 \001(\t\022\020\n\010interest\030\003 "
-      "\001(\t\022\035\n\025collateral_blockchain\030\004 \001(\t\022\022\n\nco"
-      "llateral\030\005 \001(\t\022\013\n\003fee\030\006 \001(\t\022\022\n\nexpiratio"
-      "n\030\007 \001(\004\022\023\n\013transfer_id\030\010 \001(\t\022\017\n\007sighash\030"
-      "\t \001(\tb\006proto3"
+      "\n\016AskOrder.proto\"\244\001\n\010AskOrder\022\022\n\nblockch"
+      "ain\030\001 \001(\t\022\017\n\007address\030\002 \001(\t\022\016\n\006amount\030\003 \001"
+      "(\t\022\020\n\010interest\030\004 \001(\t\022\020\n\010maturity\030\005 \001(\t\022\013"
+      "\n\003fee\030\006 \001(\t\022\022\n\nexpiration\030\007 \001(\004\022\r\n\005block"
+      "\030\010 \001(\t\022\017\n\007sighash\030\t \001(\tb\006proto3"
   };
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-      descriptor, 213);
+      descriptor, 191);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "AskOrder.proto", &protobuf_RegisterTypes);
 }
@@ -125,13 +124,13 @@ void AskOrder::InitAsDefaultInstance() {
 }
 #if !defined(_MSC_VER) || _MSC_VER >= 1900
 const int AskOrder::kBlockchainFieldNumber;
+const int AskOrder::kAddressFieldNumber;
 const int AskOrder::kAmountFieldNumber;
 const int AskOrder::kInterestFieldNumber;
-const int AskOrder::kCollateralBlockchainFieldNumber;
-const int AskOrder::kCollateralFieldNumber;
+const int AskOrder::kMaturityFieldNumber;
 const int AskOrder::kFeeFieldNumber;
 const int AskOrder::kExpirationFieldNumber;
-const int AskOrder::kTransferIdFieldNumber;
+const int AskOrder::kBlockFieldNumber;
 const int AskOrder::kSighashFieldNumber;
 #endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
 
@@ -152,6 +151,10 @@ AskOrder::AskOrder(const AskOrder& from)
   if (from.blockchain().size() > 0) {
     blockchain_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.blockchain_);
   }
+  address_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (from.address().size() > 0) {
+    address_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.address_);
+  }
   amount_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   if (from.amount().size() > 0) {
     amount_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.amount_);
@@ -160,21 +163,17 @@ AskOrder::AskOrder(const AskOrder& from)
   if (from.interest().size() > 0) {
     interest_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.interest_);
   }
-  collateral_blockchain_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  if (from.collateral_blockchain().size() > 0) {
-    collateral_blockchain_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.collateral_blockchain_);
-  }
-  collateral_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  if (from.collateral().size() > 0) {
-    collateral_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.collateral_);
+  maturity_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (from.maturity().size() > 0) {
+    maturity_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.maturity_);
   }
   fee_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   if (from.fee().size() > 0) {
     fee_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.fee_);
   }
-  transfer_id_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  if (from.transfer_id().size() > 0) {
-    transfer_id_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.transfer_id_);
+  block_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (from.block().size() > 0) {
+    block_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.block_);
   }
   sighash_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   if (from.sighash().size() > 0) {
@@ -186,12 +185,12 @@ AskOrder::AskOrder(const AskOrder& from)
 
 void AskOrder::SharedCtor() {
   blockchain_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  address_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   amount_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   interest_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  collateral_blockchain_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  collateral_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  maturity_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   fee_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  transfer_id_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  block_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   sighash_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   expiration_ = GOOGLE_ULONGLONG(0);
   _cached_size_ = 0;
@@ -204,12 +203,12 @@ AskOrder::~AskOrder() {
 
 void AskOrder::SharedDtor() {
   blockchain_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  address_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   amount_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   interest_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  collateral_blockchain_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  collateral_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  maturity_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   fee_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  transfer_id_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  block_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   sighash_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 
@@ -243,12 +242,12 @@ void AskOrder::Clear() {
   (void) cached_has_bits;
 
   blockchain_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  address_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   amount_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   interest_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  collateral_blockchain_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  collateral_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  maturity_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   fee_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  transfer_id_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  block_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   sighash_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
   expiration_ = GOOGLE_ULONGLONG(0);
   _internal_metadata_.Clear();
@@ -280,10 +279,26 @@ bool AskOrder::MergePartialFromCodedStream(
         break;
       }
 
-      // string amount = 2;
+      // string address = 2;
       case 2: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(18u /* 18 & 0xFF */)) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_address()));
+          DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+            this->address().data(), static_cast<int>(this->address().length()),
+            ::google::protobuf::internal::WireFormatLite::PARSE,
+            "AskOrder.address"));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
+      // string amount = 3;
+      case 3: {
+        if (static_cast< ::google::protobuf::uint8>(tag) ==
+            static_cast< ::google::protobuf::uint8>(26u /* 26 & 0xFF */)) {
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
                 input, this->mutable_amount()));
           DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
@@ -296,10 +311,10 @@ bool AskOrder::MergePartialFromCodedStream(
         break;
       }
 
-      // string interest = 3;
-      case 3: {
+      // string interest = 4;
+      case 4: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
-            static_cast< ::google::protobuf::uint8>(26u /* 26 & 0xFF */)) {
+            static_cast< ::google::protobuf::uint8>(34u /* 34 & 0xFF */)) {
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
                 input, this->mutable_interest()));
           DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
@@ -312,32 +327,16 @@ bool AskOrder::MergePartialFromCodedStream(
         break;
       }
 
-      // string collateral_blockchain = 4;
-      case 4: {
-        if (static_cast< ::google::protobuf::uint8>(tag) ==
-            static_cast< ::google::protobuf::uint8>(34u /* 34 & 0xFF */)) {
-          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
-                input, this->mutable_collateral_blockchain()));
-          DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-            this->collateral_blockchain().data(), static_cast<int>(this->collateral_blockchain().length()),
-            ::google::protobuf::internal::WireFormatLite::PARSE,
-            "AskOrder.collateral_blockchain"));
-        } else {
-          goto handle_unusual;
-        }
-        break;
-      }
-
-      // string collateral = 5;
+      // string maturity = 5;
       case 5: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(42u /* 42 & 0xFF */)) {
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
-                input, this->mutable_collateral()));
+                input, this->mutable_maturity()));
           DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-            this->collateral().data(), static_cast<int>(this->collateral().length()),
+            this->maturity().data(), static_cast<int>(this->maturity().length()),
             ::google::protobuf::internal::WireFormatLite::PARSE,
-            "AskOrder.collateral"));
+            "AskOrder.maturity"));
         } else {
           goto handle_unusual;
         }
@@ -374,16 +373,16 @@ bool AskOrder::MergePartialFromCodedStream(
         break;
       }
 
-      // string transfer_id = 8;
+      // string block = 8;
       case 8: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(66u /* 66 & 0xFF */)) {
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
-                input, this->mutable_transfer_id()));
+                input, this->mutable_block()));
           DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-            this->transfer_id().data(), static_cast<int>(this->transfer_id().length()),
+            this->block().data(), static_cast<int>(this->block().length()),
             ::google::protobuf::internal::WireFormatLite::PARSE,
-            "AskOrder.transfer_id"));
+            "AskOrder.block"));
         } else {
           goto handle_unusual;
         }
@@ -442,44 +441,44 @@ void AskOrder::SerializeWithCachedSizes(
       1, this->blockchain(), output);
   }
 
-  // string amount = 2;
+  // string address = 2;
+  if (this->address().size() > 0) {
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+      this->address().data(), static_cast<int>(this->address().length()),
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
+      "AskOrder.address");
+    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
+      2, this->address(), output);
+  }
+
+  // string amount = 3;
   if (this->amount().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
       this->amount().data(), static_cast<int>(this->amount().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
       "AskOrder.amount");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
-      2, this->amount(), output);
+      3, this->amount(), output);
   }
 
-  // string interest = 3;
+  // string interest = 4;
   if (this->interest().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
       this->interest().data(), static_cast<int>(this->interest().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
       "AskOrder.interest");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
-      3, this->interest(), output);
+      4, this->interest(), output);
   }
 
-  // string collateral_blockchain = 4;
-  if (this->collateral_blockchain().size() > 0) {
+  // string maturity = 5;
+  if (this->maturity().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->collateral_blockchain().data(), static_cast<int>(this->collateral_blockchain().length()),
+      this->maturity().data(), static_cast<int>(this->maturity().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "AskOrder.collateral_blockchain");
+      "AskOrder.maturity");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
-      4, this->collateral_blockchain(), output);
-  }
-
-  // string collateral = 5;
-  if (this->collateral().size() > 0) {
-    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->collateral().data(), static_cast<int>(this->collateral().length()),
-      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "AskOrder.collateral");
-    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
-      5, this->collateral(), output);
+      5, this->maturity(), output);
   }
 
   // string fee = 6;
@@ -497,14 +496,14 @@ void AskOrder::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteUInt64(7, this->expiration(), output);
   }
 
-  // string transfer_id = 8;
-  if (this->transfer_id().size() > 0) {
+  // string block = 8;
+  if (this->block().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->transfer_id().data(), static_cast<int>(this->transfer_id().length()),
+      this->block().data(), static_cast<int>(this->block().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "AskOrder.transfer_id");
+      "AskOrder.block");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
-      8, this->transfer_id(), output);
+      8, this->block(), output);
   }
 
   // string sighash = 9;
@@ -542,7 +541,18 @@ void AskOrder::SerializeWithCachedSizes(
         1, this->blockchain(), target);
   }
 
-  // string amount = 2;
+  // string address = 2;
+  if (this->address().size() > 0) {
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+      this->address().data(), static_cast<int>(this->address().length()),
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
+      "AskOrder.address");
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        2, this->address(), target);
+  }
+
+  // string amount = 3;
   if (this->amount().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
       this->amount().data(), static_cast<int>(this->amount().length()),
@@ -550,10 +560,10 @@ void AskOrder::SerializeWithCachedSizes(
       "AskOrder.amount");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        2, this->amount(), target);
+        3, this->amount(), target);
   }
 
-  // string interest = 3;
+  // string interest = 4;
   if (this->interest().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
       this->interest().data(), static_cast<int>(this->interest().length()),
@@ -561,29 +571,18 @@ void AskOrder::SerializeWithCachedSizes(
       "AskOrder.interest");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        3, this->interest(), target);
+        4, this->interest(), target);
   }
 
-  // string collateral_blockchain = 4;
-  if (this->collateral_blockchain().size() > 0) {
+  // string maturity = 5;
+  if (this->maturity().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->collateral_blockchain().data(), static_cast<int>(this->collateral_blockchain().length()),
+      this->maturity().data(), static_cast<int>(this->maturity().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "AskOrder.collateral_blockchain");
+      "AskOrder.maturity");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        4, this->collateral_blockchain(), target);
-  }
-
-  // string collateral = 5;
-  if (this->collateral().size() > 0) {
-    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->collateral().data(), static_cast<int>(this->collateral().length()),
-      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "AskOrder.collateral");
-    target =
-      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        5, this->collateral(), target);
+        5, this->maturity(), target);
   }
 
   // string fee = 6;
@@ -602,15 +601,15 @@ void AskOrder::SerializeWithCachedSizes(
     target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(7, this->expiration(), target);
   }
 
-  // string transfer_id = 8;
-  if (this->transfer_id().size() > 0) {
+  // string block = 8;
+  if (this->block().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->transfer_id().data(), static_cast<int>(this->transfer_id().length()),
+      this->block().data(), static_cast<int>(this->block().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "AskOrder.transfer_id");
+      "AskOrder.block");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        8, this->transfer_id(), target);
+        8, this->block(), target);
   }
 
   // string sighash = 9;
@@ -648,32 +647,32 @@ size_t AskOrder::ByteSizeLong() const {
         this->blockchain());
   }
 
-  // string amount = 2;
+  // string address = 2;
+  if (this->address().size() > 0) {
+    total_size += 1 +
+      ::google::protobuf::internal::WireFormatLite::StringSize(
+        this->address());
+  }
+
+  // string amount = 3;
   if (this->amount().size() > 0) {
     total_size += 1 +
       ::google::protobuf::internal::WireFormatLite::StringSize(
         this->amount());
   }
 
-  // string interest = 3;
+  // string interest = 4;
   if (this->interest().size() > 0) {
     total_size += 1 +
       ::google::protobuf::internal::WireFormatLite::StringSize(
         this->interest());
   }
 
-  // string collateral_blockchain = 4;
-  if (this->collateral_blockchain().size() > 0) {
+  // string maturity = 5;
+  if (this->maturity().size() > 0) {
     total_size += 1 +
       ::google::protobuf::internal::WireFormatLite::StringSize(
-        this->collateral_blockchain());
-  }
-
-  // string collateral = 5;
-  if (this->collateral().size() > 0) {
-    total_size += 1 +
-      ::google::protobuf::internal::WireFormatLite::StringSize(
-        this->collateral());
+        this->maturity());
   }
 
   // string fee = 6;
@@ -683,11 +682,11 @@ size_t AskOrder::ByteSizeLong() const {
         this->fee());
   }
 
-  // string transfer_id = 8;
-  if (this->transfer_id().size() > 0) {
+  // string block = 8;
+  if (this->block().size() > 0) {
     total_size += 1 +
       ::google::protobuf::internal::WireFormatLite::StringSize(
-        this->transfer_id());
+        this->block());
   }
 
   // string sighash = 9;
@@ -737,6 +736,10 @@ void AskOrder::MergeFrom(const AskOrder& from) {
 
     blockchain_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.blockchain_);
   }
+  if (from.address().size() > 0) {
+
+    address_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.address_);
+  }
   if (from.amount().size() > 0) {
 
     amount_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.amount_);
@@ -745,21 +748,17 @@ void AskOrder::MergeFrom(const AskOrder& from) {
 
     interest_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.interest_);
   }
-  if (from.collateral_blockchain().size() > 0) {
+  if (from.maturity().size() > 0) {
 
-    collateral_blockchain_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.collateral_blockchain_);
-  }
-  if (from.collateral().size() > 0) {
-
-    collateral_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.collateral_);
+    maturity_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.maturity_);
   }
   if (from.fee().size() > 0) {
 
     fee_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.fee_);
   }
-  if (from.transfer_id().size() > 0) {
+  if (from.block().size() > 0) {
 
-    transfer_id_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.transfer_id_);
+    block_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.block_);
   }
   if (from.sighash().size() > 0) {
 
@@ -795,12 +794,12 @@ void AskOrder::Swap(AskOrder* other) {
 void AskOrder::InternalSwap(AskOrder* other) {
   using std::swap;
   blockchain_.Swap(&other->blockchain_);
+  address_.Swap(&other->address_);
   amount_.Swap(&other->amount_);
   interest_.Swap(&other->interest_);
-  collateral_blockchain_.Swap(&other->collateral_blockchain_);
-  collateral_.Swap(&other->collateral_);
+  maturity_.Swap(&other->maturity_);
   fee_.Swap(&other->fee_);
-  transfer_id_.Swap(&other->transfer_id_);
+  block_.Swap(&other->block_);
   sighash_.Swap(&other->sighash_);
   swap(expiration_, other->expiration_);
   _internal_metadata_.Swap(&other->_internal_metadata_);

@@ -150,9 +150,51 @@ class Transfer : public ::google::protobuf::Message /* @@protoc_insertion_point(
   ::std::string* release_blockchain();
   void set_allocated_blockchain(::std::string* blockchain);
 
-  // string amount = 2;
+  // string src_address = 2;
+  void clear_src_address();
+  static const int kSrcAddressFieldNumber = 2;
+  const ::std::string& src_address() const;
+  void set_src_address(const ::std::string& value);
+  #if LANG_CXX11
+  void set_src_address(::std::string&& value);
+  #endif
+  void set_src_address(const char* value);
+  void set_src_address(const char* value, size_t size);
+  ::std::string* mutable_src_address();
+  ::std::string* release_src_address();
+  void set_allocated_src_address(::std::string* src_address);
+
+  // string dst_address = 3;
+  void clear_dst_address();
+  static const int kDstAddressFieldNumber = 3;
+  const ::std::string& dst_address() const;
+  void set_dst_address(const ::std::string& value);
+  #if LANG_CXX11
+  void set_dst_address(::std::string&& value);
+  #endif
+  void set_dst_address(const char* value);
+  void set_dst_address(const char* value, size_t size);
+  ::std::string* mutable_dst_address();
+  ::std::string* release_dst_address();
+  void set_allocated_dst_address(::std::string* dst_address);
+
+  // string order = 4;
+  void clear_order();
+  static const int kOrderFieldNumber = 4;
+  const ::std::string& order() const;
+  void set_order(const ::std::string& value);
+  #if LANG_CXX11
+  void set_order(::std::string&& value);
+  #endif
+  void set_order(const char* value);
+  void set_order(const char* value, size_t size);
+  ::std::string* mutable_order();
+  ::std::string* release_order();
+  void set_allocated_order(::std::string* order);
+
+  // string amount = 5;
   void clear_amount();
-  static const int kAmountFieldNumber = 2;
+  static const int kAmountFieldNumber = 5;
   const ::std::string& amount() const;
   void set_amount(const ::std::string& value);
   #if LANG_CXX11
@@ -164,65 +206,37 @@ class Transfer : public ::google::protobuf::Message /* @@protoc_insertion_point(
   ::std::string* release_amount();
   void set_allocated_amount(::std::string* amount);
 
-  // string fee = 3;
-  void clear_fee();
-  static const int kFeeFieldNumber = 3;
-  const ::std::string& fee() const;
-  void set_fee(const ::std::string& value);
+  // string tx = 6;
+  void clear_tx();
+  static const int kTxFieldNumber = 6;
+  const ::std::string& tx() const;
+  void set_tx(const ::std::string& value);
   #if LANG_CXX11
-  void set_fee(::std::string&& value);
+  void set_tx(::std::string&& value);
   #endif
-  void set_fee(const char* value);
-  void set_fee(const char* value, size_t size);
-  ::std::string* mutable_fee();
-  ::std::string* release_fee();
-  void set_allocated_fee(::std::string* fee);
+  void set_tx(const char* value);
+  void set_tx(const char* value, size_t size);
+  ::std::string* mutable_tx();
+  ::std::string* release_tx();
+  void set_allocated_tx(::std::string* tx);
 
-  // string txid = 4;
-  void clear_txid();
-  static const int kTxidFieldNumber = 4;
-  const ::std::string& txid() const;
-  void set_txid(const ::std::string& value);
+  // string block = 7;
+  void clear_block();
+  static const int kBlockFieldNumber = 7;
+  const ::std::string& block() const;
+  void set_block(const ::std::string& value);
   #if LANG_CXX11
-  void set_txid(::std::string&& value);
+  void set_block(::std::string&& value);
   #endif
-  void set_txid(const char* value);
-  void set_txid(const char* value, size_t size);
-  ::std::string* mutable_txid();
-  ::std::string* release_txid();
-  void set_allocated_txid(::std::string* txid);
+  void set_block(const char* value);
+  void set_block(const char* value, size_t size);
+  ::std::string* mutable_block();
+  ::std::string* release_block();
+  void set_allocated_block(::std::string* block);
 
-  // string network = 5;
-  void clear_network();
-  static const int kNetworkFieldNumber = 5;
-  const ::std::string& network() const;
-  void set_network(const ::std::string& value);
-  #if LANG_CXX11
-  void set_network(::std::string&& value);
-  #endif
-  void set_network(const char* value);
-  void set_network(const char* value, size_t size);
-  ::std::string* mutable_network();
-  ::std::string* release_network();
-  void set_allocated_network(::std::string* network);
-
-  // string orderid = 6;
-  void clear_orderid();
-  static const int kOrderidFieldNumber = 6;
-  const ::std::string& orderid() const;
-  void set_orderid(const ::std::string& value);
-  #if LANG_CXX11
-  void set_orderid(::std::string&& value);
-  #endif
-  void set_orderid(const char* value);
-  void set_orderid(const char* value, size_t size);
-  ::std::string* mutable_orderid();
-  ::std::string* release_orderid();
-  void set_allocated_orderid(::std::string* orderid);
-
-  // string sighash = 7;
+  // string sighash = 9;
   void clear_sighash();
-  static const int kSighashFieldNumber = 7;
+  static const int kSighashFieldNumber = 9;
   const ::std::string& sighash() const;
   void set_sighash(const ::std::string& value);
   #if LANG_CXX11
@@ -234,17 +248,25 @@ class Transfer : public ::google::protobuf::Message /* @@protoc_insertion_point(
   ::std::string* release_sighash();
   void set_allocated_sighash(::std::string* sighash);
 
+  // bool processed = 8;
+  void clear_processed();
+  static const int kProcessedFieldNumber = 8;
+  bool processed() const;
+  void set_processed(bool value);
+
   // @@protoc_insertion_point(class_scope:Transfer)
  private:
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::ArenaStringPtr blockchain_;
+  ::google::protobuf::internal::ArenaStringPtr src_address_;
+  ::google::protobuf::internal::ArenaStringPtr dst_address_;
+  ::google::protobuf::internal::ArenaStringPtr order_;
   ::google::protobuf::internal::ArenaStringPtr amount_;
-  ::google::protobuf::internal::ArenaStringPtr fee_;
-  ::google::protobuf::internal::ArenaStringPtr txid_;
-  ::google::protobuf::internal::ArenaStringPtr network_;
-  ::google::protobuf::internal::ArenaStringPtr orderid_;
+  ::google::protobuf::internal::ArenaStringPtr tx_;
+  ::google::protobuf::internal::ArenaStringPtr block_;
   ::google::protobuf::internal::ArenaStringPtr sighash_;
+  bool processed_;
   mutable int _cached_size_;
   friend struct ::protobuf_Transfer_2eproto::TableStruct;
   friend void ::protobuf_Transfer_2eproto::InitDefaultsTransferImpl();
@@ -313,7 +335,166 @@ inline void Transfer::set_allocated_blockchain(::std::string* blockchain) {
   // @@protoc_insertion_point(field_set_allocated:Transfer.blockchain)
 }
 
-// string amount = 2;
+// string src_address = 2;
+inline void Transfer::clear_src_address() {
+  src_address_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline const ::std::string& Transfer::src_address() const {
+  // @@protoc_insertion_point(field_get:Transfer.src_address)
+  return src_address_.GetNoArena();
+}
+inline void Transfer::set_src_address(const ::std::string& value) {
+  
+  src_address_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:Transfer.src_address)
+}
+#if LANG_CXX11
+inline void Transfer::set_src_address(::std::string&& value) {
+  
+  src_address_.SetNoArena(
+    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
+  // @@protoc_insertion_point(field_set_rvalue:Transfer.src_address)
+}
+#endif
+inline void Transfer::set_src_address(const char* value) {
+  GOOGLE_DCHECK(value != NULL);
+  
+  src_address_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:Transfer.src_address)
+}
+inline void Transfer::set_src_address(const char* value, size_t size) {
+  
+  src_address_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+  // @@protoc_insertion_point(field_set_pointer:Transfer.src_address)
+}
+inline ::std::string* Transfer::mutable_src_address() {
+  
+  // @@protoc_insertion_point(field_mutable:Transfer.src_address)
+  return src_address_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline ::std::string* Transfer::release_src_address() {
+  // @@protoc_insertion_point(field_release:Transfer.src_address)
+  
+  return src_address_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline void Transfer::set_allocated_src_address(::std::string* src_address) {
+  if (src_address != NULL) {
+    
+  } else {
+    
+  }
+  src_address_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), src_address);
+  // @@protoc_insertion_point(field_set_allocated:Transfer.src_address)
+}
+
+// string dst_address = 3;
+inline void Transfer::clear_dst_address() {
+  dst_address_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline const ::std::string& Transfer::dst_address() const {
+  // @@protoc_insertion_point(field_get:Transfer.dst_address)
+  return dst_address_.GetNoArena();
+}
+inline void Transfer::set_dst_address(const ::std::string& value) {
+  
+  dst_address_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:Transfer.dst_address)
+}
+#if LANG_CXX11
+inline void Transfer::set_dst_address(::std::string&& value) {
+  
+  dst_address_.SetNoArena(
+    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
+  // @@protoc_insertion_point(field_set_rvalue:Transfer.dst_address)
+}
+#endif
+inline void Transfer::set_dst_address(const char* value) {
+  GOOGLE_DCHECK(value != NULL);
+  
+  dst_address_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:Transfer.dst_address)
+}
+inline void Transfer::set_dst_address(const char* value, size_t size) {
+  
+  dst_address_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+  // @@protoc_insertion_point(field_set_pointer:Transfer.dst_address)
+}
+inline ::std::string* Transfer::mutable_dst_address() {
+  
+  // @@protoc_insertion_point(field_mutable:Transfer.dst_address)
+  return dst_address_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline ::std::string* Transfer::release_dst_address() {
+  // @@protoc_insertion_point(field_release:Transfer.dst_address)
+  
+  return dst_address_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline void Transfer::set_allocated_dst_address(::std::string* dst_address) {
+  if (dst_address != NULL) {
+    
+  } else {
+    
+  }
+  dst_address_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), dst_address);
+  // @@protoc_insertion_point(field_set_allocated:Transfer.dst_address)
+}
+
+// string order = 4;
+inline void Transfer::clear_order() {
+  order_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline const ::std::string& Transfer::order() const {
+  // @@protoc_insertion_point(field_get:Transfer.order)
+  return order_.GetNoArena();
+}
+inline void Transfer::set_order(const ::std::string& value) {
+  
+  order_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:Transfer.order)
+}
+#if LANG_CXX11
+inline void Transfer::set_order(::std::string&& value) {
+  
+  order_.SetNoArena(
+    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
+  // @@protoc_insertion_point(field_set_rvalue:Transfer.order)
+}
+#endif
+inline void Transfer::set_order(const char* value) {
+  GOOGLE_DCHECK(value != NULL);
+  
+  order_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:Transfer.order)
+}
+inline void Transfer::set_order(const char* value, size_t size) {
+  
+  order_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+  // @@protoc_insertion_point(field_set_pointer:Transfer.order)
+}
+inline ::std::string* Transfer::mutable_order() {
+  
+  // @@protoc_insertion_point(field_mutable:Transfer.order)
+  return order_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline ::std::string* Transfer::release_order() {
+  // @@protoc_insertion_point(field_release:Transfer.order)
+  
+  return order_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline void Transfer::set_allocated_order(::std::string* order) {
+  if (order != NULL) {
+    
+  } else {
+    
+  }
+  order_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), order);
+  // @@protoc_insertion_point(field_set_allocated:Transfer.order)
+}
+
+// string amount = 5;
 inline void Transfer::clear_amount() {
   amount_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
@@ -366,219 +547,127 @@ inline void Transfer::set_allocated_amount(::std::string* amount) {
   // @@protoc_insertion_point(field_set_allocated:Transfer.amount)
 }
 
-// string fee = 3;
-inline void Transfer::clear_fee() {
-  fee_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+// string tx = 6;
+inline void Transfer::clear_tx() {
+  tx_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline const ::std::string& Transfer::fee() const {
-  // @@protoc_insertion_point(field_get:Transfer.fee)
-  return fee_.GetNoArena();
+inline const ::std::string& Transfer::tx() const {
+  // @@protoc_insertion_point(field_get:Transfer.tx)
+  return tx_.GetNoArena();
 }
-inline void Transfer::set_fee(const ::std::string& value) {
+inline void Transfer::set_tx(const ::std::string& value) {
   
-  fee_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:Transfer.fee)
+  tx_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:Transfer.tx)
 }
 #if LANG_CXX11
-inline void Transfer::set_fee(::std::string&& value) {
+inline void Transfer::set_tx(::std::string&& value) {
   
-  fee_.SetNoArena(
+  tx_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:Transfer.fee)
+  // @@protoc_insertion_point(field_set_rvalue:Transfer.tx)
 }
 #endif
-inline void Transfer::set_fee(const char* value) {
+inline void Transfer::set_tx(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   
-  fee_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:Transfer.fee)
+  tx_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:Transfer.tx)
 }
-inline void Transfer::set_fee(const char* value, size_t size) {
+inline void Transfer::set_tx(const char* value, size_t size) {
   
-  fee_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+  tx_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:Transfer.fee)
+  // @@protoc_insertion_point(field_set_pointer:Transfer.tx)
 }
-inline ::std::string* Transfer::mutable_fee() {
+inline ::std::string* Transfer::mutable_tx() {
   
-  // @@protoc_insertion_point(field_mutable:Transfer.fee)
-  return fee_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  // @@protoc_insertion_point(field_mutable:Transfer.tx)
+  return tx_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline ::std::string* Transfer::release_fee() {
-  // @@protoc_insertion_point(field_release:Transfer.fee)
+inline ::std::string* Transfer::release_tx() {
+  // @@protoc_insertion_point(field_release:Transfer.tx)
   
-  return fee_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  return tx_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline void Transfer::set_allocated_fee(::std::string* fee) {
-  if (fee != NULL) {
+inline void Transfer::set_allocated_tx(::std::string* tx) {
+  if (tx != NULL) {
     
   } else {
     
   }
-  fee_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), fee);
-  // @@protoc_insertion_point(field_set_allocated:Transfer.fee)
+  tx_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), tx);
+  // @@protoc_insertion_point(field_set_allocated:Transfer.tx)
 }
 
-// string txid = 4;
-inline void Transfer::clear_txid() {
-  txid_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+// string block = 7;
+inline void Transfer::clear_block() {
+  block_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline const ::std::string& Transfer::txid() const {
-  // @@protoc_insertion_point(field_get:Transfer.txid)
-  return txid_.GetNoArena();
+inline const ::std::string& Transfer::block() const {
+  // @@protoc_insertion_point(field_get:Transfer.block)
+  return block_.GetNoArena();
 }
-inline void Transfer::set_txid(const ::std::string& value) {
+inline void Transfer::set_block(const ::std::string& value) {
   
-  txid_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:Transfer.txid)
+  block_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:Transfer.block)
 }
 #if LANG_CXX11
-inline void Transfer::set_txid(::std::string&& value) {
+inline void Transfer::set_block(::std::string&& value) {
   
-  txid_.SetNoArena(
+  block_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:Transfer.txid)
+  // @@protoc_insertion_point(field_set_rvalue:Transfer.block)
 }
 #endif
-inline void Transfer::set_txid(const char* value) {
+inline void Transfer::set_block(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   
-  txid_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:Transfer.txid)
+  block_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:Transfer.block)
 }
-inline void Transfer::set_txid(const char* value, size_t size) {
+inline void Transfer::set_block(const char* value, size_t size) {
   
-  txid_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+  block_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:Transfer.txid)
+  // @@protoc_insertion_point(field_set_pointer:Transfer.block)
 }
-inline ::std::string* Transfer::mutable_txid() {
+inline ::std::string* Transfer::mutable_block() {
   
-  // @@protoc_insertion_point(field_mutable:Transfer.txid)
-  return txid_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  // @@protoc_insertion_point(field_mutable:Transfer.block)
+  return block_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline ::std::string* Transfer::release_txid() {
-  // @@protoc_insertion_point(field_release:Transfer.txid)
+inline ::std::string* Transfer::release_block() {
+  // @@protoc_insertion_point(field_release:Transfer.block)
   
-  return txid_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  return block_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline void Transfer::set_allocated_txid(::std::string* txid) {
-  if (txid != NULL) {
+inline void Transfer::set_allocated_block(::std::string* block) {
+  if (block != NULL) {
     
   } else {
     
   }
-  txid_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), txid);
-  // @@protoc_insertion_point(field_set_allocated:Transfer.txid)
+  block_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), block);
+  // @@protoc_insertion_point(field_set_allocated:Transfer.block)
 }
 
-// string network = 5;
-inline void Transfer::clear_network() {
-  network_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+// bool processed = 8;
+inline void Transfer::clear_processed() {
+  processed_ = false;
 }
-inline const ::std::string& Transfer::network() const {
-  // @@protoc_insertion_point(field_get:Transfer.network)
-  return network_.GetNoArena();
+inline bool Transfer::processed() const {
+  // @@protoc_insertion_point(field_get:Transfer.processed)
+  return processed_;
 }
-inline void Transfer::set_network(const ::std::string& value) {
+inline void Transfer::set_processed(bool value) {
   
-  network_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:Transfer.network)
-}
-#if LANG_CXX11
-inline void Transfer::set_network(::std::string&& value) {
-  
-  network_.SetNoArena(
-    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:Transfer.network)
-}
-#endif
-inline void Transfer::set_network(const char* value) {
-  GOOGLE_DCHECK(value != NULL);
-  
-  network_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:Transfer.network)
-}
-inline void Transfer::set_network(const char* value, size_t size) {
-  
-  network_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
-      ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:Transfer.network)
-}
-inline ::std::string* Transfer::mutable_network() {
-  
-  // @@protoc_insertion_point(field_mutable:Transfer.network)
-  return network_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-}
-inline ::std::string* Transfer::release_network() {
-  // @@protoc_insertion_point(field_release:Transfer.network)
-  
-  return network_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-}
-inline void Transfer::set_allocated_network(::std::string* network) {
-  if (network != NULL) {
-    
-  } else {
-    
-  }
-  network_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), network);
-  // @@protoc_insertion_point(field_set_allocated:Transfer.network)
+  processed_ = value;
+  // @@protoc_insertion_point(field_set:Transfer.processed)
 }
 
-// string orderid = 6;
-inline void Transfer::clear_orderid() {
-  orderid_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-}
-inline const ::std::string& Transfer::orderid() const {
-  // @@protoc_insertion_point(field_get:Transfer.orderid)
-  return orderid_.GetNoArena();
-}
-inline void Transfer::set_orderid(const ::std::string& value) {
-  
-  orderid_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:Transfer.orderid)
-}
-#if LANG_CXX11
-inline void Transfer::set_orderid(::std::string&& value) {
-  
-  orderid_.SetNoArena(
-    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:Transfer.orderid)
-}
-#endif
-inline void Transfer::set_orderid(const char* value) {
-  GOOGLE_DCHECK(value != NULL);
-  
-  orderid_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:Transfer.orderid)
-}
-inline void Transfer::set_orderid(const char* value, size_t size) {
-  
-  orderid_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
-      ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:Transfer.orderid)
-}
-inline ::std::string* Transfer::mutable_orderid() {
-  
-  // @@protoc_insertion_point(field_mutable:Transfer.orderid)
-  return orderid_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-}
-inline ::std::string* Transfer::release_orderid() {
-  // @@protoc_insertion_point(field_release:Transfer.orderid)
-  
-  return orderid_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-}
-inline void Transfer::set_allocated_orderid(::std::string* orderid) {
-  if (orderid != NULL) {
-    
-  } else {
-    
-  }
-  orderid_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), orderid);
-  // @@protoc_insertion_point(field_set_allocated:Transfer.orderid)
-}
-
-// string sighash = 7;
+// string sighash = 9;
 inline void Transfer::clear_sighash() {
   sighash_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }

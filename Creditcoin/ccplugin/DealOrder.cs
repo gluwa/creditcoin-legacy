@@ -22,15 +22,17 @@ public static partial class DealOrderReflection {
   static DealOrderReflection() {
     byte[] descriptorData = global::System.Convert.FromBase64String(
         string.Concat(
-          "Cg9EZWFsT3JkZXIucHJvdG8itgEKCURlYWxPcmRlchIUCgxhc2tfb3JkZXJf",
-          "aWQYASABKAkSFAoMYmlkX29yZGVyX2lkGAIgASgJEh4KFmNvbGxhdGVyYWxf",
-          "dHJhbnNmZXJfaWQYAyABKAkSKwojdW5sb2NrX2Z1bmRzX2Rlc3RpbmF0aW9u",
-          "X2FkZHJlc3NfaWQYBCABKAkSMAoodW5sb2NrX2NvbGxhdGVyYWxfZGVzdGlu",
-          "YXRpb25fYWRkcmVzc19pZBgFIAEoCWIGcHJvdG8z"));
+          "Cg9EZWFsT3JkZXIucHJvdG8i/wEKCURlYWxPcmRlchISCgpibG9ja2NoYWlu",
+          "GAEgASgJEhMKC3NyY19hZGRyZXNzGAIgASgJEhMKC2RzdF9hZGRyZXNzGAMg",
+          "ASgJEg4KBmFtb3VudBgEIAEoCRIQCghpbnRlcmVzdBgFIAEoCRIQCghtYXR1",
+          "cml0eRgGIAEoCRILCgNmZWUYByABKAkSEgoKZXhwaXJhdGlvbhgIIAEoBBIN",
+          "CgVibG9jaxgJIAEoCRIVCg1sb2FuX3RyYW5zZmVyGAogASgJEhoKEnJlcGF5",
+          "bWVudF90cmFuc2ZlchgLIAEoCRIMCgRsb2NrGAwgASgJEg8KB3NpZ2hhc2gY",
+          "DSABKAliBnByb3RvMw=="));
     descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
         new pbr::FileDescriptor[] { },
         new pbr::GeneratedClrTypeInfo(null, new pbr::GeneratedClrTypeInfo[] {
-          new pbr::GeneratedClrTypeInfo(typeof(global::DealOrder), global::DealOrder.Parser, new[]{ "AskOrderId", "BidOrderId", "CollateralTransferId", "UnlockFundsDestinationAddressId", "UnlockCollateralDestinationAddressId" }, null, null, null)
+          new pbr::GeneratedClrTypeInfo(typeof(global::DealOrder), global::DealOrder.Parser, new[]{ "Blockchain", "SrcAddress", "DstAddress", "Amount", "Interest", "Maturity", "Fee", "Expiration", "Block", "LoanTransfer", "RepaymentTransfer", "Lock", "Sighash" }, null, null, null)
         }));
   }
   #endregion
@@ -62,11 +64,19 @@ public sealed partial class DealOrder : pb::IMessage<DealOrder> {
 
   [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
   public DealOrder(DealOrder other) : this() {
-    askOrderId_ = other.askOrderId_;
-    bidOrderId_ = other.bidOrderId_;
-    collateralTransferId_ = other.collateralTransferId_;
-    unlockFundsDestinationAddressId_ = other.unlockFundsDestinationAddressId_;
-    unlockCollateralDestinationAddressId_ = other.unlockCollateralDestinationAddressId_;
+    blockchain_ = other.blockchain_;
+    srcAddress_ = other.srcAddress_;
+    dstAddress_ = other.dstAddress_;
+    amount_ = other.amount_;
+    interest_ = other.interest_;
+    maturity_ = other.maturity_;
+    fee_ = other.fee_;
+    expiration_ = other.expiration_;
+    block_ = other.block_;
+    loanTransfer_ = other.loanTransfer_;
+    repaymentTransfer_ = other.repaymentTransfer_;
+    lock_ = other.lock_;
+    sighash_ = other.sighash_;
     _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
   }
 
@@ -75,58 +85,146 @@ public sealed partial class DealOrder : pb::IMessage<DealOrder> {
     return new DealOrder(this);
   }
 
-  /// <summary>Field number for the "ask_order_id" field.</summary>
-  public const int AskOrderIdFieldNumber = 1;
-  private string askOrderId_ = "";
+  /// <summary>Field number for the "blockchain" field.</summary>
+  public const int BlockchainFieldNumber = 1;
+  private string blockchain_ = "";
   [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-  public string AskOrderId {
-    get { return askOrderId_; }
+  public string Blockchain {
+    get { return blockchain_; }
     set {
-      askOrderId_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+      blockchain_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
     }
   }
 
-  /// <summary>Field number for the "bid_order_id" field.</summary>
-  public const int BidOrderIdFieldNumber = 2;
-  private string bidOrderId_ = "";
+  /// <summary>Field number for the "src_address" field.</summary>
+  public const int SrcAddressFieldNumber = 2;
+  private string srcAddress_ = "";
   [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-  public string BidOrderId {
-    get { return bidOrderId_; }
+  public string SrcAddress {
+    get { return srcAddress_; }
     set {
-      bidOrderId_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+      srcAddress_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
     }
   }
 
-  /// <summary>Field number for the "collateral_transfer_id" field.</summary>
-  public const int CollateralTransferIdFieldNumber = 3;
-  private string collateralTransferId_ = "";
+  /// <summary>Field number for the "dst_address" field.</summary>
+  public const int DstAddressFieldNumber = 3;
+  private string dstAddress_ = "";
   [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-  public string CollateralTransferId {
-    get { return collateralTransferId_; }
+  public string DstAddress {
+    get { return dstAddress_; }
     set {
-      collateralTransferId_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+      dstAddress_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
     }
   }
 
-  /// <summary>Field number for the "unlock_funds_destination_address_id" field.</summary>
-  public const int UnlockFundsDestinationAddressIdFieldNumber = 4;
-  private string unlockFundsDestinationAddressId_ = "";
+  /// <summary>Field number for the "amount" field.</summary>
+  public const int AmountFieldNumber = 4;
+  private string amount_ = "";
   [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-  public string UnlockFundsDestinationAddressId {
-    get { return unlockFundsDestinationAddressId_; }
+  public string Amount {
+    get { return amount_; }
     set {
-      unlockFundsDestinationAddressId_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+      amount_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
     }
   }
 
-  /// <summary>Field number for the "unlock_collateral_destination_address_id" field.</summary>
-  public const int UnlockCollateralDestinationAddressIdFieldNumber = 5;
-  private string unlockCollateralDestinationAddressId_ = "";
+  /// <summary>Field number for the "interest" field.</summary>
+  public const int InterestFieldNumber = 5;
+  private string interest_ = "";
   [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-  public string UnlockCollateralDestinationAddressId {
-    get { return unlockCollateralDestinationAddressId_; }
+  public string Interest {
+    get { return interest_; }
     set {
-      unlockCollateralDestinationAddressId_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+      interest_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+    }
+  }
+
+  /// <summary>Field number for the "maturity" field.</summary>
+  public const int MaturityFieldNumber = 6;
+  private string maturity_ = "";
+  [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+  public string Maturity {
+    get { return maturity_; }
+    set {
+      maturity_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+    }
+  }
+
+  /// <summary>Field number for the "fee" field.</summary>
+  public const int FeeFieldNumber = 7;
+  private string fee_ = "";
+  [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+  public string Fee {
+    get { return fee_; }
+    set {
+      fee_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+    }
+  }
+
+  /// <summary>Field number for the "expiration" field.</summary>
+  public const int ExpirationFieldNumber = 8;
+  private ulong expiration_;
+  [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+  public ulong Expiration {
+    get { return expiration_; }
+    set {
+      expiration_ = value;
+    }
+  }
+
+  /// <summary>Field number for the "block" field.</summary>
+  public const int BlockFieldNumber = 9;
+  private string block_ = "";
+  [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+  public string Block {
+    get { return block_; }
+    set {
+      block_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+    }
+  }
+
+  /// <summary>Field number for the "loan_transfer" field.</summary>
+  public const int LoanTransferFieldNumber = 10;
+  private string loanTransfer_ = "";
+  [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+  public string LoanTransfer {
+    get { return loanTransfer_; }
+    set {
+      loanTransfer_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+    }
+  }
+
+  /// <summary>Field number for the "repayment_transfer" field.</summary>
+  public const int RepaymentTransferFieldNumber = 11;
+  private string repaymentTransfer_ = "";
+  [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+  public string RepaymentTransfer {
+    get { return repaymentTransfer_; }
+    set {
+      repaymentTransfer_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+    }
+  }
+
+  /// <summary>Field number for the "lock" field.</summary>
+  public const int LockFieldNumber = 12;
+  private string lock_ = "";
+  [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+  public string Lock {
+    get { return lock_; }
+    set {
+      lock_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+    }
+  }
+
+  /// <summary>Field number for the "sighash" field.</summary>
+  public const int SighashFieldNumber = 13;
+  private string sighash_ = "";
+  [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+  public string Sighash {
+    get { return sighash_; }
+    set {
+      sighash_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
     }
   }
 
@@ -143,22 +241,38 @@ public sealed partial class DealOrder : pb::IMessage<DealOrder> {
     if (ReferenceEquals(other, this)) {
       return true;
     }
-    if (AskOrderId != other.AskOrderId) return false;
-    if (BidOrderId != other.BidOrderId) return false;
-    if (CollateralTransferId != other.CollateralTransferId) return false;
-    if (UnlockFundsDestinationAddressId != other.UnlockFundsDestinationAddressId) return false;
-    if (UnlockCollateralDestinationAddressId != other.UnlockCollateralDestinationAddressId) return false;
+    if (Blockchain != other.Blockchain) return false;
+    if (SrcAddress != other.SrcAddress) return false;
+    if (DstAddress != other.DstAddress) return false;
+    if (Amount != other.Amount) return false;
+    if (Interest != other.Interest) return false;
+    if (Maturity != other.Maturity) return false;
+    if (Fee != other.Fee) return false;
+    if (Expiration != other.Expiration) return false;
+    if (Block != other.Block) return false;
+    if (LoanTransfer != other.LoanTransfer) return false;
+    if (RepaymentTransfer != other.RepaymentTransfer) return false;
+    if (Lock != other.Lock) return false;
+    if (Sighash != other.Sighash) return false;
     return Equals(_unknownFields, other._unknownFields);
   }
 
   [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
   public override int GetHashCode() {
     int hash = 1;
-    if (AskOrderId.Length != 0) hash ^= AskOrderId.GetHashCode();
-    if (BidOrderId.Length != 0) hash ^= BidOrderId.GetHashCode();
-    if (CollateralTransferId.Length != 0) hash ^= CollateralTransferId.GetHashCode();
-    if (UnlockFundsDestinationAddressId.Length != 0) hash ^= UnlockFundsDestinationAddressId.GetHashCode();
-    if (UnlockCollateralDestinationAddressId.Length != 0) hash ^= UnlockCollateralDestinationAddressId.GetHashCode();
+    if (Blockchain.Length != 0) hash ^= Blockchain.GetHashCode();
+    if (SrcAddress.Length != 0) hash ^= SrcAddress.GetHashCode();
+    if (DstAddress.Length != 0) hash ^= DstAddress.GetHashCode();
+    if (Amount.Length != 0) hash ^= Amount.GetHashCode();
+    if (Interest.Length != 0) hash ^= Interest.GetHashCode();
+    if (Maturity.Length != 0) hash ^= Maturity.GetHashCode();
+    if (Fee.Length != 0) hash ^= Fee.GetHashCode();
+    if (Expiration != 0UL) hash ^= Expiration.GetHashCode();
+    if (Block.Length != 0) hash ^= Block.GetHashCode();
+    if (LoanTransfer.Length != 0) hash ^= LoanTransfer.GetHashCode();
+    if (RepaymentTransfer.Length != 0) hash ^= RepaymentTransfer.GetHashCode();
+    if (Lock.Length != 0) hash ^= Lock.GetHashCode();
+    if (Sighash.Length != 0) hash ^= Sighash.GetHashCode();
     if (_unknownFields != null) {
       hash ^= _unknownFields.GetHashCode();
     }
@@ -172,25 +286,57 @@ public sealed partial class DealOrder : pb::IMessage<DealOrder> {
 
   [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
   public void WriteTo(pb::CodedOutputStream output) {
-    if (AskOrderId.Length != 0) {
+    if (Blockchain.Length != 0) {
       output.WriteRawTag(10);
-      output.WriteString(AskOrderId);
+      output.WriteString(Blockchain);
     }
-    if (BidOrderId.Length != 0) {
+    if (SrcAddress.Length != 0) {
       output.WriteRawTag(18);
-      output.WriteString(BidOrderId);
+      output.WriteString(SrcAddress);
     }
-    if (CollateralTransferId.Length != 0) {
+    if (DstAddress.Length != 0) {
       output.WriteRawTag(26);
-      output.WriteString(CollateralTransferId);
+      output.WriteString(DstAddress);
     }
-    if (UnlockFundsDestinationAddressId.Length != 0) {
+    if (Amount.Length != 0) {
       output.WriteRawTag(34);
-      output.WriteString(UnlockFundsDestinationAddressId);
+      output.WriteString(Amount);
     }
-    if (UnlockCollateralDestinationAddressId.Length != 0) {
+    if (Interest.Length != 0) {
       output.WriteRawTag(42);
-      output.WriteString(UnlockCollateralDestinationAddressId);
+      output.WriteString(Interest);
+    }
+    if (Maturity.Length != 0) {
+      output.WriteRawTag(50);
+      output.WriteString(Maturity);
+    }
+    if (Fee.Length != 0) {
+      output.WriteRawTag(58);
+      output.WriteString(Fee);
+    }
+    if (Expiration != 0UL) {
+      output.WriteRawTag(64);
+      output.WriteUInt64(Expiration);
+    }
+    if (Block.Length != 0) {
+      output.WriteRawTag(74);
+      output.WriteString(Block);
+    }
+    if (LoanTransfer.Length != 0) {
+      output.WriteRawTag(82);
+      output.WriteString(LoanTransfer);
+    }
+    if (RepaymentTransfer.Length != 0) {
+      output.WriteRawTag(90);
+      output.WriteString(RepaymentTransfer);
+    }
+    if (Lock.Length != 0) {
+      output.WriteRawTag(98);
+      output.WriteString(Lock);
+    }
+    if (Sighash.Length != 0) {
+      output.WriteRawTag(106);
+      output.WriteString(Sighash);
     }
     if (_unknownFields != null) {
       _unknownFields.WriteTo(output);
@@ -200,20 +346,44 @@ public sealed partial class DealOrder : pb::IMessage<DealOrder> {
   [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
   public int CalculateSize() {
     int size = 0;
-    if (AskOrderId.Length != 0) {
-      size += 1 + pb::CodedOutputStream.ComputeStringSize(AskOrderId);
+    if (Blockchain.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(Blockchain);
     }
-    if (BidOrderId.Length != 0) {
-      size += 1 + pb::CodedOutputStream.ComputeStringSize(BidOrderId);
+    if (SrcAddress.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(SrcAddress);
     }
-    if (CollateralTransferId.Length != 0) {
-      size += 1 + pb::CodedOutputStream.ComputeStringSize(CollateralTransferId);
+    if (DstAddress.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(DstAddress);
     }
-    if (UnlockFundsDestinationAddressId.Length != 0) {
-      size += 1 + pb::CodedOutputStream.ComputeStringSize(UnlockFundsDestinationAddressId);
+    if (Amount.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(Amount);
     }
-    if (UnlockCollateralDestinationAddressId.Length != 0) {
-      size += 1 + pb::CodedOutputStream.ComputeStringSize(UnlockCollateralDestinationAddressId);
+    if (Interest.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(Interest);
+    }
+    if (Maturity.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(Maturity);
+    }
+    if (Fee.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(Fee);
+    }
+    if (Expiration != 0UL) {
+      size += 1 + pb::CodedOutputStream.ComputeUInt64Size(Expiration);
+    }
+    if (Block.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(Block);
+    }
+    if (LoanTransfer.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(LoanTransfer);
+    }
+    if (RepaymentTransfer.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(RepaymentTransfer);
+    }
+    if (Lock.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(Lock);
+    }
+    if (Sighash.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(Sighash);
     }
     if (_unknownFields != null) {
       size += _unknownFields.CalculateSize();
@@ -226,20 +396,44 @@ public sealed partial class DealOrder : pb::IMessage<DealOrder> {
     if (other == null) {
       return;
     }
-    if (other.AskOrderId.Length != 0) {
-      AskOrderId = other.AskOrderId;
+    if (other.Blockchain.Length != 0) {
+      Blockchain = other.Blockchain;
     }
-    if (other.BidOrderId.Length != 0) {
-      BidOrderId = other.BidOrderId;
+    if (other.SrcAddress.Length != 0) {
+      SrcAddress = other.SrcAddress;
     }
-    if (other.CollateralTransferId.Length != 0) {
-      CollateralTransferId = other.CollateralTransferId;
+    if (other.DstAddress.Length != 0) {
+      DstAddress = other.DstAddress;
     }
-    if (other.UnlockFundsDestinationAddressId.Length != 0) {
-      UnlockFundsDestinationAddressId = other.UnlockFundsDestinationAddressId;
+    if (other.Amount.Length != 0) {
+      Amount = other.Amount;
     }
-    if (other.UnlockCollateralDestinationAddressId.Length != 0) {
-      UnlockCollateralDestinationAddressId = other.UnlockCollateralDestinationAddressId;
+    if (other.Interest.Length != 0) {
+      Interest = other.Interest;
+    }
+    if (other.Maturity.Length != 0) {
+      Maturity = other.Maturity;
+    }
+    if (other.Fee.Length != 0) {
+      Fee = other.Fee;
+    }
+    if (other.Expiration != 0UL) {
+      Expiration = other.Expiration;
+    }
+    if (other.Block.Length != 0) {
+      Block = other.Block;
+    }
+    if (other.LoanTransfer.Length != 0) {
+      LoanTransfer = other.LoanTransfer;
+    }
+    if (other.RepaymentTransfer.Length != 0) {
+      RepaymentTransfer = other.RepaymentTransfer;
+    }
+    if (other.Lock.Length != 0) {
+      Lock = other.Lock;
+    }
+    if (other.Sighash.Length != 0) {
+      Sighash = other.Sighash;
     }
     _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
   }
@@ -253,23 +447,55 @@ public sealed partial class DealOrder : pb::IMessage<DealOrder> {
           _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
           break;
         case 10: {
-          AskOrderId = input.ReadString();
+          Blockchain = input.ReadString();
           break;
         }
         case 18: {
-          BidOrderId = input.ReadString();
+          SrcAddress = input.ReadString();
           break;
         }
         case 26: {
-          CollateralTransferId = input.ReadString();
+          DstAddress = input.ReadString();
           break;
         }
         case 34: {
-          UnlockFundsDestinationAddressId = input.ReadString();
+          Amount = input.ReadString();
           break;
         }
         case 42: {
-          UnlockCollateralDestinationAddressId = input.ReadString();
+          Interest = input.ReadString();
+          break;
+        }
+        case 50: {
+          Maturity = input.ReadString();
+          break;
+        }
+        case 58: {
+          Fee = input.ReadString();
+          break;
+        }
+        case 64: {
+          Expiration = input.ReadUInt64();
+          break;
+        }
+        case 74: {
+          Block = input.ReadString();
+          break;
+        }
+        case 82: {
+          LoanTransfer = input.ReadString();
+          break;
+        }
+        case 90: {
+          RepaymentTransfer = input.ReadString();
+          break;
+        }
+        case 98: {
+          Lock = input.ReadString();
+          break;
+        }
+        case 106: {
+          Sighash = input.ReadString();
           break;
         }
       }

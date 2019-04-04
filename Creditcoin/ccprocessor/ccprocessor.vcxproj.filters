@@ -32,9 +32,6 @@
     <ClCompile Include="processor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Pledge.pb.cc">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Wallet.pb.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -54,6 +51,12 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Address.pb.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Offer.pb.cc">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Fee.pb.cc">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -77,6 +80,12 @@
       <Filter>proto</Filter>
     </None>
     <None Include="..\proto\RepaymentOrder.proto">
+      <Filter>proto</Filter>
+    </None>
+    <None Include="..\proto\Offer.proto">
+      <Filter>proto</Filter>
+    </None>
+    <None Include="..\proto\Fee.proto">
       <Filter>proto</Filter>
     </None>
   </ItemGroup>

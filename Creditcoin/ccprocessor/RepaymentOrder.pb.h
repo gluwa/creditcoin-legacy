@@ -136,40 +136,152 @@ class RepaymentOrder : public ::google::protobuf::Message /* @@protoc_insertion_
 
   // accessors -------------------------------------------------------
 
-  // string deal_id = 1;
-  void clear_deal_id();
-  static const int kDealIdFieldNumber = 1;
-  const ::std::string& deal_id() const;
-  void set_deal_id(const ::std::string& value);
+  // string blockchain = 1;
+  void clear_blockchain();
+  static const int kBlockchainFieldNumber = 1;
+  const ::std::string& blockchain() const;
+  void set_blockchain(const ::std::string& value);
   #if LANG_CXX11
-  void set_deal_id(::std::string&& value);
+  void set_blockchain(::std::string&& value);
   #endif
-  void set_deal_id(const char* value);
-  void set_deal_id(const char* value, size_t size);
-  ::std::string* mutable_deal_id();
-  ::std::string* release_deal_id();
-  void set_allocated_deal_id(::std::string* deal_id);
+  void set_blockchain(const char* value);
+  void set_blockchain(const char* value, size_t size);
+  ::std::string* mutable_blockchain();
+  ::std::string* release_blockchain();
+  void set_allocated_blockchain(::std::string* blockchain);
 
-  // string transfer_id = 2;
-  void clear_transfer_id();
-  static const int kTransferIdFieldNumber = 2;
-  const ::std::string& transfer_id() const;
-  void set_transfer_id(const ::std::string& value);
+  // string src_address = 2;
+  void clear_src_address();
+  static const int kSrcAddressFieldNumber = 2;
+  const ::std::string& src_address() const;
+  void set_src_address(const ::std::string& value);
   #if LANG_CXX11
-  void set_transfer_id(::std::string&& value);
+  void set_src_address(::std::string&& value);
   #endif
-  void set_transfer_id(const char* value);
-  void set_transfer_id(const char* value, size_t size);
-  ::std::string* mutable_transfer_id();
-  ::std::string* release_transfer_id();
-  void set_allocated_transfer_id(::std::string* transfer_id);
+  void set_src_address(const char* value);
+  void set_src_address(const char* value, size_t size);
+  ::std::string* mutable_src_address();
+  ::std::string* release_src_address();
+  void set_allocated_src_address(::std::string* src_address);
+
+  // string dst_address = 3;
+  void clear_dst_address();
+  static const int kDstAddressFieldNumber = 3;
+  const ::std::string& dst_address() const;
+  void set_dst_address(const ::std::string& value);
+  #if LANG_CXX11
+  void set_dst_address(::std::string&& value);
+  #endif
+  void set_dst_address(const char* value);
+  void set_dst_address(const char* value, size_t size);
+  ::std::string* mutable_dst_address();
+  ::std::string* release_dst_address();
+  void set_allocated_dst_address(::std::string* dst_address);
+
+  // string amount = 4;
+  void clear_amount();
+  static const int kAmountFieldNumber = 4;
+  const ::std::string& amount() const;
+  void set_amount(const ::std::string& value);
+  #if LANG_CXX11
+  void set_amount(::std::string&& value);
+  #endif
+  void set_amount(const char* value);
+  void set_amount(const char* value, size_t size);
+  ::std::string* mutable_amount();
+  ::std::string* release_amount();
+  void set_allocated_amount(::std::string* amount);
+
+  // string block = 6;
+  void clear_block();
+  static const int kBlockFieldNumber = 6;
+  const ::std::string& block() const;
+  void set_block(const ::std::string& value);
+  #if LANG_CXX11
+  void set_block(::std::string&& value);
+  #endif
+  void set_block(const char* value);
+  void set_block(const char* value, size_t size);
+  ::std::string* mutable_block();
+  ::std::string* release_block();
+  void set_allocated_block(::std::string* block);
+
+  // string deal = 7;
+  void clear_deal();
+  static const int kDealFieldNumber = 7;
+  const ::std::string& deal() const;
+  void set_deal(const ::std::string& value);
+  #if LANG_CXX11
+  void set_deal(::std::string&& value);
+  #endif
+  void set_deal(const char* value);
+  void set_deal(const char* value, size_t size);
+  ::std::string* mutable_deal();
+  ::std::string* release_deal();
+  void set_allocated_deal(::std::string* deal);
+
+  // string previous_owner = 8;
+  void clear_previous_owner();
+  static const int kPreviousOwnerFieldNumber = 8;
+  const ::std::string& previous_owner() const;
+  void set_previous_owner(const ::std::string& value);
+  #if LANG_CXX11
+  void set_previous_owner(::std::string&& value);
+  #endif
+  void set_previous_owner(const char* value);
+  void set_previous_owner(const char* value, size_t size);
+  ::std::string* mutable_previous_owner();
+  ::std::string* release_previous_owner();
+  void set_allocated_previous_owner(::std::string* previous_owner);
+
+  // string transfer = 9;
+  void clear_transfer();
+  static const int kTransferFieldNumber = 9;
+  const ::std::string& transfer() const;
+  void set_transfer(const ::std::string& value);
+  #if LANG_CXX11
+  void set_transfer(::std::string&& value);
+  #endif
+  void set_transfer(const char* value);
+  void set_transfer(const char* value, size_t size);
+  ::std::string* mutable_transfer();
+  ::std::string* release_transfer();
+  void set_allocated_transfer(::std::string* transfer);
+
+  // string sighash = 10;
+  void clear_sighash();
+  static const int kSighashFieldNumber = 10;
+  const ::std::string& sighash() const;
+  void set_sighash(const ::std::string& value);
+  #if LANG_CXX11
+  void set_sighash(::std::string&& value);
+  #endif
+  void set_sighash(const char* value);
+  void set_sighash(const char* value, size_t size);
+  ::std::string* mutable_sighash();
+  ::std::string* release_sighash();
+  void set_allocated_sighash(::std::string* sighash);
+
+  // uint64 expiration = 5;
+  void clear_expiration();
+  static const int kExpirationFieldNumber = 5;
+  ::google::protobuf::uint64 expiration() const;
+  void set_expiration(::google::protobuf::uint64 value);
 
   // @@protoc_insertion_point(class_scope:RepaymentOrder)
  private:
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
-  ::google::protobuf::internal::ArenaStringPtr deal_id_;
-  ::google::protobuf::internal::ArenaStringPtr transfer_id_;
+  ::google::protobuf::internal::ArenaStringPtr blockchain_;
+  ::google::protobuf::internal::ArenaStringPtr src_address_;
+  ::google::protobuf::internal::ArenaStringPtr dst_address_;
+  ::google::protobuf::internal::ArenaStringPtr amount_;
+  ::google::protobuf::internal::ArenaStringPtr block_;
+  ::google::protobuf::internal::ArenaStringPtr deal_;
+  ::google::protobuf::internal::ArenaStringPtr previous_owner_;
+  ::google::protobuf::internal::ArenaStringPtr transfer_;
+  ::google::protobuf::internal::ArenaStringPtr sighash_;
+  ::google::protobuf::uint64 expiration_;
   mutable int _cached_size_;
   friend struct ::protobuf_RepaymentOrder_2eproto::TableStruct;
   friend void ::protobuf_RepaymentOrder_2eproto::InitDefaultsRepaymentOrderImpl();
@@ -185,110 +297,495 @@ class RepaymentOrder : public ::google::protobuf::Message /* @@protoc_insertion_
 #endif  // __GNUC__
 // RepaymentOrder
 
-// string deal_id = 1;
-inline void RepaymentOrder::clear_deal_id() {
-  deal_id_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+// string blockchain = 1;
+inline void RepaymentOrder::clear_blockchain() {
+  blockchain_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline const ::std::string& RepaymentOrder::deal_id() const {
-  // @@protoc_insertion_point(field_get:RepaymentOrder.deal_id)
-  return deal_id_.GetNoArena();
+inline const ::std::string& RepaymentOrder::blockchain() const {
+  // @@protoc_insertion_point(field_get:RepaymentOrder.blockchain)
+  return blockchain_.GetNoArena();
 }
-inline void RepaymentOrder::set_deal_id(const ::std::string& value) {
+inline void RepaymentOrder::set_blockchain(const ::std::string& value) {
   
-  deal_id_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:RepaymentOrder.deal_id)
+  blockchain_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:RepaymentOrder.blockchain)
 }
 #if LANG_CXX11
-inline void RepaymentOrder::set_deal_id(::std::string&& value) {
+inline void RepaymentOrder::set_blockchain(::std::string&& value) {
   
-  deal_id_.SetNoArena(
+  blockchain_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:RepaymentOrder.deal_id)
+  // @@protoc_insertion_point(field_set_rvalue:RepaymentOrder.blockchain)
 }
 #endif
-inline void RepaymentOrder::set_deal_id(const char* value) {
+inline void RepaymentOrder::set_blockchain(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   
-  deal_id_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:RepaymentOrder.deal_id)
+  blockchain_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:RepaymentOrder.blockchain)
 }
-inline void RepaymentOrder::set_deal_id(const char* value, size_t size) {
+inline void RepaymentOrder::set_blockchain(const char* value, size_t size) {
   
-  deal_id_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+  blockchain_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:RepaymentOrder.deal_id)
+  // @@protoc_insertion_point(field_set_pointer:RepaymentOrder.blockchain)
 }
-inline ::std::string* RepaymentOrder::mutable_deal_id() {
+inline ::std::string* RepaymentOrder::mutable_blockchain() {
   
-  // @@protoc_insertion_point(field_mutable:RepaymentOrder.deal_id)
-  return deal_id_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  // @@protoc_insertion_point(field_mutable:RepaymentOrder.blockchain)
+  return blockchain_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline ::std::string* RepaymentOrder::release_deal_id() {
-  // @@protoc_insertion_point(field_release:RepaymentOrder.deal_id)
+inline ::std::string* RepaymentOrder::release_blockchain() {
+  // @@protoc_insertion_point(field_release:RepaymentOrder.blockchain)
   
-  return deal_id_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  return blockchain_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline void RepaymentOrder::set_allocated_deal_id(::std::string* deal_id) {
-  if (deal_id != NULL) {
+inline void RepaymentOrder::set_allocated_blockchain(::std::string* blockchain) {
+  if (blockchain != NULL) {
     
   } else {
     
   }
-  deal_id_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), deal_id);
-  // @@protoc_insertion_point(field_set_allocated:RepaymentOrder.deal_id)
+  blockchain_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), blockchain);
+  // @@protoc_insertion_point(field_set_allocated:RepaymentOrder.blockchain)
 }
 
-// string transfer_id = 2;
-inline void RepaymentOrder::clear_transfer_id() {
-  transfer_id_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+// string src_address = 2;
+inline void RepaymentOrder::clear_src_address() {
+  src_address_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline const ::std::string& RepaymentOrder::transfer_id() const {
-  // @@protoc_insertion_point(field_get:RepaymentOrder.transfer_id)
-  return transfer_id_.GetNoArena();
+inline const ::std::string& RepaymentOrder::src_address() const {
+  // @@protoc_insertion_point(field_get:RepaymentOrder.src_address)
+  return src_address_.GetNoArena();
 }
-inline void RepaymentOrder::set_transfer_id(const ::std::string& value) {
+inline void RepaymentOrder::set_src_address(const ::std::string& value) {
   
-  transfer_id_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:RepaymentOrder.transfer_id)
+  src_address_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:RepaymentOrder.src_address)
 }
 #if LANG_CXX11
-inline void RepaymentOrder::set_transfer_id(::std::string&& value) {
+inline void RepaymentOrder::set_src_address(::std::string&& value) {
   
-  transfer_id_.SetNoArena(
+  src_address_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:RepaymentOrder.transfer_id)
+  // @@protoc_insertion_point(field_set_rvalue:RepaymentOrder.src_address)
 }
 #endif
-inline void RepaymentOrder::set_transfer_id(const char* value) {
+inline void RepaymentOrder::set_src_address(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   
-  transfer_id_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:RepaymentOrder.transfer_id)
+  src_address_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:RepaymentOrder.src_address)
 }
-inline void RepaymentOrder::set_transfer_id(const char* value, size_t size) {
+inline void RepaymentOrder::set_src_address(const char* value, size_t size) {
   
-  transfer_id_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+  src_address_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:RepaymentOrder.transfer_id)
+  // @@protoc_insertion_point(field_set_pointer:RepaymentOrder.src_address)
 }
-inline ::std::string* RepaymentOrder::mutable_transfer_id() {
+inline ::std::string* RepaymentOrder::mutable_src_address() {
   
-  // @@protoc_insertion_point(field_mutable:RepaymentOrder.transfer_id)
-  return transfer_id_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  // @@protoc_insertion_point(field_mutable:RepaymentOrder.src_address)
+  return src_address_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline ::std::string* RepaymentOrder::release_transfer_id() {
-  // @@protoc_insertion_point(field_release:RepaymentOrder.transfer_id)
+inline ::std::string* RepaymentOrder::release_src_address() {
+  // @@protoc_insertion_point(field_release:RepaymentOrder.src_address)
   
-  return transfer_id_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  return src_address_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline void RepaymentOrder::set_allocated_transfer_id(::std::string* transfer_id) {
-  if (transfer_id != NULL) {
+inline void RepaymentOrder::set_allocated_src_address(::std::string* src_address) {
+  if (src_address != NULL) {
     
   } else {
     
   }
-  transfer_id_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), transfer_id);
-  // @@protoc_insertion_point(field_set_allocated:RepaymentOrder.transfer_id)
+  src_address_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), src_address);
+  // @@protoc_insertion_point(field_set_allocated:RepaymentOrder.src_address)
+}
+
+// string dst_address = 3;
+inline void RepaymentOrder::clear_dst_address() {
+  dst_address_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline const ::std::string& RepaymentOrder::dst_address() const {
+  // @@protoc_insertion_point(field_get:RepaymentOrder.dst_address)
+  return dst_address_.GetNoArena();
+}
+inline void RepaymentOrder::set_dst_address(const ::std::string& value) {
+  
+  dst_address_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:RepaymentOrder.dst_address)
+}
+#if LANG_CXX11
+inline void RepaymentOrder::set_dst_address(::std::string&& value) {
+  
+  dst_address_.SetNoArena(
+    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
+  // @@protoc_insertion_point(field_set_rvalue:RepaymentOrder.dst_address)
+}
+#endif
+inline void RepaymentOrder::set_dst_address(const char* value) {
+  GOOGLE_DCHECK(value != NULL);
+  
+  dst_address_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:RepaymentOrder.dst_address)
+}
+inline void RepaymentOrder::set_dst_address(const char* value, size_t size) {
+  
+  dst_address_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+  // @@protoc_insertion_point(field_set_pointer:RepaymentOrder.dst_address)
+}
+inline ::std::string* RepaymentOrder::mutable_dst_address() {
+  
+  // @@protoc_insertion_point(field_mutable:RepaymentOrder.dst_address)
+  return dst_address_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline ::std::string* RepaymentOrder::release_dst_address() {
+  // @@protoc_insertion_point(field_release:RepaymentOrder.dst_address)
+  
+  return dst_address_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline void RepaymentOrder::set_allocated_dst_address(::std::string* dst_address) {
+  if (dst_address != NULL) {
+    
+  } else {
+    
+  }
+  dst_address_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), dst_address);
+  // @@protoc_insertion_point(field_set_allocated:RepaymentOrder.dst_address)
+}
+
+// string amount = 4;
+inline void RepaymentOrder::clear_amount() {
+  amount_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline const ::std::string& RepaymentOrder::amount() const {
+  // @@protoc_insertion_point(field_get:RepaymentOrder.amount)
+  return amount_.GetNoArena();
+}
+inline void RepaymentOrder::set_amount(const ::std::string& value) {
+  
+  amount_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:RepaymentOrder.amount)
+}
+#if LANG_CXX11
+inline void RepaymentOrder::set_amount(::std::string&& value) {
+  
+  amount_.SetNoArena(
+    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
+  // @@protoc_insertion_point(field_set_rvalue:RepaymentOrder.amount)
+}
+#endif
+inline void RepaymentOrder::set_amount(const char* value) {
+  GOOGLE_DCHECK(value != NULL);
+  
+  amount_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:RepaymentOrder.amount)
+}
+inline void RepaymentOrder::set_amount(const char* value, size_t size) {
+  
+  amount_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+  // @@protoc_insertion_point(field_set_pointer:RepaymentOrder.amount)
+}
+inline ::std::string* RepaymentOrder::mutable_amount() {
+  
+  // @@protoc_insertion_point(field_mutable:RepaymentOrder.amount)
+  return amount_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline ::std::string* RepaymentOrder::release_amount() {
+  // @@protoc_insertion_point(field_release:RepaymentOrder.amount)
+  
+  return amount_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline void RepaymentOrder::set_allocated_amount(::std::string* amount) {
+  if (amount != NULL) {
+    
+  } else {
+    
+  }
+  amount_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), amount);
+  // @@protoc_insertion_point(field_set_allocated:RepaymentOrder.amount)
+}
+
+// uint64 expiration = 5;
+inline void RepaymentOrder::clear_expiration() {
+  expiration_ = GOOGLE_ULONGLONG(0);
+}
+inline ::google::protobuf::uint64 RepaymentOrder::expiration() const {
+  // @@protoc_insertion_point(field_get:RepaymentOrder.expiration)
+  return expiration_;
+}
+inline void RepaymentOrder::set_expiration(::google::protobuf::uint64 value) {
+  
+  expiration_ = value;
+  // @@protoc_insertion_point(field_set:RepaymentOrder.expiration)
+}
+
+// string block = 6;
+inline void RepaymentOrder::clear_block() {
+  block_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline const ::std::string& RepaymentOrder::block() const {
+  // @@protoc_insertion_point(field_get:RepaymentOrder.block)
+  return block_.GetNoArena();
+}
+inline void RepaymentOrder::set_block(const ::std::string& value) {
+  
+  block_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:RepaymentOrder.block)
+}
+#if LANG_CXX11
+inline void RepaymentOrder::set_block(::std::string&& value) {
+  
+  block_.SetNoArena(
+    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
+  // @@protoc_insertion_point(field_set_rvalue:RepaymentOrder.block)
+}
+#endif
+inline void RepaymentOrder::set_block(const char* value) {
+  GOOGLE_DCHECK(value != NULL);
+  
+  block_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:RepaymentOrder.block)
+}
+inline void RepaymentOrder::set_block(const char* value, size_t size) {
+  
+  block_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+  // @@protoc_insertion_point(field_set_pointer:RepaymentOrder.block)
+}
+inline ::std::string* RepaymentOrder::mutable_block() {
+  
+  // @@protoc_insertion_point(field_mutable:RepaymentOrder.block)
+  return block_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline ::std::string* RepaymentOrder::release_block() {
+  // @@protoc_insertion_point(field_release:RepaymentOrder.block)
+  
+  return block_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline void RepaymentOrder::set_allocated_block(::std::string* block) {
+  if (block != NULL) {
+    
+  } else {
+    
+  }
+  block_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), block);
+  // @@protoc_insertion_point(field_set_allocated:RepaymentOrder.block)
+}
+
+// string deal = 7;
+inline void RepaymentOrder::clear_deal() {
+  deal_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline const ::std::string& RepaymentOrder::deal() const {
+  // @@protoc_insertion_point(field_get:RepaymentOrder.deal)
+  return deal_.GetNoArena();
+}
+inline void RepaymentOrder::set_deal(const ::std::string& value) {
+  
+  deal_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:RepaymentOrder.deal)
+}
+#if LANG_CXX11
+inline void RepaymentOrder::set_deal(::std::string&& value) {
+  
+  deal_.SetNoArena(
+    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
+  // @@protoc_insertion_point(field_set_rvalue:RepaymentOrder.deal)
+}
+#endif
+inline void RepaymentOrder::set_deal(const char* value) {
+  GOOGLE_DCHECK(value != NULL);
+  
+  deal_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:RepaymentOrder.deal)
+}
+inline void RepaymentOrder::set_deal(const char* value, size_t size) {
+  
+  deal_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+  // @@protoc_insertion_point(field_set_pointer:RepaymentOrder.deal)
+}
+inline ::std::string* RepaymentOrder::mutable_deal() {
+  
+  // @@protoc_insertion_point(field_mutable:RepaymentOrder.deal)
+  return deal_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline ::std::string* RepaymentOrder::release_deal() {
+  // @@protoc_insertion_point(field_release:RepaymentOrder.deal)
+  
+  return deal_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline void RepaymentOrder::set_allocated_deal(::std::string* deal) {
+  if (deal != NULL) {
+    
+  } else {
+    
+  }
+  deal_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), deal);
+  // @@protoc_insertion_point(field_set_allocated:RepaymentOrder.deal)
+}
+
+// string previous_owner = 8;
+inline void RepaymentOrder::clear_previous_owner() {
+  previous_owner_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline const ::std::string& RepaymentOrder::previous_owner() const {
+  // @@protoc_insertion_point(field_get:RepaymentOrder.previous_owner)
+  return previous_owner_.GetNoArena();
+}
+inline void RepaymentOrder::set_previous_owner(const ::std::string& value) {
+  
+  previous_owner_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:RepaymentOrder.previous_owner)
+}
+#if LANG_CXX11
+inline void RepaymentOrder::set_previous_owner(::std::string&& value) {
+  
+  previous_owner_.SetNoArena(
+    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
+  // @@protoc_insertion_point(field_set_rvalue:RepaymentOrder.previous_owner)
+}
+#endif
+inline void RepaymentOrder::set_previous_owner(const char* value) {
+  GOOGLE_DCHECK(value != NULL);
+  
+  previous_owner_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:RepaymentOrder.previous_owner)
+}
+inline void RepaymentOrder::set_previous_owner(const char* value, size_t size) {
+  
+  previous_owner_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+  // @@protoc_insertion_point(field_set_pointer:RepaymentOrder.previous_owner)
+}
+inline ::std::string* RepaymentOrder::mutable_previous_owner() {
+  
+  // @@protoc_insertion_point(field_mutable:RepaymentOrder.previous_owner)
+  return previous_owner_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline ::std::string* RepaymentOrder::release_previous_owner() {
+  // @@protoc_insertion_point(field_release:RepaymentOrder.previous_owner)
+  
+  return previous_owner_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline void RepaymentOrder::set_allocated_previous_owner(::std::string* previous_owner) {
+  if (previous_owner != NULL) {
+    
+  } else {
+    
+  }
+  previous_owner_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), previous_owner);
+  // @@protoc_insertion_point(field_set_allocated:RepaymentOrder.previous_owner)
+}
+
+// string transfer = 9;
+inline void RepaymentOrder::clear_transfer() {
+  transfer_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline const ::std::string& RepaymentOrder::transfer() const {
+  // @@protoc_insertion_point(field_get:RepaymentOrder.transfer)
+  return transfer_.GetNoArena();
+}
+inline void RepaymentOrder::set_transfer(const ::std::string& value) {
+  
+  transfer_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:RepaymentOrder.transfer)
+}
+#if LANG_CXX11
+inline void RepaymentOrder::set_transfer(::std::string&& value) {
+  
+  transfer_.SetNoArena(
+    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
+  // @@protoc_insertion_point(field_set_rvalue:RepaymentOrder.transfer)
+}
+#endif
+inline void RepaymentOrder::set_transfer(const char* value) {
+  GOOGLE_DCHECK(value != NULL);
+  
+  transfer_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:RepaymentOrder.transfer)
+}
+inline void RepaymentOrder::set_transfer(const char* value, size_t size) {
+  
+  transfer_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+  // @@protoc_insertion_point(field_set_pointer:RepaymentOrder.transfer)
+}
+inline ::std::string* RepaymentOrder::mutable_transfer() {
+  
+  // @@protoc_insertion_point(field_mutable:RepaymentOrder.transfer)
+  return transfer_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline ::std::string* RepaymentOrder::release_transfer() {
+  // @@protoc_insertion_point(field_release:RepaymentOrder.transfer)
+  
+  return transfer_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline void RepaymentOrder::set_allocated_transfer(::std::string* transfer) {
+  if (transfer != NULL) {
+    
+  } else {
+    
+  }
+  transfer_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), transfer);
+  // @@protoc_insertion_point(field_set_allocated:RepaymentOrder.transfer)
+}
+
+// string sighash = 10;
+inline void RepaymentOrder::clear_sighash() {
+  sighash_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline const ::std::string& RepaymentOrder::sighash() const {
+  // @@protoc_insertion_point(field_get:RepaymentOrder.sighash)
+  return sighash_.GetNoArena();
+}
+inline void RepaymentOrder::set_sighash(const ::std::string& value) {
+  
+  sighash_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:RepaymentOrder.sighash)
+}
+#if LANG_CXX11
+inline void RepaymentOrder::set_sighash(::std::string&& value) {
+  
+  sighash_.SetNoArena(
+    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
+  // @@protoc_insertion_point(field_set_rvalue:RepaymentOrder.sighash)
+}
+#endif
+inline void RepaymentOrder::set_sighash(const char* value) {
+  GOOGLE_DCHECK(value != NULL);
+  
+  sighash_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:RepaymentOrder.sighash)
+}
+inline void RepaymentOrder::set_sighash(const char* value, size_t size) {
+  
+  sighash_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+  // @@protoc_insertion_point(field_set_pointer:RepaymentOrder.sighash)
+}
+inline ::std::string* RepaymentOrder::mutable_sighash() {
+  
+  // @@protoc_insertion_point(field_mutable:RepaymentOrder.sighash)
+  return sighash_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline ::std::string* RepaymentOrder::release_sighash() {
+  // @@protoc_insertion_point(field_release:RepaymentOrder.sighash)
+  
+  return sighash_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline void RepaymentOrder::set_allocated_sighash(::std::string* sighash) {
+  if (sighash != NULL) {
+    
+  } else {
+    
+  }
+  sighash_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), sighash);
+  // @@protoc_insertion_point(field_set_allocated:RepaymentOrder.sighash)
 }
 
 #ifdef __GNUC__

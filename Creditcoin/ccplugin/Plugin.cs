@@ -19,13 +19,11 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Reflection;
 using System.Runtime.Loader;
 using Microsoft.Extensions.Configuration;
-using Newtonsoft.Json.Linq;
 
 namespace ccplugin
 {
@@ -103,92 +101,16 @@ namespace ccplugin
     public interface ITxBuilder
     {
         byte[] BuildTx(string[] command, out string msg);
-    }
-
-    public class RpcHelper
-    {
-        private const string DATA = "data";
-        private const string LINK = "link";
-        private const string STATUS = "status";
-        private const string ERROR = "error";
-        private const string MESSAGE = "message";
-
-        public static string CompleteBatch(HttpClient httpClient, string url, ByteArrayContent content)
-        {
-            using (var responseMessage = httpClient.PostAsync(url, content).Result)
-            {
-                var json = responseMessage.Content.ReadAsStringAsync().Result;
-                var response = JObject.Parse(json);
-                Debug.Assert(response.ContainsKey(LINK));
-                var link = (string)response[LINK];
-                while (true)
-                {
-                    using (var linkResponseMessage = httpClient.GetAsync(link).Result)
-                    {
-                        json = linkResponseMessage.Content.ReadAsStringAsync().Result;
-                        response = JObject.Parse(json);
-                        Debug.Assert(response.ContainsKey(DATA));
-                        var data = (JArray)response[DATA];
-                        Debug.Assert(data.Count == 1);
-                        var obj = (JObject)data[0];
-                        Debug.Assert(obj.ContainsKey(STATUS));
-                        var status = (string)obj[STATUS];
-                        if (status.Equals("INVALID"))
-                        {
-                            return "Error: request rejected";
-                        }
-                        else if (status.Equals("COMMITTED"))
-                        {
-                            break;
-                        }
-                        else
-                        {
-                            System.Threading.Thread.Sleep(500);
-                        }
-                    }
-                }
-                return "Success";
-            }
-        }
-
-        public static byte[] ReadProtobuf(HttpClient httpClient, string url, out string msg)
-        {
-            var response = httpClient.GetAsync(url).Result;
-            var dealStateJson = response.Content.ReadAsStringAsync().Result;
-            var dealStateObj = JObject.Parse(dealStateJson);
-            if (dealStateObj.ContainsKey(ERROR))
-            {
-                msg = (string)dealStateObj[ERROR][MESSAGE];
-                return null;
-            }
-
-            Debug.Assert(dealStateObj.ContainsKey(DATA));
-            string data = (string)dealStateObj[DATA];
-            byte[] protobuf = Convert.FromBase64String(data);
-            msg = null;
-            return protobuf;
-        }
-
-        public static byte[] HexToBytes(string input)
-        {
-            Debug.Assert(input.Length % 2 == 0);
-            var outputLength = input.Length / 2;
-            var output = new byte[outputLength];
-            for (var i = 0; i < outputLength; i++)
-            {
-                output[i] = Convert.ToByte(input.Substring(i * 2, 2), 16);
-            }
-            return output;
-        }
+        string getSighash();
     }
 
     public interface ICCClientPlugin
     {
-        bool Run(IConfiguration cfg, HttpClient httpClient, ITxBuilder txBuilder, Dictionary<string, string> settings, string pluginsFolder, string url, string[] command, out bool inProgress, out string msg);
+        bool Run(bool txid, IConfiguration cfg, HttpClient httpClient, ITxBuilder txBuilder, Dictionary<string, string> settings, string progressId, string pluginsFolder, string url, string[] command, out bool inProgress, out string msg);
     }
 
     public interface ICCGatewayPlugin
     {
-        bool Run(IConfiguration cfg, string signerHexStr, string[] command, out string msg);
+        bool Run(IConfiguration cfg, string[] command, out string msg);
     }
 }

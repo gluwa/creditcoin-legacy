@@ -150,9 +150,23 @@ class AskOrder : public ::google::protobuf::Message /* @@protoc_insertion_point(
   ::std::string* release_blockchain();
   void set_allocated_blockchain(::std::string* blockchain);
 
-  // string amount = 2;
+  // string address = 2;
+  void clear_address();
+  static const int kAddressFieldNumber = 2;
+  const ::std::string& address() const;
+  void set_address(const ::std::string& value);
+  #if LANG_CXX11
+  void set_address(::std::string&& value);
+  #endif
+  void set_address(const char* value);
+  void set_address(const char* value, size_t size);
+  ::std::string* mutable_address();
+  ::std::string* release_address();
+  void set_allocated_address(::std::string* address);
+
+  // string amount = 3;
   void clear_amount();
-  static const int kAmountFieldNumber = 2;
+  static const int kAmountFieldNumber = 3;
   const ::std::string& amount() const;
   void set_amount(const ::std::string& value);
   #if LANG_CXX11
@@ -164,9 +178,9 @@ class AskOrder : public ::google::protobuf::Message /* @@protoc_insertion_point(
   ::std::string* release_amount();
   void set_allocated_amount(::std::string* amount);
 
-  // string interest = 3;
+  // string interest = 4;
   void clear_interest();
-  static const int kInterestFieldNumber = 3;
+  static const int kInterestFieldNumber = 4;
   const ::std::string& interest() const;
   void set_interest(const ::std::string& value);
   #if LANG_CXX11
@@ -178,33 +192,19 @@ class AskOrder : public ::google::protobuf::Message /* @@protoc_insertion_point(
   ::std::string* release_interest();
   void set_allocated_interest(::std::string* interest);
 
-  // string collateral_blockchain = 4;
-  void clear_collateral_blockchain();
-  static const int kCollateralBlockchainFieldNumber = 4;
-  const ::std::string& collateral_blockchain() const;
-  void set_collateral_blockchain(const ::std::string& value);
+  // string maturity = 5;
+  void clear_maturity();
+  static const int kMaturityFieldNumber = 5;
+  const ::std::string& maturity() const;
+  void set_maturity(const ::std::string& value);
   #if LANG_CXX11
-  void set_collateral_blockchain(::std::string&& value);
+  void set_maturity(::std::string&& value);
   #endif
-  void set_collateral_blockchain(const char* value);
-  void set_collateral_blockchain(const char* value, size_t size);
-  ::std::string* mutable_collateral_blockchain();
-  ::std::string* release_collateral_blockchain();
-  void set_allocated_collateral_blockchain(::std::string* collateral_blockchain);
-
-  // string collateral = 5;
-  void clear_collateral();
-  static const int kCollateralFieldNumber = 5;
-  const ::std::string& collateral() const;
-  void set_collateral(const ::std::string& value);
-  #if LANG_CXX11
-  void set_collateral(::std::string&& value);
-  #endif
-  void set_collateral(const char* value);
-  void set_collateral(const char* value, size_t size);
-  ::std::string* mutable_collateral();
-  ::std::string* release_collateral();
-  void set_allocated_collateral(::std::string* collateral);
+  void set_maturity(const char* value);
+  void set_maturity(const char* value, size_t size);
+  ::std::string* mutable_maturity();
+  ::std::string* release_maturity();
+  void set_allocated_maturity(::std::string* maturity);
 
   // string fee = 6;
   void clear_fee();
@@ -220,19 +220,19 @@ class AskOrder : public ::google::protobuf::Message /* @@protoc_insertion_point(
   ::std::string* release_fee();
   void set_allocated_fee(::std::string* fee);
 
-  // string transfer_id = 8;
-  void clear_transfer_id();
-  static const int kTransferIdFieldNumber = 8;
-  const ::std::string& transfer_id() const;
-  void set_transfer_id(const ::std::string& value);
+  // string block = 8;
+  void clear_block();
+  static const int kBlockFieldNumber = 8;
+  const ::std::string& block() const;
+  void set_block(const ::std::string& value);
   #if LANG_CXX11
-  void set_transfer_id(::std::string&& value);
+  void set_block(::std::string&& value);
   #endif
-  void set_transfer_id(const char* value);
-  void set_transfer_id(const char* value, size_t size);
-  ::std::string* mutable_transfer_id();
-  ::std::string* release_transfer_id();
-  void set_allocated_transfer_id(::std::string* transfer_id);
+  void set_block(const char* value);
+  void set_block(const char* value, size_t size);
+  ::std::string* mutable_block();
+  ::std::string* release_block();
+  void set_allocated_block(::std::string* block);
 
   // string sighash = 9;
   void clear_sighash();
@@ -259,12 +259,12 @@ class AskOrder : public ::google::protobuf::Message /* @@protoc_insertion_point(
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::ArenaStringPtr blockchain_;
+  ::google::protobuf::internal::ArenaStringPtr address_;
   ::google::protobuf::internal::ArenaStringPtr amount_;
   ::google::protobuf::internal::ArenaStringPtr interest_;
-  ::google::protobuf::internal::ArenaStringPtr collateral_blockchain_;
-  ::google::protobuf::internal::ArenaStringPtr collateral_;
+  ::google::protobuf::internal::ArenaStringPtr maturity_;
   ::google::protobuf::internal::ArenaStringPtr fee_;
-  ::google::protobuf::internal::ArenaStringPtr transfer_id_;
+  ::google::protobuf::internal::ArenaStringPtr block_;
   ::google::protobuf::internal::ArenaStringPtr sighash_;
   ::google::protobuf::uint64 expiration_;
   mutable int _cached_size_;
@@ -335,7 +335,60 @@ inline void AskOrder::set_allocated_blockchain(::std::string* blockchain) {
   // @@protoc_insertion_point(field_set_allocated:AskOrder.blockchain)
 }
 
-// string amount = 2;
+// string address = 2;
+inline void AskOrder::clear_address() {
+  address_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline const ::std::string& AskOrder::address() const {
+  // @@protoc_insertion_point(field_get:AskOrder.address)
+  return address_.GetNoArena();
+}
+inline void AskOrder::set_address(const ::std::string& value) {
+  
+  address_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:AskOrder.address)
+}
+#if LANG_CXX11
+inline void AskOrder::set_address(::std::string&& value) {
+  
+  address_.SetNoArena(
+    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
+  // @@protoc_insertion_point(field_set_rvalue:AskOrder.address)
+}
+#endif
+inline void AskOrder::set_address(const char* value) {
+  GOOGLE_DCHECK(value != NULL);
+  
+  address_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:AskOrder.address)
+}
+inline void AskOrder::set_address(const char* value, size_t size) {
+  
+  address_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+  // @@protoc_insertion_point(field_set_pointer:AskOrder.address)
+}
+inline ::std::string* AskOrder::mutable_address() {
+  
+  // @@protoc_insertion_point(field_mutable:AskOrder.address)
+  return address_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline ::std::string* AskOrder::release_address() {
+  // @@protoc_insertion_point(field_release:AskOrder.address)
+  
+  return address_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline void AskOrder::set_allocated_address(::std::string* address) {
+  if (address != NULL) {
+    
+  } else {
+    
+  }
+  address_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), address);
+  // @@protoc_insertion_point(field_set_allocated:AskOrder.address)
+}
+
+// string amount = 3;
 inline void AskOrder::clear_amount() {
   amount_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
@@ -388,7 +441,7 @@ inline void AskOrder::set_allocated_amount(::std::string* amount) {
   // @@protoc_insertion_point(field_set_allocated:AskOrder.amount)
 }
 
-// string interest = 3;
+// string interest = 4;
 inline void AskOrder::clear_interest() {
   interest_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
@@ -441,110 +494,57 @@ inline void AskOrder::set_allocated_interest(::std::string* interest) {
   // @@protoc_insertion_point(field_set_allocated:AskOrder.interest)
 }
 
-// string collateral_blockchain = 4;
-inline void AskOrder::clear_collateral_blockchain() {
-  collateral_blockchain_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+// string maturity = 5;
+inline void AskOrder::clear_maturity() {
+  maturity_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline const ::std::string& AskOrder::collateral_blockchain() const {
-  // @@protoc_insertion_point(field_get:AskOrder.collateral_blockchain)
-  return collateral_blockchain_.GetNoArena();
+inline const ::std::string& AskOrder::maturity() const {
+  // @@protoc_insertion_point(field_get:AskOrder.maturity)
+  return maturity_.GetNoArena();
 }
-inline void AskOrder::set_collateral_blockchain(const ::std::string& value) {
+inline void AskOrder::set_maturity(const ::std::string& value) {
   
-  collateral_blockchain_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:AskOrder.collateral_blockchain)
+  maturity_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:AskOrder.maturity)
 }
 #if LANG_CXX11
-inline void AskOrder::set_collateral_blockchain(::std::string&& value) {
+inline void AskOrder::set_maturity(::std::string&& value) {
   
-  collateral_blockchain_.SetNoArena(
+  maturity_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:AskOrder.collateral_blockchain)
+  // @@protoc_insertion_point(field_set_rvalue:AskOrder.maturity)
 }
 #endif
-inline void AskOrder::set_collateral_blockchain(const char* value) {
+inline void AskOrder::set_maturity(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   
-  collateral_blockchain_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:AskOrder.collateral_blockchain)
+  maturity_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:AskOrder.maturity)
 }
-inline void AskOrder::set_collateral_blockchain(const char* value, size_t size) {
+inline void AskOrder::set_maturity(const char* value, size_t size) {
   
-  collateral_blockchain_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+  maturity_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:AskOrder.collateral_blockchain)
+  // @@protoc_insertion_point(field_set_pointer:AskOrder.maturity)
 }
-inline ::std::string* AskOrder::mutable_collateral_blockchain() {
+inline ::std::string* AskOrder::mutable_maturity() {
   
-  // @@protoc_insertion_point(field_mutable:AskOrder.collateral_blockchain)
-  return collateral_blockchain_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  // @@protoc_insertion_point(field_mutable:AskOrder.maturity)
+  return maturity_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline ::std::string* AskOrder::release_collateral_blockchain() {
-  // @@protoc_insertion_point(field_release:AskOrder.collateral_blockchain)
+inline ::std::string* AskOrder::release_maturity() {
+  // @@protoc_insertion_point(field_release:AskOrder.maturity)
   
-  return collateral_blockchain_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  return maturity_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline void AskOrder::set_allocated_collateral_blockchain(::std::string* collateral_blockchain) {
-  if (collateral_blockchain != NULL) {
+inline void AskOrder::set_allocated_maturity(::std::string* maturity) {
+  if (maturity != NULL) {
     
   } else {
     
   }
-  collateral_blockchain_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), collateral_blockchain);
-  // @@protoc_insertion_point(field_set_allocated:AskOrder.collateral_blockchain)
-}
-
-// string collateral = 5;
-inline void AskOrder::clear_collateral() {
-  collateral_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-}
-inline const ::std::string& AskOrder::collateral() const {
-  // @@protoc_insertion_point(field_get:AskOrder.collateral)
-  return collateral_.GetNoArena();
-}
-inline void AskOrder::set_collateral(const ::std::string& value) {
-  
-  collateral_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:AskOrder.collateral)
-}
-#if LANG_CXX11
-inline void AskOrder::set_collateral(::std::string&& value) {
-  
-  collateral_.SetNoArena(
-    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:AskOrder.collateral)
-}
-#endif
-inline void AskOrder::set_collateral(const char* value) {
-  GOOGLE_DCHECK(value != NULL);
-  
-  collateral_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:AskOrder.collateral)
-}
-inline void AskOrder::set_collateral(const char* value, size_t size) {
-  
-  collateral_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
-      ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:AskOrder.collateral)
-}
-inline ::std::string* AskOrder::mutable_collateral() {
-  
-  // @@protoc_insertion_point(field_mutable:AskOrder.collateral)
-  return collateral_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-}
-inline ::std::string* AskOrder::release_collateral() {
-  // @@protoc_insertion_point(field_release:AskOrder.collateral)
-  
-  return collateral_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-}
-inline void AskOrder::set_allocated_collateral(::std::string* collateral) {
-  if (collateral != NULL) {
-    
-  } else {
-    
-  }
-  collateral_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), collateral);
-  // @@protoc_insertion_point(field_set_allocated:AskOrder.collateral)
+  maturity_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), maturity);
+  // @@protoc_insertion_point(field_set_allocated:AskOrder.maturity)
 }
 
 // string fee = 6;
@@ -614,57 +614,57 @@ inline void AskOrder::set_expiration(::google::protobuf::uint64 value) {
   // @@protoc_insertion_point(field_set:AskOrder.expiration)
 }
 
-// string transfer_id = 8;
-inline void AskOrder::clear_transfer_id() {
-  transfer_id_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+// string block = 8;
+inline void AskOrder::clear_block() {
+  block_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline const ::std::string& AskOrder::transfer_id() const {
-  // @@protoc_insertion_point(field_get:AskOrder.transfer_id)
-  return transfer_id_.GetNoArena();
+inline const ::std::string& AskOrder::block() const {
+  // @@protoc_insertion_point(field_get:AskOrder.block)
+  return block_.GetNoArena();
 }
-inline void AskOrder::set_transfer_id(const ::std::string& value) {
+inline void AskOrder::set_block(const ::std::string& value) {
   
-  transfer_id_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:AskOrder.transfer_id)
+  block_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:AskOrder.block)
 }
 #if LANG_CXX11
-inline void AskOrder::set_transfer_id(::std::string&& value) {
+inline void AskOrder::set_block(::std::string&& value) {
   
-  transfer_id_.SetNoArena(
+  block_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:AskOrder.transfer_id)
+  // @@protoc_insertion_point(field_set_rvalue:AskOrder.block)
 }
 #endif
-inline void AskOrder::set_transfer_id(const char* value) {
+inline void AskOrder::set_block(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   
-  transfer_id_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:AskOrder.transfer_id)
+  block_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:AskOrder.block)
 }
-inline void AskOrder::set_transfer_id(const char* value, size_t size) {
+inline void AskOrder::set_block(const char* value, size_t size) {
   
-  transfer_id_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+  block_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:AskOrder.transfer_id)
+  // @@protoc_insertion_point(field_set_pointer:AskOrder.block)
 }
-inline ::std::string* AskOrder::mutable_transfer_id() {
+inline ::std::string* AskOrder::mutable_block() {
   
-  // @@protoc_insertion_point(field_mutable:AskOrder.transfer_id)
-  return transfer_id_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  // @@protoc_insertion_point(field_mutable:AskOrder.block)
+  return block_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline ::std::string* AskOrder::release_transfer_id() {
-  // @@protoc_insertion_point(field_release:AskOrder.transfer_id)
+inline ::std::string* AskOrder::release_block() {
+  // @@protoc_insertion_point(field_release:AskOrder.block)
   
-  return transfer_id_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  return block_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline void AskOrder::set_allocated_transfer_id(::std::string* transfer_id) {
-  if (transfer_id != NULL) {
+inline void AskOrder::set_allocated_block(::std::string* block) {
+  if (block != NULL) {
     
   } else {
     
   }
-  transfer_id_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), transfer_id);
-  // @@protoc_insertion_point(field_set_allocated:AskOrder.transfer_id)
+  block_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), block);
+  // @@protoc_insertion_point(field_set_allocated:AskOrder.block)
 }
 
 // string sighash = 9;

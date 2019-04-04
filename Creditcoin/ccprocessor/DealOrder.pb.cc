@@ -54,11 +54,19 @@ const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_PROTOBUF_ATTRIBUT
   ~0u,  // no _extensions_
   ~0u,  // no _oneof_case_
   ~0u,  // no _weak_field_map_
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::DealOrder, ask_order_id_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::DealOrder, bid_order_id_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::DealOrder, collateral_transfer_id_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::DealOrder, unlock_funds_destination_address_id_),
-  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::DealOrder, unlock_collateral_destination_address_id_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::DealOrder, blockchain_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::DealOrder, src_address_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::DealOrder, dst_address_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::DealOrder, amount_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::DealOrder, interest_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::DealOrder, maturity_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::DealOrder, fee_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::DealOrder, expiration_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::DealOrder, block_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::DealOrder, loan_transfer_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::DealOrder, repayment_transfer_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::DealOrder, lock_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(::DealOrder, sighash_),
 };
 static const ::google::protobuf::internal::MigrationSchema schemas[] GOOGLE_PROTOBUF_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
   { 0, -1, sizeof(::DealOrder)},
@@ -90,15 +98,17 @@ void protobuf_RegisterTypes(const ::std::string&) {
 void AddDescriptorsImpl() {
   InitDefaults();
   static const char descriptor[] GOOGLE_PROTOBUF_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
-      "\n\017DealOrder.proto\"\266\001\n\tDealOrder\022\024\n\014ask_o"
-      "rder_id\030\001 \001(\t\022\024\n\014bid_order_id\030\002 \001(\t\022\036\n\026c"
-      "ollateral_transfer_id\030\003 \001(\t\022+\n#unlock_fu"
-      "nds_destination_address_id\030\004 \001(\t\0220\n(unlo"
-      "ck_collateral_destination_address_id\030\005 \001"
-      "(\tb\006proto3"
+      "\n\017DealOrder.proto\"\377\001\n\tDealOrder\022\022\n\nblock"
+      "chain\030\001 \001(\t\022\023\n\013src_address\030\002 \001(\t\022\023\n\013dst_"
+      "address\030\003 \001(\t\022\016\n\006amount\030\004 \001(\t\022\020\n\010interes"
+      "t\030\005 \001(\t\022\020\n\010maturity\030\006 \001(\t\022\013\n\003fee\030\007 \001(\t\022\022"
+      "\n\nexpiration\030\010 \001(\004\022\r\n\005block\030\t \001(\t\022\025\n\rloa"
+      "n_transfer\030\n \001(\t\022\032\n\022repayment_transfer\030\013"
+      " \001(\t\022\014\n\004lock\030\014 \001(\t\022\017\n\007sighash\030\r \001(\tb\006pro"
+      "to3"
   };
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-      descriptor, 210);
+      descriptor, 283);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "DealOrder.proto", &protobuf_RegisterTypes);
 }
@@ -120,11 +130,19 @@ struct StaticDescriptorInitializer {
 void DealOrder::InitAsDefaultInstance() {
 }
 #if !defined(_MSC_VER) || _MSC_VER >= 1900
-const int DealOrder::kAskOrderIdFieldNumber;
-const int DealOrder::kBidOrderIdFieldNumber;
-const int DealOrder::kCollateralTransferIdFieldNumber;
-const int DealOrder::kUnlockFundsDestinationAddressIdFieldNumber;
-const int DealOrder::kUnlockCollateralDestinationAddressIdFieldNumber;
+const int DealOrder::kBlockchainFieldNumber;
+const int DealOrder::kSrcAddressFieldNumber;
+const int DealOrder::kDstAddressFieldNumber;
+const int DealOrder::kAmountFieldNumber;
+const int DealOrder::kInterestFieldNumber;
+const int DealOrder::kMaturityFieldNumber;
+const int DealOrder::kFeeFieldNumber;
+const int DealOrder::kExpirationFieldNumber;
+const int DealOrder::kBlockFieldNumber;
+const int DealOrder::kLoanTransferFieldNumber;
+const int DealOrder::kRepaymentTransferFieldNumber;
+const int DealOrder::kLockFieldNumber;
+const int DealOrder::kSighashFieldNumber;
 #endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
 
 DealOrder::DealOrder()
@@ -140,35 +158,72 @@ DealOrder::DealOrder(const DealOrder& from)
       _internal_metadata_(NULL),
       _cached_size_(0) {
   _internal_metadata_.MergeFrom(from._internal_metadata_);
-  ask_order_id_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  if (from.ask_order_id().size() > 0) {
-    ask_order_id_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.ask_order_id_);
+  blockchain_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (from.blockchain().size() > 0) {
+    blockchain_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.blockchain_);
   }
-  bid_order_id_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  if (from.bid_order_id().size() > 0) {
-    bid_order_id_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.bid_order_id_);
+  src_address_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (from.src_address().size() > 0) {
+    src_address_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.src_address_);
   }
-  collateral_transfer_id_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  if (from.collateral_transfer_id().size() > 0) {
-    collateral_transfer_id_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.collateral_transfer_id_);
+  dst_address_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (from.dst_address().size() > 0) {
+    dst_address_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.dst_address_);
   }
-  unlock_funds_destination_address_id_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  if (from.unlock_funds_destination_address_id().size() > 0) {
-    unlock_funds_destination_address_id_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.unlock_funds_destination_address_id_);
+  amount_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (from.amount().size() > 0) {
+    amount_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.amount_);
   }
-  unlock_collateral_destination_address_id_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  if (from.unlock_collateral_destination_address_id().size() > 0) {
-    unlock_collateral_destination_address_id_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.unlock_collateral_destination_address_id_);
+  interest_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (from.interest().size() > 0) {
+    interest_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.interest_);
   }
+  maturity_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (from.maturity().size() > 0) {
+    maturity_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.maturity_);
+  }
+  fee_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (from.fee().size() > 0) {
+    fee_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.fee_);
+  }
+  block_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (from.block().size() > 0) {
+    block_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.block_);
+  }
+  loan_transfer_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (from.loan_transfer().size() > 0) {
+    loan_transfer_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.loan_transfer_);
+  }
+  repayment_transfer_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (from.repayment_transfer().size() > 0) {
+    repayment_transfer_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.repayment_transfer_);
+  }
+  lock_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (from.lock().size() > 0) {
+    lock_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.lock_);
+  }
+  sighash_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  if (from.sighash().size() > 0) {
+    sighash_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.sighash_);
+  }
+  expiration_ = from.expiration_;
   // @@protoc_insertion_point(copy_constructor:DealOrder)
 }
 
 void DealOrder::SharedCtor() {
-  ask_order_id_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  bid_order_id_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  collateral_transfer_id_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  unlock_funds_destination_address_id_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  unlock_collateral_destination_address_id_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  blockchain_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  src_address_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  dst_address_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  amount_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  interest_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  maturity_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  fee_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  block_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  loan_transfer_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  repayment_transfer_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  lock_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  sighash_.UnsafeSetDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  expiration_ = GOOGLE_ULONGLONG(0);
   _cached_size_ = 0;
 }
 
@@ -178,11 +233,18 @@ DealOrder::~DealOrder() {
 }
 
 void DealOrder::SharedDtor() {
-  ask_order_id_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  bid_order_id_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  collateral_transfer_id_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  unlock_funds_destination_address_id_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  unlock_collateral_destination_address_id_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  blockchain_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  src_address_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  dst_address_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  amount_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  interest_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  maturity_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  fee_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  block_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  loan_transfer_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  repayment_transfer_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  lock_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  sighash_.DestroyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
 
 void DealOrder::SetCachedSize(int size) const {
@@ -214,11 +276,19 @@ void DealOrder::Clear() {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  ask_order_id_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  bid_order_id_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  collateral_transfer_id_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  unlock_funds_destination_address_id_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-  unlock_collateral_destination_address_id_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  blockchain_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  src_address_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  dst_address_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  amount_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  interest_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  maturity_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  fee_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  block_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  loan_transfer_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  repayment_transfer_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  lock_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  sighash_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  expiration_ = GOOGLE_ULONGLONG(0);
   _internal_metadata_.Clear();
 }
 
@@ -232,80 +302,206 @@ bool DealOrder::MergePartialFromCodedStream(
     tag = p.first;
     if (!p.second) goto handle_unusual;
     switch (::google::protobuf::internal::WireFormatLite::GetTagFieldNumber(tag)) {
-      // string ask_order_id = 1;
+      // string blockchain = 1;
       case 1: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(10u /* 10 & 0xFF */)) {
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
-                input, this->mutable_ask_order_id()));
+                input, this->mutable_blockchain()));
           DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-            this->ask_order_id().data(), static_cast<int>(this->ask_order_id().length()),
+            this->blockchain().data(), static_cast<int>(this->blockchain().length()),
             ::google::protobuf::internal::WireFormatLite::PARSE,
-            "DealOrder.ask_order_id"));
+            "DealOrder.blockchain"));
         } else {
           goto handle_unusual;
         }
         break;
       }
 
-      // string bid_order_id = 2;
+      // string src_address = 2;
       case 2: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(18u /* 18 & 0xFF */)) {
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
-                input, this->mutable_bid_order_id()));
+                input, this->mutable_src_address()));
           DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-            this->bid_order_id().data(), static_cast<int>(this->bid_order_id().length()),
+            this->src_address().data(), static_cast<int>(this->src_address().length()),
             ::google::protobuf::internal::WireFormatLite::PARSE,
-            "DealOrder.bid_order_id"));
+            "DealOrder.src_address"));
         } else {
           goto handle_unusual;
         }
         break;
       }
 
-      // string collateral_transfer_id = 3;
+      // string dst_address = 3;
       case 3: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(26u /* 26 & 0xFF */)) {
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
-                input, this->mutable_collateral_transfer_id()));
+                input, this->mutable_dst_address()));
           DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-            this->collateral_transfer_id().data(), static_cast<int>(this->collateral_transfer_id().length()),
+            this->dst_address().data(), static_cast<int>(this->dst_address().length()),
             ::google::protobuf::internal::WireFormatLite::PARSE,
-            "DealOrder.collateral_transfer_id"));
+            "DealOrder.dst_address"));
         } else {
           goto handle_unusual;
         }
         break;
       }
 
-      // string unlock_funds_destination_address_id = 4;
+      // string amount = 4;
       case 4: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(34u /* 34 & 0xFF */)) {
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
-                input, this->mutable_unlock_funds_destination_address_id()));
+                input, this->mutable_amount()));
           DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-            this->unlock_funds_destination_address_id().data(), static_cast<int>(this->unlock_funds_destination_address_id().length()),
+            this->amount().data(), static_cast<int>(this->amount().length()),
             ::google::protobuf::internal::WireFormatLite::PARSE,
-            "DealOrder.unlock_funds_destination_address_id"));
+            "DealOrder.amount"));
         } else {
           goto handle_unusual;
         }
         break;
       }
 
-      // string unlock_collateral_destination_address_id = 5;
+      // string interest = 5;
       case 5: {
         if (static_cast< ::google::protobuf::uint8>(tag) ==
             static_cast< ::google::protobuf::uint8>(42u /* 42 & 0xFF */)) {
           DO_(::google::protobuf::internal::WireFormatLite::ReadString(
-                input, this->mutable_unlock_collateral_destination_address_id()));
+                input, this->mutable_interest()));
           DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-            this->unlock_collateral_destination_address_id().data(), static_cast<int>(this->unlock_collateral_destination_address_id().length()),
+            this->interest().data(), static_cast<int>(this->interest().length()),
             ::google::protobuf::internal::WireFormatLite::PARSE,
-            "DealOrder.unlock_collateral_destination_address_id"));
+            "DealOrder.interest"));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
+      // string maturity = 6;
+      case 6: {
+        if (static_cast< ::google::protobuf::uint8>(tag) ==
+            static_cast< ::google::protobuf::uint8>(50u /* 50 & 0xFF */)) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_maturity()));
+          DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+            this->maturity().data(), static_cast<int>(this->maturity().length()),
+            ::google::protobuf::internal::WireFormatLite::PARSE,
+            "DealOrder.maturity"));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
+      // string fee = 7;
+      case 7: {
+        if (static_cast< ::google::protobuf::uint8>(tag) ==
+            static_cast< ::google::protobuf::uint8>(58u /* 58 & 0xFF */)) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_fee()));
+          DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+            this->fee().data(), static_cast<int>(this->fee().length()),
+            ::google::protobuf::internal::WireFormatLite::PARSE,
+            "DealOrder.fee"));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
+      // uint64 expiration = 8;
+      case 8: {
+        if (static_cast< ::google::protobuf::uint8>(tag) ==
+            static_cast< ::google::protobuf::uint8>(64u /* 64 & 0xFF */)) {
+
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   ::google::protobuf::uint64, ::google::protobuf::internal::WireFormatLite::TYPE_UINT64>(
+                 input, &expiration_)));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
+      // string block = 9;
+      case 9: {
+        if (static_cast< ::google::protobuf::uint8>(tag) ==
+            static_cast< ::google::protobuf::uint8>(74u /* 74 & 0xFF */)) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_block()));
+          DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+            this->block().data(), static_cast<int>(this->block().length()),
+            ::google::protobuf::internal::WireFormatLite::PARSE,
+            "DealOrder.block"));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
+      // string loan_transfer = 10;
+      case 10: {
+        if (static_cast< ::google::protobuf::uint8>(tag) ==
+            static_cast< ::google::protobuf::uint8>(82u /* 82 & 0xFF */)) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_loan_transfer()));
+          DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+            this->loan_transfer().data(), static_cast<int>(this->loan_transfer().length()),
+            ::google::protobuf::internal::WireFormatLite::PARSE,
+            "DealOrder.loan_transfer"));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
+      // string repayment_transfer = 11;
+      case 11: {
+        if (static_cast< ::google::protobuf::uint8>(tag) ==
+            static_cast< ::google::protobuf::uint8>(90u /* 90 & 0xFF */)) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_repayment_transfer()));
+          DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+            this->repayment_transfer().data(), static_cast<int>(this->repayment_transfer().length()),
+            ::google::protobuf::internal::WireFormatLite::PARSE,
+            "DealOrder.repayment_transfer"));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
+      // string lock = 12;
+      case 12: {
+        if (static_cast< ::google::protobuf::uint8>(tag) ==
+            static_cast< ::google::protobuf::uint8>(98u /* 98 & 0xFF */)) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_lock()));
+          DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+            this->lock().data(), static_cast<int>(this->lock().length()),
+            ::google::protobuf::internal::WireFormatLite::PARSE,
+            "DealOrder.lock"));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
+      // string sighash = 13;
+      case 13: {
+        if (static_cast< ::google::protobuf::uint8>(tag) ==
+            static_cast< ::google::protobuf::uint8>(106u /* 106 & 0xFF */)) {
+          DO_(::google::protobuf::internal::WireFormatLite::ReadString(
+                input, this->mutable_sighash()));
+          DO_(::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+            this->sighash().data(), static_cast<int>(this->sighash().length()),
+            ::google::protobuf::internal::WireFormatLite::PARSE,
+            "DealOrder.sighash"));
         } else {
           goto handle_unusual;
         }
@@ -338,54 +534,129 @@ void DealOrder::SerializeWithCachedSizes(
   ::google::protobuf::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  // string ask_order_id = 1;
-  if (this->ask_order_id().size() > 0) {
+  // string blockchain = 1;
+  if (this->blockchain().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->ask_order_id().data(), static_cast<int>(this->ask_order_id().length()),
+      this->blockchain().data(), static_cast<int>(this->blockchain().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "DealOrder.ask_order_id");
+      "DealOrder.blockchain");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
-      1, this->ask_order_id(), output);
+      1, this->blockchain(), output);
   }
 
-  // string bid_order_id = 2;
-  if (this->bid_order_id().size() > 0) {
+  // string src_address = 2;
+  if (this->src_address().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->bid_order_id().data(), static_cast<int>(this->bid_order_id().length()),
+      this->src_address().data(), static_cast<int>(this->src_address().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "DealOrder.bid_order_id");
+      "DealOrder.src_address");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
-      2, this->bid_order_id(), output);
+      2, this->src_address(), output);
   }
 
-  // string collateral_transfer_id = 3;
-  if (this->collateral_transfer_id().size() > 0) {
+  // string dst_address = 3;
+  if (this->dst_address().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->collateral_transfer_id().data(), static_cast<int>(this->collateral_transfer_id().length()),
+      this->dst_address().data(), static_cast<int>(this->dst_address().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "DealOrder.collateral_transfer_id");
+      "DealOrder.dst_address");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
-      3, this->collateral_transfer_id(), output);
+      3, this->dst_address(), output);
   }
 
-  // string unlock_funds_destination_address_id = 4;
-  if (this->unlock_funds_destination_address_id().size() > 0) {
+  // string amount = 4;
+  if (this->amount().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->unlock_funds_destination_address_id().data(), static_cast<int>(this->unlock_funds_destination_address_id().length()),
+      this->amount().data(), static_cast<int>(this->amount().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "DealOrder.unlock_funds_destination_address_id");
+      "DealOrder.amount");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
-      4, this->unlock_funds_destination_address_id(), output);
+      4, this->amount(), output);
   }
 
-  // string unlock_collateral_destination_address_id = 5;
-  if (this->unlock_collateral_destination_address_id().size() > 0) {
+  // string interest = 5;
+  if (this->interest().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->unlock_collateral_destination_address_id().data(), static_cast<int>(this->unlock_collateral_destination_address_id().length()),
+      this->interest().data(), static_cast<int>(this->interest().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "DealOrder.unlock_collateral_destination_address_id");
+      "DealOrder.interest");
     ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
-      5, this->unlock_collateral_destination_address_id(), output);
+      5, this->interest(), output);
+  }
+
+  // string maturity = 6;
+  if (this->maturity().size() > 0) {
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+      this->maturity().data(), static_cast<int>(this->maturity().length()),
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
+      "DealOrder.maturity");
+    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
+      6, this->maturity(), output);
+  }
+
+  // string fee = 7;
+  if (this->fee().size() > 0) {
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+      this->fee().data(), static_cast<int>(this->fee().length()),
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
+      "DealOrder.fee");
+    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
+      7, this->fee(), output);
+  }
+
+  // uint64 expiration = 8;
+  if (this->expiration() != 0) {
+    ::google::protobuf::internal::WireFormatLite::WriteUInt64(8, this->expiration(), output);
+  }
+
+  // string block = 9;
+  if (this->block().size() > 0) {
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+      this->block().data(), static_cast<int>(this->block().length()),
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
+      "DealOrder.block");
+    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
+      9, this->block(), output);
+  }
+
+  // string loan_transfer = 10;
+  if (this->loan_transfer().size() > 0) {
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+      this->loan_transfer().data(), static_cast<int>(this->loan_transfer().length()),
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
+      "DealOrder.loan_transfer");
+    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
+      10, this->loan_transfer(), output);
+  }
+
+  // string repayment_transfer = 11;
+  if (this->repayment_transfer().size() > 0) {
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+      this->repayment_transfer().data(), static_cast<int>(this->repayment_transfer().length()),
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
+      "DealOrder.repayment_transfer");
+    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
+      11, this->repayment_transfer(), output);
+  }
+
+  // string lock = 12;
+  if (this->lock().size() > 0) {
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+      this->lock().data(), static_cast<int>(this->lock().length()),
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
+      "DealOrder.lock");
+    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
+      12, this->lock(), output);
+  }
+
+  // string sighash = 13;
+  if (this->sighash().size() > 0) {
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+      this->sighash().data(), static_cast<int>(this->sighash().length()),
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
+      "DealOrder.sighash");
+    ::google::protobuf::internal::WireFormatLite::WriteStringMaybeAliased(
+      13, this->sighash(), output);
   }
 
   if ((_internal_metadata_.have_unknown_fields() &&  ::google::protobuf::internal::GetProto3PreserveUnknownsDefault())) {
@@ -402,59 +673,141 @@ void DealOrder::SerializeWithCachedSizes(
   ::google::protobuf::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  // string ask_order_id = 1;
-  if (this->ask_order_id().size() > 0) {
+  // string blockchain = 1;
+  if (this->blockchain().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->ask_order_id().data(), static_cast<int>(this->ask_order_id().length()),
+      this->blockchain().data(), static_cast<int>(this->blockchain().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "DealOrder.ask_order_id");
+      "DealOrder.blockchain");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        1, this->ask_order_id(), target);
+        1, this->blockchain(), target);
   }
 
-  // string bid_order_id = 2;
-  if (this->bid_order_id().size() > 0) {
+  // string src_address = 2;
+  if (this->src_address().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->bid_order_id().data(), static_cast<int>(this->bid_order_id().length()),
+      this->src_address().data(), static_cast<int>(this->src_address().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "DealOrder.bid_order_id");
+      "DealOrder.src_address");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        2, this->bid_order_id(), target);
+        2, this->src_address(), target);
   }
 
-  // string collateral_transfer_id = 3;
-  if (this->collateral_transfer_id().size() > 0) {
+  // string dst_address = 3;
+  if (this->dst_address().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->collateral_transfer_id().data(), static_cast<int>(this->collateral_transfer_id().length()),
+      this->dst_address().data(), static_cast<int>(this->dst_address().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "DealOrder.collateral_transfer_id");
+      "DealOrder.dst_address");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        3, this->collateral_transfer_id(), target);
+        3, this->dst_address(), target);
   }
 
-  // string unlock_funds_destination_address_id = 4;
-  if (this->unlock_funds_destination_address_id().size() > 0) {
+  // string amount = 4;
+  if (this->amount().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->unlock_funds_destination_address_id().data(), static_cast<int>(this->unlock_funds_destination_address_id().length()),
+      this->amount().data(), static_cast<int>(this->amount().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "DealOrder.unlock_funds_destination_address_id");
+      "DealOrder.amount");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        4, this->unlock_funds_destination_address_id(), target);
+        4, this->amount(), target);
   }
 
-  // string unlock_collateral_destination_address_id = 5;
-  if (this->unlock_collateral_destination_address_id().size() > 0) {
+  // string interest = 5;
+  if (this->interest().size() > 0) {
     ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
-      this->unlock_collateral_destination_address_id().data(), static_cast<int>(this->unlock_collateral_destination_address_id().length()),
+      this->interest().data(), static_cast<int>(this->interest().length()),
       ::google::protobuf::internal::WireFormatLite::SERIALIZE,
-      "DealOrder.unlock_collateral_destination_address_id");
+      "DealOrder.interest");
     target =
       ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
-        5, this->unlock_collateral_destination_address_id(), target);
+        5, this->interest(), target);
+  }
+
+  // string maturity = 6;
+  if (this->maturity().size() > 0) {
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+      this->maturity().data(), static_cast<int>(this->maturity().length()),
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
+      "DealOrder.maturity");
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        6, this->maturity(), target);
+  }
+
+  // string fee = 7;
+  if (this->fee().size() > 0) {
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+      this->fee().data(), static_cast<int>(this->fee().length()),
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
+      "DealOrder.fee");
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        7, this->fee(), target);
+  }
+
+  // uint64 expiration = 8;
+  if (this->expiration() != 0) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteUInt64ToArray(8, this->expiration(), target);
+  }
+
+  // string block = 9;
+  if (this->block().size() > 0) {
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+      this->block().data(), static_cast<int>(this->block().length()),
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
+      "DealOrder.block");
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        9, this->block(), target);
+  }
+
+  // string loan_transfer = 10;
+  if (this->loan_transfer().size() > 0) {
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+      this->loan_transfer().data(), static_cast<int>(this->loan_transfer().length()),
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
+      "DealOrder.loan_transfer");
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        10, this->loan_transfer(), target);
+  }
+
+  // string repayment_transfer = 11;
+  if (this->repayment_transfer().size() > 0) {
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+      this->repayment_transfer().data(), static_cast<int>(this->repayment_transfer().length()),
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
+      "DealOrder.repayment_transfer");
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        11, this->repayment_transfer(), target);
+  }
+
+  // string lock = 12;
+  if (this->lock().size() > 0) {
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+      this->lock().data(), static_cast<int>(this->lock().length()),
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
+      "DealOrder.lock");
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        12, this->lock(), target);
+  }
+
+  // string sighash = 13;
+  if (this->sighash().size() > 0) {
+    ::google::protobuf::internal::WireFormatLite::VerifyUtf8String(
+      this->sighash().data(), static_cast<int>(this->sighash().length()),
+      ::google::protobuf::internal::WireFormatLite::SERIALIZE,
+      "DealOrder.sighash");
+    target =
+      ::google::protobuf::internal::WireFormatLite::WriteStringToArray(
+        13, this->sighash(), target);
   }
 
   if ((_internal_metadata_.have_unknown_fields() &&  ::google::protobuf::internal::GetProto3PreserveUnknownsDefault())) {
@@ -474,39 +827,95 @@ size_t DealOrder::ByteSizeLong() const {
       ::google::protobuf::internal::WireFormat::ComputeUnknownFieldsSize(
         (::google::protobuf::internal::GetProto3PreserveUnknownsDefault()   ? _internal_metadata_.unknown_fields()   : _internal_metadata_.default_instance()));
   }
-  // string ask_order_id = 1;
-  if (this->ask_order_id().size() > 0) {
+  // string blockchain = 1;
+  if (this->blockchain().size() > 0) {
     total_size += 1 +
       ::google::protobuf::internal::WireFormatLite::StringSize(
-        this->ask_order_id());
+        this->blockchain());
   }
 
-  // string bid_order_id = 2;
-  if (this->bid_order_id().size() > 0) {
+  // string src_address = 2;
+  if (this->src_address().size() > 0) {
     total_size += 1 +
       ::google::protobuf::internal::WireFormatLite::StringSize(
-        this->bid_order_id());
+        this->src_address());
   }
 
-  // string collateral_transfer_id = 3;
-  if (this->collateral_transfer_id().size() > 0) {
+  // string dst_address = 3;
+  if (this->dst_address().size() > 0) {
     total_size += 1 +
       ::google::protobuf::internal::WireFormatLite::StringSize(
-        this->collateral_transfer_id());
+        this->dst_address());
   }
 
-  // string unlock_funds_destination_address_id = 4;
-  if (this->unlock_funds_destination_address_id().size() > 0) {
+  // string amount = 4;
+  if (this->amount().size() > 0) {
     total_size += 1 +
       ::google::protobuf::internal::WireFormatLite::StringSize(
-        this->unlock_funds_destination_address_id());
+        this->amount());
   }
 
-  // string unlock_collateral_destination_address_id = 5;
-  if (this->unlock_collateral_destination_address_id().size() > 0) {
+  // string interest = 5;
+  if (this->interest().size() > 0) {
     total_size += 1 +
       ::google::protobuf::internal::WireFormatLite::StringSize(
-        this->unlock_collateral_destination_address_id());
+        this->interest());
+  }
+
+  // string maturity = 6;
+  if (this->maturity().size() > 0) {
+    total_size += 1 +
+      ::google::protobuf::internal::WireFormatLite::StringSize(
+        this->maturity());
+  }
+
+  // string fee = 7;
+  if (this->fee().size() > 0) {
+    total_size += 1 +
+      ::google::protobuf::internal::WireFormatLite::StringSize(
+        this->fee());
+  }
+
+  // string block = 9;
+  if (this->block().size() > 0) {
+    total_size += 1 +
+      ::google::protobuf::internal::WireFormatLite::StringSize(
+        this->block());
+  }
+
+  // string loan_transfer = 10;
+  if (this->loan_transfer().size() > 0) {
+    total_size += 1 +
+      ::google::protobuf::internal::WireFormatLite::StringSize(
+        this->loan_transfer());
+  }
+
+  // string repayment_transfer = 11;
+  if (this->repayment_transfer().size() > 0) {
+    total_size += 1 +
+      ::google::protobuf::internal::WireFormatLite::StringSize(
+        this->repayment_transfer());
+  }
+
+  // string lock = 12;
+  if (this->lock().size() > 0) {
+    total_size += 1 +
+      ::google::protobuf::internal::WireFormatLite::StringSize(
+        this->lock());
+  }
+
+  // string sighash = 13;
+  if (this->sighash().size() > 0) {
+    total_size += 1 +
+      ::google::protobuf::internal::WireFormatLite::StringSize(
+        this->sighash());
+  }
+
+  // uint64 expiration = 8;
+  if (this->expiration() != 0) {
+    total_size += 1 +
+      ::google::protobuf::internal::WireFormatLite::UInt64Size(
+        this->expiration());
   }
 
   int cached_size = ::google::protobuf::internal::ToCachedSize(total_size);
@@ -538,25 +947,56 @@ void DealOrder::MergeFrom(const DealOrder& from) {
   ::google::protobuf::uint32 cached_has_bits = 0;
   (void) cached_has_bits;
 
-  if (from.ask_order_id().size() > 0) {
+  if (from.blockchain().size() > 0) {
 
-    ask_order_id_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.ask_order_id_);
+    blockchain_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.blockchain_);
   }
-  if (from.bid_order_id().size() > 0) {
+  if (from.src_address().size() > 0) {
 
-    bid_order_id_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.bid_order_id_);
+    src_address_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.src_address_);
   }
-  if (from.collateral_transfer_id().size() > 0) {
+  if (from.dst_address().size() > 0) {
 
-    collateral_transfer_id_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.collateral_transfer_id_);
+    dst_address_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.dst_address_);
   }
-  if (from.unlock_funds_destination_address_id().size() > 0) {
+  if (from.amount().size() > 0) {
 
-    unlock_funds_destination_address_id_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.unlock_funds_destination_address_id_);
+    amount_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.amount_);
   }
-  if (from.unlock_collateral_destination_address_id().size() > 0) {
+  if (from.interest().size() > 0) {
 
-    unlock_collateral_destination_address_id_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.unlock_collateral_destination_address_id_);
+    interest_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.interest_);
+  }
+  if (from.maturity().size() > 0) {
+
+    maturity_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.maturity_);
+  }
+  if (from.fee().size() > 0) {
+
+    fee_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.fee_);
+  }
+  if (from.block().size() > 0) {
+
+    block_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.block_);
+  }
+  if (from.loan_transfer().size() > 0) {
+
+    loan_transfer_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.loan_transfer_);
+  }
+  if (from.repayment_transfer().size() > 0) {
+
+    repayment_transfer_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.repayment_transfer_);
+  }
+  if (from.lock().size() > 0) {
+
+    lock_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.lock_);
+  }
+  if (from.sighash().size() > 0) {
+
+    sighash_.AssignWithDefault(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), from.sighash_);
+  }
+  if (from.expiration() != 0) {
+    set_expiration(from.expiration());
   }
 }
 
@@ -584,11 +1024,19 @@ void DealOrder::Swap(DealOrder* other) {
 }
 void DealOrder::InternalSwap(DealOrder* other) {
   using std::swap;
-  ask_order_id_.Swap(&other->ask_order_id_);
-  bid_order_id_.Swap(&other->bid_order_id_);
-  collateral_transfer_id_.Swap(&other->collateral_transfer_id_);
-  unlock_funds_destination_address_id_.Swap(&other->unlock_funds_destination_address_id_);
-  unlock_collateral_destination_address_id_.Swap(&other->unlock_collateral_destination_address_id_);
+  blockchain_.Swap(&other->blockchain_);
+  src_address_.Swap(&other->src_address_);
+  dst_address_.Swap(&other->dst_address_);
+  amount_.Swap(&other->amount_);
+  interest_.Swap(&other->interest_);
+  maturity_.Swap(&other->maturity_);
+  fee_.Swap(&other->fee_);
+  block_.Swap(&other->block_);
+  loan_transfer_.Swap(&other->loan_transfer_);
+  repayment_transfer_.Swap(&other->repayment_transfer_);
+  lock_.Swap(&other->lock_);
+  sighash_.Swap(&other->sighash_);
+  swap(expiration_, other->expiration_);
   _internal_metadata_.Swap(&other->_internal_metadata_);
   swap(_cached_size_, other->_cached_size_);
 }

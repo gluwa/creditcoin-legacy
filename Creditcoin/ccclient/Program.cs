@@ -27,12 +27,7 @@ using System.Net.Http;
 using System.Collections.Generic;
 using System.Diagnostics;
 using Newtonsoft.Json.Linq;
-using Sawtooth.Sdk;
-using System.Security.Cryptography;
-using System.Text;
 using System.Numerics;
-using NetMQ.Sockets;
-using NetMQ;
 
 namespace ccclient
 {
@@ -42,40 +37,142 @@ namespace ccclient
 
         private static HttpClient httpClient = new HttpClient();
 
-        private static string creditCoinNamespace = "8a1a04";
-        private static string settingNamespace = "000000";
-        private static string walletPrefix = "0000";
-        private static string addressPrefix = "1000";
-        private static string transferPrefix = "2000";
-        private static string askOrderPrefix = "3000";
-        private static string bidOrderPrefix = "4000";
-        private static string dealOrderPrefix = "5000";
-        private static string repaymentOrderPrefix = "6000";
-
         private const string ERROR = "error";
         private const string DATA = "data";
         private const string ADDRESS = "address";
         private const string MESSAGE = "message";
+        private const string PAGING = "paging";
+        private const string NEXT = "next";
 
-        private const int SKIP_TO_GET_60 = 512 / 8 * 2 - 60; // 512 - hash size, 8 - bits in byte, 2 - hex digits for byte, 60 - merkle address length (70) without namespace length (6) and prexix length (4)
+        private const string configParamPrefix = "-config:";
+        private const string progressParamPrefix = "-progress:";
+        private const string txidParam = "-txid";
 
         static void Main(string[] args)
         {
             try
             {
-                IConfiguration config = new ConfigurationBuilder()
+                string root = Directory.GetCurrentDirectory();
+                string pluginFolder = TxBuilder.GetPluginsFolder(root);
+                if (pluginFolder == null)
+                {
+                    Console.WriteLine("plugins subfolder not found");
+                    return;
+                }
+
+                string progressId = "";
+                bool ignoreOldProgress = false;
+                if (args.Length > 0 && args[0].StartsWith(progressParamPrefix))
+                {
+                    progressId = args[0].Substring(progressParamPrefix.Length);
+                    if (progressId[0] == '*')
+                    {
+                        ignoreOldProgress = true;
+                        progressId = progressId.Substring(1);
+                    }
+                    args = args.Skip(1).ToArray();
+                }
+
+                string progress = Path.Combine(pluginFolder, $"progress{progressId}.txt");
+                if (ignoreOldProgress)
+                {
+                    File.Delete(progress);
+                }
+
+                if (File.Exists(progress))
+                {
+                    Console.WriteLine("Found unfinished action, retrying...");
+                    args = File.ReadAllText(progress).Split();
+                }
+                else if (args.Length > 0)
+                {
+                    File.WriteAllText(progress, string.Join(' ', args));
+                }
+
+                if (args.Length < 1)
+                {
+                    Console.WriteLine("Usage: ccclient [-progress:[*]progressId] [-config:configFileName] [-txid] command [parameters]");
+                    Console.WriteLine("commands:");
+                    Console.WriteLine("sighash");
+                    Console.WriteLine("tip [numBlocksBelow]");
+                    Console.WriteLine("list Settings");
+                    Console.WriteLine("list Wallets");
+                    Console.WriteLine("list Addresses");
+                    Console.WriteLine("list Transfers");
+                    Console.WriteLine("list AskOrders");
+                    Console.WriteLine("list BidOrders");
+                    Console.WriteLine("list Offers");
+                    Console.WriteLine("list DealOrders");
+                    Console.WriteLine("list RepaymentOrders");
+                    Console.WriteLine("show Balance sighash|0");
+                    Console.WriteLine("show Address sighash|0 blockchain address network");
+                    Console.WriteLine("show MatchingOrders sighash|0");
+                    Console.WriteLine("show CurrentOffers sighash|0");
+                    Console.WriteLine("show CreditHistory sighash|0");
+                    Console.WriteLine("show NewDeals sighash|0");
+                    Console.WriteLine("show Transfer sighash|0 orderId");
+                    Console.WriteLine("show CurrentLoans sighash|0");
+                    Console.WriteLine("show NewRepaymentOrders sighash|0");
+                    Console.WriteLine("show CurrentRepaymentOrders sighash|0");
+                    Console.WriteLine("creditcoin SendFunds amount sighash ");
+                    Console.WriteLine("creditcoin RegisterAddress blockchain address network");
+                    Console.WriteLine("creditcoin RegisterTransfer gain orderId txId");
+                    Console.WriteLine("creditcoin AddAskOrder addressId amount interest maturity fee expiration");
+                    Console.WriteLine("creditcoin AddBidOrder addressId amount interest maturity fee expiration");
+                    Console.WriteLine("creditcoin AddOffer askOrderId bidOrderId expiration");
+                    Console.WriteLine("creditcoin AddDealOrder offerId expiration");
+                    Console.WriteLine("creditcoin CompleteDealOrder dealOrderId transferId");
+                    Console.WriteLine("creditcoin LockDealOrder dealOrderId");
+                    Console.WriteLine("creditcoin CloseDealOrder dealOrderId transferId");
+                    Console.WriteLine("creditcoin Exempt dealOrderId transferId");
+                    Console.WriteLine("creditcoin AddRepaymentOrder dealOrderId addressId amount expiration");
+                    Console.WriteLine("creditcoin CompleteRepaymentOrder repaymentOrderId");
+                    Console.WriteLine("creditcoin CloseRepaymentOrder repaymentOrderId transferId");
+                    Console.WriteLine("creditcoin CollectCoins addressId amount txId");
+                    Console.WriteLine("bitcoin RegisterTransfer gain orderId sourceTxId");
+                    Console.WriteLine("ethereum RegisterTransfer gain orderId");
+                    Console.WriteLine("ethereum CollectCoins amount");
+                    return;
+                }
+
+                string configFile = null;
+                if (args.Length > 0 && args[0].StartsWith(configParamPrefix))
+                {
+                    configFile = args[0].Substring(configParamPrefix.Length);
+                    args = args.Skip(1).ToArray();
+                    if (!File.Exists(configFile))
+                    {
+                        configFile = Path.Combine(pluginFolder, configFile);
+                        if (!File.Exists(configFile))
+                        {
+                            Console.WriteLine("Cannot find the specified config file");
+                            return;
+                        }
+                    }
+                }
+                bool txid = false;
+                if (args.Length > 0 && args[0].Equals(txidParam))
+                {
+                    args = args.Skip(1).ToArray();
+                    txid = true;
+                }
+
+                string action;
+                string[] command;
+
+                var builder = new ConfigurationBuilder()
                     .AddJsonFile("appsettings.json", true, false)
 #if DEBUG
                     .AddJsonFile("appsettings.dev.json", true, false)
 #endif
-                    .Build();
-                string signerHexStr = config["signer"];
-                if (string.IsNullOrWhiteSpace(signerHexStr))
+                    ;
+
+                if (configFile != null)
                 {
-                    Console.WriteLine("Signer is not configured");
-                    return;
+                    builder.AddJsonFile(configFile, true, false);
                 }
-                var signer = new Signer(RpcHelper.HexToBytes(signerHexStr));
+
+                IConfiguration config = builder.Build();
 
                 string creditcoinRestApiURL = config["creditcoinRestApiURL"];
                 if (!string.IsNullOrWhiteSpace(creditcoinRestApiURL))
@@ -83,451 +180,364 @@ namespace ccclient
                     creditcoinUrl = creditcoinRestApiURL;
                 }
 
-                string root = Directory.GetCurrentDirectory();
-                string folder = TxBuilder.GetPluginsFolder(root);
-                if (folder == null)
+                Signer signer = getSigner(config);
+
+                if (args.Length < 1)
                 {
-                    Console.WriteLine("plugins subfolder not found");
+                    Console.WriteLine("Command is not provided");
                     return;
                 }
 
-                string progress = Path.Combine(folder, "progress.txt");
-
-                string action;
-                string[] command;
-                if (File.Exists(progress))
-                {
-                    Console.WriteLine("Found unfinished action, retrying...");
-                    args = File.ReadAllText(progress).Split();
-                }
-                else
-                {
-                    File.WriteAllText(progress, string.Join(' ', args));
-                }
                 action = args[0].ToLower();
                 command = args.Skip(1).ToArray();
-                var txBuilder = new TxBuilder(signer);
-
-                var settings = new Dictionary<string, string>();
-                filter(settingNamespace, (string address, byte[] protobuf) =>
-                {
-                    Setting setting = Setting.Parser.ParseFrom(protobuf);
-                    foreach (var entry in setting.Entries)
-                    {
-                        settings.Add(entry.Key, entry.Value);
-                    }
-                });
 
                 bool inProgress = false;
 
-                // API:
-                // list Settings|Wallets|Addresses|Transfers|AskOrders|BidOrders|DealOrders|RepaymentOrders|
-                // list Balance
-                // list Sighash
-                // list Address blockchain address
-                // list UnusedTransfers addressId amount
-                // list MatchingOrders
-                // list CreditHistory sighash
-                // list NewDeals
-                // list RunningDeals
-                // list NewRepaymentOrders
-                // creditcoin AddFunds amount sighash (creditcoin AddFunds 1000000 16de574ac8ac3067977df056ecff51345672d25d528303b3555ab2aa4cd5)
-                //      AddFunds only works for a registered signer
-                // creditcoin SendFunds amount sighash (creditcoin SendFunds 200000 8704a4f77befea5c8082d414f98dc16e4ba82a0898422d031f41693260a0)
-                // creditcoin RegisterAddress blockchain address (creditcoin RegisterAddress bitcoin <BITCOIN-ADDRESS>)
-                // creditcoin AddAskOrder blockchain amount interest blockchain collateral fee expiration capitalLockTransferId (creditcoin AddAskOrder bitcoin 1000000 10 bitcoin 50 100 1565386152 <TRANSFER-ID>)
-                // creditcoin AddBidOrder blockchain amount interest blockchain collateral fee expiration (creditcoin AddAskOrder bitcoin 1000000 10 bitcoin 50 100 1565386152)
-                // creditcoin AddDealOrder askOrderId bidOrderId
-                // creditcoin CompleteDealOrder dealOrderId collateralLockTransferId
-                // creditcoin AddRepaymentOrder dealOrderId
-                // creditcoin CompleteRepaymentOrder repaymentOrderId transferId
-                // creditcoin CollectCoins transferId
-                // <blockchain> RegisterTransfer ...
-                //      bitcoin RegisterTransfer registeredAddressId amount sourceTxId
-                //      ethereum RegisterTransfer registeredAddressId amount [erc20]
-                // unlock Funds dealOrderId addressToUnlockFundsTo
-                // unlock Collateral repaymentOrderId addressToUnlockCollateralTo
-
-                if (action.Equals("unlock"))
+                if (action.Equals("sighash"))
                 {
-                    string externalGatewayAddress;
-                    if (!settings.TryGetValue("sawtooth.validator.gateway", out externalGatewayAddress))
+                    Console.WriteLine(TxBuilder.getSighash(signer));
+                }
+                else if (action.Equals("tip"))
+                {
+                    BigInteger headIdx = GetHeadIdx();
+                    if (command.Length == 1)
                     {
-                        Console.WriteLine("Error: external gateway is not configured");
+                        BigInteger num;
+                        if (!BigInteger.TryParse(command[0], out num))
+                        {
+                            throw new Exception("Invalid numerics");
+                        }
+                        headIdx -= num;
                     }
-                    else
-                    {
-                        if (!externalGatewayAddress.StartsWith("tcp://"))
-                        {
-                            externalGatewayAddress = "tcp://" + externalGatewayAddress;
-                        }
-                        bool success = true;
-                        switch (command[0].ToLower())
-                        {
-                            case "funds":
-                                Debug.Assert(command.Length == 3);
-                                {
-                                    var dealOrderId = command[1].ToLower();
-                                    var addressToUnlockFundsTo = command[2].ToLower();
-                                    string msg;
-                                    string blockchain = null;
-                                    var protobuf = RpcHelper.ReadProtobuf(httpClient, $"{creditcoinUrl}/state/{dealOrderId}", out msg);
-                                    if (protobuf != null)
-                                    {
-                                        var dealOrder = DealOrder.Parser.ParseFrom(protobuf);
-                                        protobuf = RpcHelper.ReadProtobuf(httpClient, $"{creditcoinUrl}/state/{dealOrder.AskOrderId}", out msg);
-                                        if (protobuf != null)
-                                        {
-                                            var askOrder = AskOrder.Parser.ParseFrom(protobuf);
-                                            blockchain = askOrder.Blockchain;
-                                        }
-                                    }
-
-                                    if (blockchain == null)
-                                    {
-                                        success = false;
-                                        Console.WriteLine("Error: " + msg);
-                                    }
-                                    else
-                                    {
-                                        string escrow;
-                                        if (!settings.TryGetValue("sawtooth.escrow." + blockchain, out escrow))
-                                        {
-                                            success = false;
-                                            Console.WriteLine("Error: escrow is not configured for " + blockchain);
-                                        }
-                                        else
-                                        {
-                                            using (var socket = new RequestSocket())
-                                            {
-                                                socket.Connect(externalGatewayAddress);
-                                                var request = $"{blockchain} unlock funds {escrow} {dealOrderId} {addressToUnlockFundsTo}";
-                                                socket.SendFrame(request);
-                                                string response = socket.ReceiveFrameString();
-                                                if (response != "good")
-                                                {
-                                                    success = false;
-                                                    Console.WriteLine("Error: failed to execute the global gateway command");
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                break;
-                            case "collateral":
-                                Debug.Assert(command.Length == 3);
-                                {
-                                    var repaymentOrderId = command[1].ToLower();
-                                    var addressToUnlockCollateralsTo = command[2].ToLower();
-                                    string msg;
-                                    string blockchain = null;
-                                    var protobuf = RpcHelper.ReadProtobuf(httpClient, $"{creditcoinUrl}/state/{repaymentOrderId}", out msg);
-                                    if (protobuf != null)
-                                    {
-                                        var repaymentOrder = RepaymentOrder.Parser.ParseFrom(protobuf);
-                                        protobuf = RpcHelper.ReadProtobuf(httpClient, $"{creditcoinUrl}/state/{repaymentOrder.DealId}", out msg);
-                                        if (protobuf != null)
-                                        {
-                                            var dealOrder = DealOrder.Parser.ParseFrom(protobuf);
-                                            protobuf = RpcHelper.ReadProtobuf(httpClient, $"{creditcoinUrl}/state/{dealOrder.AskOrderId}", out msg);
-                                            if (protobuf != null)
-                                            {
-                                                var askOrder = AskOrder.Parser.ParseFrom(protobuf);
-                                                blockchain = askOrder.Blockchain;
-                                            }
-                                        }
-                                    }
-
-                                    if (blockchain == null)
-                                    {
-                                        success = false;
-                                        Console.WriteLine("Error: " + msg);
-                                    }
-                                    else
-                                    {
-                                        string escrow;
-                                        if (!settings.TryGetValue("sawtooth.escrow." + blockchain, out escrow))
-                                        {
-                                            success = false;
-                                            Console.WriteLine("Error: escrow is not configured for " + blockchain);
-                                        }
-                                        else
-                                        {
-                                            using (var socket = new RequestSocket())
-                                            {
-                                                socket.Connect(externalGatewayAddress);
-                                                var request = $"{blockchain} unlock collateral {escrow} {repaymentOrderId} {addressToUnlockCollateralsTo}";
-                                                socket.SendFrame(request);
-                                                string response = socket.ReceiveFrameString();
-                                                if (response != "good")
-                                                {
-                                                    success = false;
-                                                    Console.WriteLine("Error: failed to execute the global gateway command");
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                break;
-                        }
-                        if (success)
-                        {
-                            Console.WriteLine("Success");
-                        }
-                    }
+                    Console.WriteLine(headIdx);
                 }
                 else if (action.Equals("list"))
                 {
-                    bool success = true;
-
+                    if (command.Length > 2)
+                    {
+                        throw new Exception("1 or 2 parametersd expected");
+                    }
+                    string id = null;
+                    if (command.Length == 2)
+                    {
+                        id = command[1];
+                    }
                     if (command[0].Equals("settings", StringComparison.OrdinalIgnoreCase))
                     {
-                        Debug.Assert(command.Length == 1);
-                        filter(settingNamespace, (string objid, byte[] protobuf) =>
+                        filter(RpcHelper.settingNamespace, (string objid, byte[] protobuf) =>
                         {
-                            Setting setting = Setting.Parser.ParseFrom(protobuf);
-                            foreach (var entry in setting.Entries)
+                            if (id == null || id != null && id.Equals(objid))
                             {
-                                Console.WriteLine($"{entry.Key}: {entry.Value}");
+                                Setting setting = Setting.Parser.ParseFrom(protobuf);
+                                foreach (var entry in setting.Entries)
+                                {
+                                    Console.WriteLine($"{entry.Key}: {entry.Value}");
+                                }
                             }
                         });
                     }
                     else if (command[0].Equals("wallets", StringComparison.OrdinalIgnoreCase))
                     {
-                        Debug.Assert(command.Length == 1);
-                        filter(creditCoinNamespace + walletPrefix, (string objid, byte[] protobuf) =>
+                        filter(RpcHelper.creditCoinNamespace + RpcHelper.walletPrefix, (string objid, byte[] protobuf) =>
                         {
-                            Wallet wallet = Wallet.Parser.ParseFrom(protobuf);
-                            Console.WriteLine($"wallet({objid}) amount:{wallet.Amount}");
-                        });
-                    }
-                    else if (command[0].Equals("balance", StringComparison.OrdinalIgnoreCase))
-                    {
-                        Debug.Assert(command.Length == 1);
-                        {
-                            string sighash = sha256(signer.GetPublicKey().ToHexString());
-                            string prefix = creditCoinNamespace + walletPrefix;
-                            string id = prefix + sighash;
-
-                            filter(prefix, (string objid, byte[] protobuf) =>
+                            if (id == null || id != null && id.Equals(objid))
                             {
                                 Wallet wallet = Wallet.Parser.ParseFrom(protobuf);
-                                if (objid.Equals(id))
-                                {
-                                    Console.WriteLine($"balance for {sighash} is {wallet.Amount}");
-                                }
-                            });
-                        }
+                                Console.WriteLine($"wallet({objid}) amount:{wallet.Amount}");
+                            }
+                        });
                     }
                     else if (command[0].Equals("addresses", StringComparison.OrdinalIgnoreCase))
                     {
-                        Debug.Assert(command.Length == 1);
-                        filter(creditCoinNamespace + addressPrefix, (string objid, byte[] protobuf) =>
+                        filter(RpcHelper.creditCoinNamespace + RpcHelper.addressPrefix, (string objid, byte[] protobuf) =>
                         {
-                            Address address = Address.Parser.ParseFrom(protobuf);
-                            Console.WriteLine($"address({objid}) sighash:{address.Sighash}, blockchain: {address.Blockchain}, address:{address.Address_}");
+                            if (id == null || id != null && id.Equals(objid))
+                            {
+                                Address address = Address.Parser.ParseFrom(protobuf);
+                                Console.WriteLine($"address({objid}) blockchain:{address.Blockchain} value:{address.Value} network:{address.Network} sighash:{address.Sighash}");
+                            }
                         });
                     }
                     else if (command[0].Equals("transfers", StringComparison.OrdinalIgnoreCase))
                     {
-                        Debug.Assert(command.Length == 1);
-                        filter(creditCoinNamespace + transferPrefix, (string objid, byte[] protobuf) =>
+                        filter(RpcHelper.creditCoinNamespace + RpcHelper.transferPrefix, (string objid, byte[] protobuf) =>
                         {
-                            Transfer transfer = Transfer.Parser.ParseFrom(protobuf);
-                            Console.WriteLine($"transfer({objid}) sighash:{transfer.Sighash}, blockchain: {transfer.Blockchain}, amount:{transfer.Amount}, fee:{transfer.Fee}, txid:{transfer.Txid}");
+                            if (id == null || id != null && id.Equals(objid))
+                            {
+                                Transfer transfer = Transfer.Parser.ParseFrom(protobuf);
+                                Console.WriteLine($"transfer({objid}) blockchain:{transfer.Blockchain} srcAddress:{transfer.SrcAddress} dstAddress:{transfer.DstAddress} order:{transfer.Order} amount:{transfer.Amount} tx:{transfer.Tx} block:{transfer.Block} processed:{transfer.Processed} sighash:{transfer.Sighash}");
+                            }
                         });
                     }
                     else if (command[0].Equals("askOrders", StringComparison.OrdinalIgnoreCase))
                     {
-                        Debug.Assert(command.Length == 1);
-                        filter(creditCoinNamespace + askOrderPrefix, (string objid, byte[] protobuf) =>
+                        filter(RpcHelper.creditCoinNamespace + RpcHelper.askOrderPrefix, (string objid, byte[] protobuf) =>
                         {
-                            AskOrder askOrder = AskOrder.Parser.ParseFrom(protobuf);
-                            Console.WriteLine($"askOrder({objid}) sighash:{askOrder.Sighash}, blockchain: {askOrder.Blockchain}, amount:{askOrder.Amount}, interest:{askOrder.Interest}, collateralBlockchain:{askOrder.CollateralBlockchain}, collateral:{askOrder.Collateral}, fee:{askOrder.Fee}, expiration:{askOrder.Expiration}, transferId:{askOrder.TransferId}");
+                            if (id == null || id != null && id.Equals(objid))
+                            {
+                                AskOrder askOrder = AskOrder.Parser.ParseFrom(protobuf);
+                                Console.WriteLine($"askOrder({objid}) blockchain:{askOrder.Blockchain} address:{askOrder.Address} amount:{askOrder.Amount} interest:{askOrder.Interest} maturity:{askOrder.Maturity} fee:{askOrder.Fee} expiration:{askOrder.Expiration} block:{askOrder.Block} sighash:{askOrder.Sighash}");
+                            }
                         });
                     }
                     else if (command[0].Equals("bidOrders", StringComparison.OrdinalIgnoreCase))
                     {
-                        Debug.Assert(command.Length == 1);
-                        filter(creditCoinNamespace + bidOrderPrefix, (string objid, byte[] protobuf) =>
+                        filter(RpcHelper.creditCoinNamespace + RpcHelper.bidOrderPrefix, (string objid, byte[] protobuf) =>
                         {
-                            BidOrder bidOrder = BidOrder.Parser.ParseFrom(protobuf);
-                            Console.WriteLine($"bidOrder({objid}) sighash:{bidOrder.Sighash}, blockchain: {bidOrder.Blockchain}, amount:{bidOrder.Amount}, interest:{bidOrder.Interest}, collateralBlockchain:{bidOrder.CollateralBlockchain}, collateral:{bidOrder.Collateral}, fee:{bidOrder.Fee}, expiration:{bidOrder.Expiration}");
+                            if (id == null || id != null && id.Equals(objid))
+                            {
+                                BidOrder bidOrder = BidOrder.Parser.ParseFrom(protobuf);
+                                Console.WriteLine($"bidOrder({objid}) blockchain:{bidOrder.Blockchain} address:{bidOrder.Address} amount:{bidOrder.Amount} interest:{bidOrder.Interest} maturity:{bidOrder.Maturity} fee:{bidOrder.Fee} expiration:{bidOrder.Expiration} block:{bidOrder.Block} sighash:{bidOrder.Sighash}");
+                            }
+                        });
+                    }
+                    else if (command[0].Equals("offers", StringComparison.OrdinalIgnoreCase))
+                    {
+                        filter(RpcHelper.creditCoinNamespace + RpcHelper.offerPrefix, (string objid, byte[] protobuf) =>
+                        {
+                            if (id == null || id != null && id.Equals(objid))
+                            {
+                                Offer offer = Offer.Parser.ParseFrom(protobuf);
+                                Console.WriteLine($"offer({objid}) blockchain:{offer.Blockchain} askOrder:{offer.AskOrder} bidOrder:{offer.BidOrder} expiration:{offer.Expiration} block:{offer.Block}");
+                            }
                         });
                     }
                     else if (command[0].Equals("dealOrders", StringComparison.OrdinalIgnoreCase))
                     {
-                        Debug.Assert(command.Length == 1);
-                        filter(creditCoinNamespace + dealOrderPrefix, (string objid, byte[] protobuf) =>
+                        filter(RpcHelper.creditCoinNamespace + RpcHelper.dealOrderPrefix, (string objid, byte[] protobuf) =>
                         {
-                            DealOrder dealOrder = DealOrder.Parser.ParseFrom(protobuf);
-                            Console.WriteLine($"dealOrder({objid}) askOrderId:{dealOrder.AskOrderId}, bidOrderId: {dealOrder.BidOrderId}, collateralTransferId:{dealOrder.CollateralTransferId}");
+                            if (id == null || id != null && id.Equals(objid))
+                            {
+                                DealOrder dealOrder = DealOrder.Parser.ParseFrom(protobuf);
+                                Console.WriteLine($"dealOrder({objid}) blockchain:{dealOrder.Blockchain} srcAddress:{dealOrder.SrcAddress} dstAddress:{dealOrder.DstAddress} amount:{dealOrder.Amount} interest:{dealOrder.Interest} maturity:{dealOrder.Maturity} fee:{dealOrder.Fee} expiration:{dealOrder.Expiration} block:{dealOrder.Block} loanTransfer:{(dealOrder.LoanTransfer.Equals(string.Empty) ? "*" : dealOrder.LoanTransfer)} repaymentTransfer:{(dealOrder.RepaymentTransfer.Equals(string.Empty) ? "*" : dealOrder.RepaymentTransfer)} lock:{(dealOrder.Lock.Equals(string.Empty) ? "*" : dealOrder.Lock)} sighash:{dealOrder.Sighash}");
+                            }
                         });
                     }
                     else if (command[0].Equals("repaymentOrders", StringComparison.OrdinalIgnoreCase))
                     {
-                        Debug.Assert(command.Length == 1);
-                        filter(creditCoinNamespace + repaymentOrderPrefix, (string objid, byte[] protobuf) =>
+                        filter(RpcHelper.creditCoinNamespace + RpcHelper.repaymentOrderPrefix, (string objid, byte[] protobuf) =>
                         {
-                            RepaymentOrder repaymentOrder = RepaymentOrder.Parser.ParseFrom(protobuf);
-                            Console.WriteLine($"repaymentOrder({objid}) dealId:{repaymentOrder.DealId}, transferId:{repaymentOrder.TransferId}");
+                            if (id == null || id != null && id.Equals(objid))
+                            {
+                                RepaymentOrder repaymentOrder = RepaymentOrder.Parser.ParseFrom(protobuf);
+                                Console.WriteLine($"repaymentOrder({objid}) blockchain:{repaymentOrder.Blockchain} srcAddress:{repaymentOrder.SrcAddress} dstAddress:{repaymentOrder.DstAddress} amount:{repaymentOrder.Amount} expiration:{repaymentOrder.Expiration} block:{repaymentOrder.Block} deal:{repaymentOrder.Deal} previousOwner:{(repaymentOrder.PreviousOwner.Equals(string.Empty)? "*": repaymentOrder.PreviousOwner)} transfer:{(repaymentOrder.Transfer.Equals(string.Empty) ? "*" : repaymentOrder.Transfer)} sighash:{repaymentOrder.Sighash}");
+                            }
                         });
                     }
-                    else if (command[0].Equals("sighash", StringComparison.OrdinalIgnoreCase))
+                }
+                else if (action.Equals("show"))
+                {
+                    bool success = true;
+
+                    BigInteger headIdx = GetHeadIdx();
+
+                    if (command.Length <= 1) throw new Exception("1 or more parametersd expected");
+                    string sighash;
+                    if (command[1].Equals("0"))
                     {
-                        Console.WriteLine(sha256(signer.GetPublicKey().ToHexString()));
+                        sighash = TxBuilder.getSighash(signer);
+                    }
+                    else
+                    {
+                        sighash = command[1];
+                    }
+
+                    if (command[0].Equals("balance", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (command.Length != 2) throw new Exception("2 parametersd expected");
+                        string prefix = RpcHelper.creditCoinNamespace + RpcHelper.walletPrefix;
+                        string id = prefix + sighash;
+                        string amount = "0";
+                        filter(prefix, (string objid, byte[] protobuf) =>
+                        {
+                            Wallet wallet = Wallet.Parser.ParseFrom(protobuf);
+                            if (objid.Equals(id))
+                            {
+                                amount = wallet.Amount;
+                            }
+                        });
+                        Console.WriteLine($"{amount}");
                     }
                     else if (command[0].Equals("address", StringComparison.OrdinalIgnoreCase))
                     {
-                        Debug.Assert(command.Length == 3);
-                        var blockchain = command[1].ToLower();
-                        var addr = command[2];
-                        filter(creditCoinNamespace + addressPrefix, (string objid, byte[] protobuf) =>
+                        if (command.Length != 5) throw new Exception("5 parametersd expected");
+                        var blockchain = command[2].ToLower();
+                        var addr = command[3];
+                        var network = command[4].ToLower();
+                        filter(RpcHelper.creditCoinNamespace + RpcHelper.addressPrefix, (string objid, byte[] protobuf) =>
                         {
                             Address address = Address.Parser.ParseFrom(protobuf);
-                            if (address.Blockchain == blockchain && address.Address_ == addr)
+                            if (address.Sighash == sighash && address.Blockchain == blockchain && address.Value == addr && address.Network == network)
                             {
                                 Console.WriteLine(objid);
                             }
                         });
                     }
-                    else if (command[0].Equals("unusedTransfers", StringComparison.OrdinalIgnoreCase))
-                    {
-                        Debug.Assert(command.Length == 3);
-                        var addressId = command[1];
-                        var amount = command[2];
-                        var sighash = sha256(signer.GetPublicKey().ToHexString());
-
-                        Address address = null;
-                        filter(creditCoinNamespace + addressPrefix, (string objid, byte[] protobuf) =>
-                        {
-                            if (objid == addressId)
-                            {
-                                address = Address.Parser.ParseFrom(protobuf);
-                            }
-                        });
-                        if (address == null)
-                        {
-                            Console.WriteLine("Invalid command " + command[0]);
-                            success = false;
-                        }
-                        else
-                        {
-                            filter(creditCoinNamespace + transferPrefix, (string objid, byte[] protobuf) =>
-                            {
-                                Transfer transfer = Transfer.Parser.ParseFrom(protobuf);
-                                if (transfer.Sighash == sighash && transfer.Orderid.Equals(string.Empty) && transfer.Blockchain == address.Blockchain && transfer.Amount == amount)
-                                {
-                                    Console.WriteLine(objid);
-                                }
-                            });
-                        }
-                    }
                     else if (command[0].Equals("matchingOrders", StringComparison.OrdinalIgnoreCase))
                     {
-                        Debug.Assert(command.Length == 1);
+                        if (command.Length != 2) throw new Exception("2 parametersd expected");
 
                         var askOrders = new Dictionary<string, AskOrder>();
-                        filter(creditCoinNamespace + askOrderPrefix, (string objid, byte[] protobuf) =>
+                        filter(RpcHelper.creditCoinNamespace + RpcHelper.askOrderPrefix, (string objid, byte[] protobuf) =>
                         {
                             AskOrder askOrder = AskOrder.Parser.ParseFrom(protobuf);
-                            askOrders.Add(objid, askOrder);
+                            BigInteger block;
+                            if (!BigInteger.TryParse(askOrder.Block, out block))
+                            {
+                                throw new Exception("Invalid numerics");
+                            }
+                            if (block + askOrder.Expiration > headIdx)
+                            {
+                                askOrders.Add(objid, askOrder);
+                            }
                         });
                         var bidOrders = new Dictionary<string, BidOrder>();
-                        filter(creditCoinNamespace + bidOrderPrefix, (string objid, byte[] protobuf) =>
+                        filter(RpcHelper.creditCoinNamespace + RpcHelper.bidOrderPrefix, (string objid, byte[] protobuf) =>
+                        {
+                            BidOrder bidOrder = BidOrder.Parser.ParseFrom(protobuf);
+                            BigInteger block;
+                            if (!BigInteger.TryParse(bidOrder.Block, out block))
+                            {
+                                throw new Exception("Invalid numerics");
+                            }
+                            if (block + bidOrder.Expiration > headIdx)
+                            {
+                                bidOrders.Add(objid, bidOrder);
+                            }
+                        });
+
+                        match(sighash, askOrders, bidOrders);
+                    }
+                    else if (command[0].Equals("currentOffers", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (command.Length != 2) throw new Exception("2 parametersd expected");
+
+                        var bidOrders = new Dictionary<string, BidOrder>();
+                        filter(RpcHelper.creditCoinNamespace + RpcHelper.bidOrderPrefix, (string objid, byte[] protobuf) =>
                         {
                             BidOrder bidOrder = BidOrder.Parser.ParseFrom(protobuf);
                             bidOrders.Add(objid, bidOrder);
                         });
 
-                        match(signer, askOrders, bidOrders);
+                        filter(RpcHelper.creditCoinNamespace + RpcHelper.offerPrefix, (string objid, byte[] protobuf) =>
+                        {
+                            Offer offer = Offer.Parser.ParseFrom(protobuf);
+                            BidOrder bidOrder = bidOrders[offer.BidOrder];
+                            if (bidOrder.Sighash == sighash)
+                            {
+                                BigInteger block;
+                                if (!BigInteger.TryParse(offer.Block, out block))
+                                {
+                                    throw new Exception("Invalid numerics");
+                                }
+                                if (block + offer.Expiration > headIdx)
+                                {
+                                    Console.WriteLine(objid);
+                                }
+                            }
+                        });
                     }
                     else if (command[0].Equals("creditHistory", StringComparison.OrdinalIgnoreCase))
                     {
-                        Debug.Assert(command.Length == 2);
+                        if (command.Length != 2) throw new Exception("2 parametersd expected");
 
-                        var fundraiser = command[1].ToLower();
-
-                        filterDeals(null, fundraiser, (string dealAddress, DealOrder dealOrder, AskOrder askOrder, BidOrder bidOrder) =>
+                        filterDeals(null, sighash, (string dealAddress, DealOrder dealOrder) =>
                         {
-                            Debug.Assert(askOrder == null);
-                            var status = dealOrder.CollateralTransferId.Equals(string.Empty) ? "INCOMPLETE" : "COMPLETE";
-                            if (!dealOrder.UnlockCollateralDestinationAddressId.Equals(string.Empty))
+                            var status = dealOrder.LoanTransfer.Equals(string.Empty) ? "NEW" : "COMPLETE";
+                            if (!dealOrder.RepaymentTransfer.Equals(string.Empty))
                             {
                                 status = "CLOSED";
                             }
-                            else if (!dealOrder.UnlockFundsDestinationAddressId.Equals(string.Empty))
-                            {
-                                status = "ACTIVE";
-                            }
-                            Console.WriteLine($"status: {status}, amount:{bidOrder.Amount}, blockchain: {bidOrder.Blockchain}, collateral:{bidOrder.Collateral}");
+                            Console.WriteLine($"status:{status}, amount:{dealOrder.Amount}, blockchain:{dealOrder.Blockchain}");
                         });
                     }
                     else if (command[0].Equals("newDeals", StringComparison.OrdinalIgnoreCase))
                     {
-                        Debug.Assert(command.Length == 1);
+                        if (command.Length != 2) throw new Exception("2 parametersd expected");
 
-                        var fundraiser = sha256(signer.GetPublicKey().ToHexString());
-
-                        filterDeals(null, fundraiser, (string dealAddress, DealOrder dealOrder, AskOrder askOrder, BidOrder bidOrder) =>
+                        filterDeals(sighash, null, (string dealAddress, DealOrder dealOrder) =>
                         {
-                            Debug.Assert(askOrder == null);
-                            if (dealOrder.CollateralTransferId.Equals(string.Empty))
+                            if (dealOrder.LoanTransfer.Equals(string.Empty))
+                            {
+                                BigInteger block;
+                                if (!BigInteger.TryParse(dealOrder.Block, out block))
+                                {
+                                    throw new Exception("Invalid numerics");
+                                }
+                                if (block + dealOrder.Expiration > headIdx)
+                                {
+                                    Console.WriteLine(dealAddress);
+                                }
+                            }
+                        });
+                    }
+                    else if (command[0].Equals("transfer", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (command.Length != 3) throw new Exception("3 parametersd expected");
+                        var orderId = command[2];
+
+                        filter(RpcHelper.creditCoinNamespace + RpcHelper.transferPrefix, (string objid, byte[] protobuf) =>
+                        {
+                            Transfer transfer = Transfer.Parser.ParseFrom(protobuf);
+                            if (transfer.Sighash == sighash && transfer.Order == orderId && !transfer.Processed)
+                                Console.WriteLine(objid);
+                        });
+                    }
+                    else if (command[0].Equals("currentLoans", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (command.Length != 2) throw new Exception("2 parametersd expected");
+
+                        filterDeals(null, sighash, (string dealAddress, DealOrder dealOrder) =>
+                        {
+                            if (!dealOrder.LoanTransfer.Equals(string.Empty) && dealOrder.RepaymentTransfer.Equals(string.Empty))
                             {
                                 Console.WriteLine(dealAddress);
                             }
                         });
                     }
-                    else if (command[0].Equals("runningDeals", StringComparison.OrdinalIgnoreCase))
-                    {
-                        Debug.Assert(command.Length == 1);
-
-                        var investor = sha256(signer.GetPublicKey().ToHexString());
-
-                        var deals = new List<string>();
-                        filterDeals(investor, null, (string dealAddress, DealOrder dealOrder, AskOrder askOrder, BidOrder bidOrder) =>
-                        {
-                            Debug.Assert(bidOrder == null);
-                            if (!dealOrder.CollateralTransferId.Equals(string.Empty) && dealOrder.UnlockCollateralDestinationAddressId.Equals(string.Empty))
-                            {
-                                deals.Add(dealAddress);
-                            }
-                        });
-
-                        filter(creditCoinNamespace + repaymentOrderPrefix, (string objid, byte[] protobuf) =>
-                        {
-                            RepaymentOrder repaymentOrder = RepaymentOrder.Parser.ParseFrom(protobuf);
-                            if (deals.SingleOrDefault(x => x.Equals(repaymentOrder.DealId)) != null)
-                            {
-                                deals.Remove(repaymentOrder.DealId);
-                            }
-                        });
-
-                        foreach (var deal in deals)
-                        {
-                            Console.WriteLine(deal);
-                        }
-                    }
                     else if (command[0].Equals("newRepaymentOrders", StringComparison.OrdinalIgnoreCase))
                     {
-                        Debug.Assert(command.Length == 1);
+                        if (command.Length != 2) throw new Exception("2 parametersd expected");
 
-                        var fundraiser = sha256(signer.GetPublicKey().ToHexString());
-
-                        var deals = new List<string>();
-                        filterDeals(null, fundraiser, (string dealAddress, DealOrder dealOrder, AskOrder askOrder, BidOrder bidOrder) =>
+                        var addresses = new Dictionary<string, Address>();
+                        filter(RpcHelper.creditCoinNamespace + RpcHelper.addressPrefix, (string objid, byte[] protobuf) =>
                         {
-                            Debug.Assert(askOrder == null);
-                            if (!dealOrder.CollateralTransferId.Equals(string.Empty) && dealOrder.UnlockCollateralDestinationAddressId.Equals(string.Empty))
-                            {
-                                deals.Add(dealAddress);
-                            }
+                            Address address = Address.Parser.ParseFrom(protobuf);
+                            addresses.Add(objid, address);
                         });
 
-                        filter(creditCoinNamespace + repaymentOrderPrefix, (string objid, byte[] protobuf) =>
+                        var dealOrders = new Dictionary<string, DealOrder>();
+                        filter(RpcHelper.creditCoinNamespace + RpcHelper.dealOrderPrefix, (string objid, byte[] protobuf) =>
+                        {
+                            DealOrder dealOrder = DealOrder.Parser.ParseFrom(protobuf);
+                            dealOrders.Add(objid, dealOrder);
+                        });
+
+                        filter(RpcHelper.creditCoinNamespace + RpcHelper.repaymentOrderPrefix, (string objid, byte[] protobuf) =>
                         {
                             RepaymentOrder repaymentOrder = RepaymentOrder.Parser.ParseFrom(protobuf);
-                            if (repaymentOrder.TransferId.Equals(string.Empty) && deals.SingleOrDefault(x => x.Equals(repaymentOrder.DealId)) != null)
+                            DealOrder deal = dealOrders[repaymentOrder.Deal];
+                            Address address = addresses[deal.SrcAddress];
+                            if (repaymentOrder.Transfer.Equals(string.Empty) && repaymentOrder.PreviousOwner.Equals(string.Empty) && address.Sighash.Equals(sighash))
+                            {
+                                BigInteger block;
+                                if (!BigInteger.TryParse(repaymentOrder.Block, out block))
+                                {
+                                    throw new Exception("Invalid numerics");
+                                }
+                                if (block + repaymentOrder.Expiration > headIdx)
+                                {
+                                    Console.WriteLine(objid);
+                                }
+                            }
+                        });
+                    }
+                    else if (command[0].Equals("currentRepaymentOrders", StringComparison.OrdinalIgnoreCase))
+                    {
+                        filter(RpcHelper.creditCoinNamespace + RpcHelper.repaymentOrderPrefix, (string objid, byte[] protobuf) =>
+                        {
+                            RepaymentOrder repaymentOrder = RepaymentOrder.Parser.ParseFrom(protobuf);
+                            if (repaymentOrder.Transfer.Equals(string.Empty) && !repaymentOrder.PreviousOwner.Equals(string.Empty) && repaymentOrder.Sighash.Equals(sighash))
                             {
                                 Console.WriteLine(objid);
                             }
@@ -544,54 +554,59 @@ namespace ccclient
                         Console.WriteLine("Success");
                     }
                 }
-                else if (action.Equals("creditcoin"))
-                {
-                    string msg;
-                    var tx = txBuilder.BuildTx(command, out msg);
-                    if (tx == null)
-                    {
-                        Debug.Assert(msg != null);
-                        Console.WriteLine(msg);
-                    }
-                    else
-                    {
-                        Debug.Assert(msg == null);
-                        var content = new ByteArrayContent(tx);
-                        content.Headers.Add("Content-Type", "application/octet-stream");
-                        Console.WriteLine(RpcHelper.CompleteBatch(httpClient, $"{creditcoinUrl}/batches", content));
-                    }
-                }
                 else
                 {
-                    var loader = new Loader<ICCClientPlugin>();
-                    var msgs = new List<string>();
-                    loader.Load(folder, msgs);
-                    foreach (var msg in msgs)
-                    {
-                        Console.WriteLine(msg);
-                    }
-
-                    ICCClientPlugin plugin = loader.Get(action);
-                    var pluginConfig = config.GetSection(action);
-                    if (plugin == null)
-                    {
-                        Console.WriteLine("Error: Unknown action " + action);
-                    }
-                    else
+                    var txBuilder = new TxBuilder(signer);
+                    if (action.Equals("creditcoin"))
                     {
                         string msg;
-                        bool done = plugin.Run(pluginConfig, httpClient, txBuilder, settings, folder, creditcoinUrl, command, out inProgress, out msg);
-                        if (done)
+                        var tx = txBuilder.BuildTx(command, out msg);
+                        if (tx == null)
                         {
-                            if (msg == null)
-                            {
-                                msg = "Success";
-                            }
+                            Debug.Assert(msg != null);
                             Console.WriteLine(msg);
                         }
                         else
                         {
-                            Console.WriteLine("Error: " + msg);
+                            Debug.Assert(msg == null);
+                            var content = new ByteArrayContent(tx);
+                            content.Headers.Add("Content-Type", "application/octet-stream");
+                            Console.WriteLine(RpcHelper.CompleteBatch(httpClient, creditcoinUrl, "batches", content, txid));
+                        }
+                    }
+                    else
+                    {
+                        var loader = new Loader<ICCClientPlugin>();
+                        var msgs = new List<string>();
+                        loader.Load(pluginFolder, msgs);
+                        foreach (var msg in msgs)
+                        {
+                            Console.WriteLine(msg);
+                        }
+
+                        ICCClientPlugin plugin = loader.Get(action);
+                        var pluginConfig = config.GetSection(action);
+                        if (plugin == null)
+                        {
+                            Console.WriteLine("Error: Unknown action " + action);
+                        }
+                        else
+                        {
+                            string msg;
+                            var settings = getSettings();
+                            bool done = plugin.Run(txid, pluginConfig, httpClient, txBuilder, settings, progressId, pluginFolder, creditcoinUrl, command, out inProgress, out msg);
+                            if (done)
+                            {
+                                if (msg == null)
+                                {
+                                    msg = "Success";
+                                }
+                                Console.WriteLine(msg);
+                            }
+                            else
+                            {
+                                Console.WriteLine("Error: " + msg);
+                            }
                         }
                     }
                 }
@@ -606,69 +621,94 @@ namespace ccclient
             }
         }
 
-        private static string sha256(string message)
+        private static BigInteger GetHeadIdx()
         {
-            var data = Encoding.UTF8.GetBytes(message);
-            using (SHA512 sha512 = new SHA512Managed())
+            string msg;
+            string head = RpcHelper.LastBlock(httpClient, creditcoinUrl, out msg);
+            Debug.Assert(head != null && msg == null || head == null && msg != null);
+            if (head == null)
             {
-                var hash = sha512.ComputeHash(data);
-                var hashString = String.Concat(Array.ConvertAll(hash, x => x.ToString("X2")));
-                return hashString.Substring(SKIP_TO_GET_60).ToLower();
+                throw new Exception(msg);
+            }
+            BigInteger headIdx;
+            if (!BigInteger.TryParse(head, out headIdx))
+            {
+                throw new Exception("Invalid numerics");
+            }
+
+            return headIdx;
+        }
+
+        private static Dictionary<string, string> getSettings()
+        {
+            var settings = new Dictionary<string, string>();
+            filter(RpcHelper.settingNamespace, (string address, byte[] protobuf) =>
+            {
+                Setting setting = Setting.Parser.ParseFrom(protobuf);
+                foreach (var entry in setting.Entries)
+                {
+                    settings.Add(entry.Key, entry.Value);
+                }
+            });
+            return settings;
+        }
+
+        private static Signer getSigner(IConfiguration config)
+        {
+            string signerHexStr = config["signer"];
+            if (string.IsNullOrWhiteSpace(signerHexStr))
+            {
+                throw new Exception("Signer is not configured");
+            }
+            try
+            {
+                return new Signer(RpcHelper.HexToBytes(signerHexStr));
+            }
+            catch (Exception x)
+            {
+                throw new Exception("Failed to initialize signer: " + x.Message);
             }
         }
 
-        private static void filterDeals(string investorSighash, string fundraiserSighash, Action<string, DealOrder, AskOrder, BidOrder> lister)
+        private static void filterDeals(string investorSighash, string fundraiserSighash, Action<string, DealOrder> lister)
         {
             var dealOrders = new Dictionary<string, DealOrder>();
-            filter(creditCoinNamespace + dealOrderPrefix, (string objid, byte[] protobuf) =>
+            filter(RpcHelper.creditCoinNamespace + RpcHelper.dealOrderPrefix, (string objid, byte[] protobuf) =>
             {
                 DealOrder dealOrder = DealOrder.Parser.ParseFrom(protobuf);
                 dealOrders.Add(objid, dealOrder);
             });
-            var bidOrders = new Dictionary<string, BidOrder>();
-            if (fundraiserSighash != null)
+            var addresses = new Dictionary<string, Address>();
+            filter(RpcHelper.creditCoinNamespace + RpcHelper.addressPrefix, (string objid, byte[] protobuf) =>
             {
-                filter(creditCoinNamespace + bidOrderPrefix, (string objid, byte[] protobuf) =>
-                {
-                    BidOrder bidOrder = BidOrder.Parser.ParseFrom(protobuf);
-                    bidOrders.Add(objid, bidOrder);
-                });
-            }
-            var askOrders = new Dictionary<string, AskOrder>();
-            if (investorSighash != null)
-            {
-                filter(creditCoinNamespace + askOrderPrefix, (string objid, byte[] protobuf) =>
-                {
-                    AskOrder askOrder = AskOrder.Parser.ParseFrom(protobuf);
-                    askOrders.Add(objid, askOrder);
-                });
-            }
+                Address address = Address.Parser.ParseFrom(protobuf);
+                addresses.Add(objid, address);
+            });
 
             foreach (var dealOrderEntry in dealOrders)
             {
                 DealOrder dealOrder = dealOrderEntry.Value;
                 if (fundraiserSighash != null)
                 {
-                    BidOrder bidOrder = bidOrders[dealOrder.BidOrderId];
-                    if (bidOrder.Sighash == fundraiserSighash)
+                    Address address = addresses[dealOrder.DstAddress];
+                    if (address.Sighash == fundraiserSighash)
                     {
-                        lister(dealOrderEntry.Key, dealOrder, null, bidOrder);
+                        lister(dealOrderEntry.Key, dealOrder);
                     }
                 }
                 if (investorSighash != null)
                 {
-                    AskOrder askOrder = askOrders[dealOrder.AskOrderId];
-                    if (askOrder.Sighash == investorSighash)
+                    Address address = addresses[dealOrder.SrcAddress];
+                    if (address.Sighash == investorSighash)
                     {
-                        lister(dealOrderEntry.Key, dealOrder, askOrder, null);
+                        lister(dealOrderEntry.Key, dealOrder);
                     }
                 }
             }
         }
 
-        private static void match(Signer signer, Dictionary<string, AskOrder> askOrders, Dictionary<string, BidOrder> bidOrders)
+        private static void match(string sighash, Dictionary<string, AskOrder> askOrders, Dictionary<string, BidOrder> bidOrders)
         {
-            var sighash = sha256(signer.GetPublicKey().ToHexString());
             foreach (var askOrderEntry in askOrders)
             {
                 foreach (var bidOrderEntry in bidOrders)
@@ -678,19 +718,19 @@ namespace ccclient
                         break;
                     }
 
-                    BigInteger askAmount, bidAmount, askInterest, bidInterest, askCollateral, bidCollateral, askFee, bidFee;
+                    BigInteger askAmount, bidAmount, askInterest, bidInterest, askMaturity, bidMaturity, askFee, bidFee;
                     if (!BigInteger.TryParse(askOrderEntry.Value.Amount, out askAmount) || !BigInteger.TryParse(bidOrderEntry.Value.Amount, out bidAmount) ||
                         !BigInteger.TryParse(askOrderEntry.Value.Interest, out askInterest) || !BigInteger.TryParse(bidOrderEntry.Value.Interest, out bidInterest) ||
-                        !BigInteger.TryParse(askOrderEntry.Value.Collateral, out askCollateral) || !BigInteger.TryParse(bidOrderEntry.Value.Collateral, out bidCollateral) ||
+                        !BigInteger.TryParse(askOrderEntry.Value.Maturity, out askMaturity) || !BigInteger.TryParse(bidOrderEntry.Value.Maturity, out bidMaturity) ||
                         !BigInteger.TryParse(askOrderEntry.Value.Fee, out askFee) || !BigInteger.TryParse(bidOrderEntry.Value.Fee, out bidFee))
                     {
                         Console.WriteLine("Invalid numerics");
                         return;
                     }
 
-                    if (askAmount == bidAmount && askInterest <= bidInterest && askCollateral <= bidCollateral && askFee <= bidFee)
+                    if (askAmount == bidAmount && askInterest / askMaturity <= bidInterest / bidMaturity && askFee <= bidFee)
                     {
-                        Console.WriteLine($"{askOrderEntry.Key}/{bidOrderEntry.Key}");
+                        Console.WriteLine($"{askOrderEntry.Key} {bidOrderEntry.Key}");
                     }
                 }
             }
@@ -698,28 +738,38 @@ namespace ccclient
 
         private static void filter(string prefix, Action<string, byte[]> lister)
         {
-            using (HttpResponseMessage responseMessage = httpClient.GetAsync($"{creditcoinUrl}/state?address={prefix}").Result)
+            var url = $"{creditcoinUrl}/state?address={prefix}";
+            for (; ; )
             {
-                var json = responseMessage.Content.ReadAsStringAsync().Result;
-                var response = JObject.Parse(json);
-                if (response.ContainsKey(ERROR))
+                using (HttpResponseMessage responseMessage = httpClient.GetAsync(url).Result)
                 {
-                    Console.WriteLine((string)response[ERROR][MESSAGE]);
-                }
-                else
-                {
-                    Debug.Assert(response.ContainsKey(DATA));
-                    var data = response[DATA];
-                    foreach (var datum in data)
+                    var json = responseMessage.Content.ReadAsStringAsync().Result;
+                    var response = JObject.Parse(json);
+                    if (response.ContainsKey(ERROR))
                     {
-                        Debug.Assert(datum.Type == JTokenType.Object);
-                        var obj = (JObject)datum;
-                        Debug.Assert(obj.ContainsKey(ADDRESS));
-                        var objid = (string)obj[ADDRESS];
-                        Debug.Assert(obj.ContainsKey(DATA));
-                        var content = (string)obj[DATA];
-                        byte[] protobuf = Convert.FromBase64String(content);
-                        lister(objid, protobuf);
+                        Console.WriteLine((string)response[ERROR][MESSAGE]);
+                    }
+                    else
+                    {
+                        Debug.Assert(response.ContainsKey(DATA));
+                        var data = response[DATA];
+                        foreach (var datum in data)
+                        {
+                            Debug.Assert(datum.Type == JTokenType.Object);
+                            var obj = (JObject)datum;
+                            Debug.Assert(obj.ContainsKey(ADDRESS));
+                            var objid = (string)obj[ADDRESS];
+                            Debug.Assert(obj.ContainsKey(DATA));
+                            var content = (string)obj[DATA];
+                            byte[] protobuf = Convert.FromBase64String(content);
+                            lister(objid, protobuf);
+                        }
+
+                        Debug.Assert(response.ContainsKey(PAGING));
+                        var paging = (JObject)response[PAGING];
+                        if (!paging.ContainsKey(NEXT))
+                            break;
+                        url = (string)paging[NEXT];
                     }
                 }
             }

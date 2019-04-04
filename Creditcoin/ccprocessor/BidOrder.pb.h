@@ -150,9 +150,23 @@ class BidOrder : public ::google::protobuf::Message /* @@protoc_insertion_point(
   ::std::string* release_blockchain();
   void set_allocated_blockchain(::std::string* blockchain);
 
-  // string amount = 2;
+  // string address = 2;
+  void clear_address();
+  static const int kAddressFieldNumber = 2;
+  const ::std::string& address() const;
+  void set_address(const ::std::string& value);
+  #if LANG_CXX11
+  void set_address(::std::string&& value);
+  #endif
+  void set_address(const char* value);
+  void set_address(const char* value, size_t size);
+  ::std::string* mutable_address();
+  ::std::string* release_address();
+  void set_allocated_address(::std::string* address);
+
+  // string amount = 3;
   void clear_amount();
-  static const int kAmountFieldNumber = 2;
+  static const int kAmountFieldNumber = 3;
   const ::std::string& amount() const;
   void set_amount(const ::std::string& value);
   #if LANG_CXX11
@@ -164,9 +178,9 @@ class BidOrder : public ::google::protobuf::Message /* @@protoc_insertion_point(
   ::std::string* release_amount();
   void set_allocated_amount(::std::string* amount);
 
-  // string interest = 3;
+  // string interest = 4;
   void clear_interest();
-  static const int kInterestFieldNumber = 3;
+  static const int kInterestFieldNumber = 4;
   const ::std::string& interest() const;
   void set_interest(const ::std::string& value);
   #if LANG_CXX11
@@ -178,33 +192,19 @@ class BidOrder : public ::google::protobuf::Message /* @@protoc_insertion_point(
   ::std::string* release_interest();
   void set_allocated_interest(::std::string* interest);
 
-  // string collateral_blockchain = 4;
-  void clear_collateral_blockchain();
-  static const int kCollateralBlockchainFieldNumber = 4;
-  const ::std::string& collateral_blockchain() const;
-  void set_collateral_blockchain(const ::std::string& value);
+  // string maturity = 5;
+  void clear_maturity();
+  static const int kMaturityFieldNumber = 5;
+  const ::std::string& maturity() const;
+  void set_maturity(const ::std::string& value);
   #if LANG_CXX11
-  void set_collateral_blockchain(::std::string&& value);
+  void set_maturity(::std::string&& value);
   #endif
-  void set_collateral_blockchain(const char* value);
-  void set_collateral_blockchain(const char* value, size_t size);
-  ::std::string* mutable_collateral_blockchain();
-  ::std::string* release_collateral_blockchain();
-  void set_allocated_collateral_blockchain(::std::string* collateral_blockchain);
-
-  // string collateral = 5;
-  void clear_collateral();
-  static const int kCollateralFieldNumber = 5;
-  const ::std::string& collateral() const;
-  void set_collateral(const ::std::string& value);
-  #if LANG_CXX11
-  void set_collateral(::std::string&& value);
-  #endif
-  void set_collateral(const char* value);
-  void set_collateral(const char* value, size_t size);
-  ::std::string* mutable_collateral();
-  ::std::string* release_collateral();
-  void set_allocated_collateral(::std::string* collateral);
+  void set_maturity(const char* value);
+  void set_maturity(const char* value, size_t size);
+  ::std::string* mutable_maturity();
+  ::std::string* release_maturity();
+  void set_allocated_maturity(::std::string* maturity);
 
   // string fee = 6;
   void clear_fee();
@@ -220,9 +220,23 @@ class BidOrder : public ::google::protobuf::Message /* @@protoc_insertion_point(
   ::std::string* release_fee();
   void set_allocated_fee(::std::string* fee);
 
-  // string sighash = 8;
+  // string block = 8;
+  void clear_block();
+  static const int kBlockFieldNumber = 8;
+  const ::std::string& block() const;
+  void set_block(const ::std::string& value);
+  #if LANG_CXX11
+  void set_block(::std::string&& value);
+  #endif
+  void set_block(const char* value);
+  void set_block(const char* value, size_t size);
+  ::std::string* mutable_block();
+  ::std::string* release_block();
+  void set_allocated_block(::std::string* block);
+
+  // string sighash = 9;
   void clear_sighash();
-  static const int kSighashFieldNumber = 8;
+  static const int kSighashFieldNumber = 9;
   const ::std::string& sighash() const;
   void set_sighash(const ::std::string& value);
   #if LANG_CXX11
@@ -245,11 +259,12 @@ class BidOrder : public ::google::protobuf::Message /* @@protoc_insertion_point(
 
   ::google::protobuf::internal::InternalMetadataWithArena _internal_metadata_;
   ::google::protobuf::internal::ArenaStringPtr blockchain_;
+  ::google::protobuf::internal::ArenaStringPtr address_;
   ::google::protobuf::internal::ArenaStringPtr amount_;
   ::google::protobuf::internal::ArenaStringPtr interest_;
-  ::google::protobuf::internal::ArenaStringPtr collateral_blockchain_;
-  ::google::protobuf::internal::ArenaStringPtr collateral_;
+  ::google::protobuf::internal::ArenaStringPtr maturity_;
   ::google::protobuf::internal::ArenaStringPtr fee_;
+  ::google::protobuf::internal::ArenaStringPtr block_;
   ::google::protobuf::internal::ArenaStringPtr sighash_;
   ::google::protobuf::uint64 expiration_;
   mutable int _cached_size_;
@@ -320,7 +335,60 @@ inline void BidOrder::set_allocated_blockchain(::std::string* blockchain) {
   // @@protoc_insertion_point(field_set_allocated:BidOrder.blockchain)
 }
 
-// string amount = 2;
+// string address = 2;
+inline void BidOrder::clear_address() {
+  address_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline const ::std::string& BidOrder::address() const {
+  // @@protoc_insertion_point(field_get:BidOrder.address)
+  return address_.GetNoArena();
+}
+inline void BidOrder::set_address(const ::std::string& value) {
+  
+  address_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:BidOrder.address)
+}
+#if LANG_CXX11
+inline void BidOrder::set_address(::std::string&& value) {
+  
+  address_.SetNoArena(
+    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
+  // @@protoc_insertion_point(field_set_rvalue:BidOrder.address)
+}
+#endif
+inline void BidOrder::set_address(const char* value) {
+  GOOGLE_DCHECK(value != NULL);
+  
+  address_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:BidOrder.address)
+}
+inline void BidOrder::set_address(const char* value, size_t size) {
+  
+  address_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+  // @@protoc_insertion_point(field_set_pointer:BidOrder.address)
+}
+inline ::std::string* BidOrder::mutable_address() {
+  
+  // @@protoc_insertion_point(field_mutable:BidOrder.address)
+  return address_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline ::std::string* BidOrder::release_address() {
+  // @@protoc_insertion_point(field_release:BidOrder.address)
+  
+  return address_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline void BidOrder::set_allocated_address(::std::string* address) {
+  if (address != NULL) {
+    
+  } else {
+    
+  }
+  address_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), address);
+  // @@protoc_insertion_point(field_set_allocated:BidOrder.address)
+}
+
+// string amount = 3;
 inline void BidOrder::clear_amount() {
   amount_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
@@ -373,7 +441,7 @@ inline void BidOrder::set_allocated_amount(::std::string* amount) {
   // @@protoc_insertion_point(field_set_allocated:BidOrder.amount)
 }
 
-// string interest = 3;
+// string interest = 4;
 inline void BidOrder::clear_interest() {
   interest_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
@@ -426,110 +494,57 @@ inline void BidOrder::set_allocated_interest(::std::string* interest) {
   // @@protoc_insertion_point(field_set_allocated:BidOrder.interest)
 }
 
-// string collateral_blockchain = 4;
-inline void BidOrder::clear_collateral_blockchain() {
-  collateral_blockchain_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+// string maturity = 5;
+inline void BidOrder::clear_maturity() {
+  maturity_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline const ::std::string& BidOrder::collateral_blockchain() const {
-  // @@protoc_insertion_point(field_get:BidOrder.collateral_blockchain)
-  return collateral_blockchain_.GetNoArena();
+inline const ::std::string& BidOrder::maturity() const {
+  // @@protoc_insertion_point(field_get:BidOrder.maturity)
+  return maturity_.GetNoArena();
 }
-inline void BidOrder::set_collateral_blockchain(const ::std::string& value) {
+inline void BidOrder::set_maturity(const ::std::string& value) {
   
-  collateral_blockchain_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:BidOrder.collateral_blockchain)
+  maturity_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:BidOrder.maturity)
 }
 #if LANG_CXX11
-inline void BidOrder::set_collateral_blockchain(::std::string&& value) {
+inline void BidOrder::set_maturity(::std::string&& value) {
   
-  collateral_blockchain_.SetNoArena(
+  maturity_.SetNoArena(
     &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:BidOrder.collateral_blockchain)
+  // @@protoc_insertion_point(field_set_rvalue:BidOrder.maturity)
 }
 #endif
-inline void BidOrder::set_collateral_blockchain(const char* value) {
+inline void BidOrder::set_maturity(const char* value) {
   GOOGLE_DCHECK(value != NULL);
   
-  collateral_blockchain_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:BidOrder.collateral_blockchain)
+  maturity_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:BidOrder.maturity)
 }
-inline void BidOrder::set_collateral_blockchain(const char* value, size_t size) {
+inline void BidOrder::set_maturity(const char* value, size_t size) {
   
-  collateral_blockchain_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+  maturity_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
       ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:BidOrder.collateral_blockchain)
+  // @@protoc_insertion_point(field_set_pointer:BidOrder.maturity)
 }
-inline ::std::string* BidOrder::mutable_collateral_blockchain() {
+inline ::std::string* BidOrder::mutable_maturity() {
   
-  // @@protoc_insertion_point(field_mutable:BidOrder.collateral_blockchain)
-  return collateral_blockchain_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  // @@protoc_insertion_point(field_mutable:BidOrder.maturity)
+  return maturity_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline ::std::string* BidOrder::release_collateral_blockchain() {
-  // @@protoc_insertion_point(field_release:BidOrder.collateral_blockchain)
+inline ::std::string* BidOrder::release_maturity() {
+  // @@protoc_insertion_point(field_release:BidOrder.maturity)
   
-  return collateral_blockchain_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+  return maturity_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }
-inline void BidOrder::set_allocated_collateral_blockchain(::std::string* collateral_blockchain) {
-  if (collateral_blockchain != NULL) {
+inline void BidOrder::set_allocated_maturity(::std::string* maturity) {
+  if (maturity != NULL) {
     
   } else {
     
   }
-  collateral_blockchain_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), collateral_blockchain);
-  // @@protoc_insertion_point(field_set_allocated:BidOrder.collateral_blockchain)
-}
-
-// string collateral = 5;
-inline void BidOrder::clear_collateral() {
-  collateral_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-}
-inline const ::std::string& BidOrder::collateral() const {
-  // @@protoc_insertion_point(field_get:BidOrder.collateral)
-  return collateral_.GetNoArena();
-}
-inline void BidOrder::set_collateral(const ::std::string& value) {
-  
-  collateral_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
-  // @@protoc_insertion_point(field_set:BidOrder.collateral)
-}
-#if LANG_CXX11
-inline void BidOrder::set_collateral(::std::string&& value) {
-  
-  collateral_.SetNoArena(
-    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
-  // @@protoc_insertion_point(field_set_rvalue:BidOrder.collateral)
-}
-#endif
-inline void BidOrder::set_collateral(const char* value) {
-  GOOGLE_DCHECK(value != NULL);
-  
-  collateral_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
-  // @@protoc_insertion_point(field_set_char:BidOrder.collateral)
-}
-inline void BidOrder::set_collateral(const char* value, size_t size) {
-  
-  collateral_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
-      ::std::string(reinterpret_cast<const char*>(value), size));
-  // @@protoc_insertion_point(field_set_pointer:BidOrder.collateral)
-}
-inline ::std::string* BidOrder::mutable_collateral() {
-  
-  // @@protoc_insertion_point(field_mutable:BidOrder.collateral)
-  return collateral_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-}
-inline ::std::string* BidOrder::release_collateral() {
-  // @@protoc_insertion_point(field_release:BidOrder.collateral)
-  
-  return collateral_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
-}
-inline void BidOrder::set_allocated_collateral(::std::string* collateral) {
-  if (collateral != NULL) {
-    
-  } else {
-    
-  }
-  collateral_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), collateral);
-  // @@protoc_insertion_point(field_set_allocated:BidOrder.collateral)
+  maturity_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), maturity);
+  // @@protoc_insertion_point(field_set_allocated:BidOrder.maturity)
 }
 
 // string fee = 6;
@@ -599,7 +614,60 @@ inline void BidOrder::set_expiration(::google::protobuf::uint64 value) {
   // @@protoc_insertion_point(field_set:BidOrder.expiration)
 }
 
-// string sighash = 8;
+// string block = 8;
+inline void BidOrder::clear_block() {
+  block_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline const ::std::string& BidOrder::block() const {
+  // @@protoc_insertion_point(field_get:BidOrder.block)
+  return block_.GetNoArena();
+}
+inline void BidOrder::set_block(const ::std::string& value) {
+  
+  block_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), value);
+  // @@protoc_insertion_point(field_set:BidOrder.block)
+}
+#if LANG_CXX11
+inline void BidOrder::set_block(::std::string&& value) {
+  
+  block_.SetNoArena(
+    &::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::move(value));
+  // @@protoc_insertion_point(field_set_rvalue:BidOrder.block)
+}
+#endif
+inline void BidOrder::set_block(const char* value) {
+  GOOGLE_DCHECK(value != NULL);
+  
+  block_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), ::std::string(value));
+  // @@protoc_insertion_point(field_set_char:BidOrder.block)
+}
+inline void BidOrder::set_block(const char* value, size_t size) {
+  
+  block_.SetNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(),
+      ::std::string(reinterpret_cast<const char*>(value), size));
+  // @@protoc_insertion_point(field_set_pointer:BidOrder.block)
+}
+inline ::std::string* BidOrder::mutable_block() {
+  
+  // @@protoc_insertion_point(field_mutable:BidOrder.block)
+  return block_.MutableNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline ::std::string* BidOrder::release_block() {
+  // @@protoc_insertion_point(field_release:BidOrder.block)
+  
+  return block_.ReleaseNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
+}
+inline void BidOrder::set_allocated_block(::std::string* block) {
+  if (block != NULL) {
+    
+  } else {
+    
+  }
+  block_.SetAllocatedNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited(), block);
+  // @@protoc_insertion_point(field_set_allocated:BidOrder.block)
+}
+
+// string sighash = 9;
 inline void BidOrder::clear_sighash() {
   sighash_.ClearToEmptyNoArena(&::google::protobuf::internal::GetEmptyStringAlreadyInited());
 }

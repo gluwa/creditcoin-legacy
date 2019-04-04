@@ -22,14 +22,15 @@ public static partial class TransferReflection {
   static TransferReflection() {
     byte[] descriptorData = global::System.Convert.FromBase64String(
         string.Concat(
-          "Cg5UcmFuc2Zlci5wcm90byJ8CghUcmFuc2ZlchISCgpibG9ja2NoYWluGAEg",
-          "ASgJEg4KBmFtb3VudBgCIAEoCRILCgNmZWUYAyABKAkSDAoEdHhpZBgEIAEo",
-          "CRIPCgduZXR3b3JrGAUgASgJEg8KB29yZGVyaWQYBiABKAkSDwoHc2lnaGFz",
-          "aBgHIAEoCWIGcHJvdG8z"));
+          "Cg5UcmFuc2Zlci5wcm90byKmAQoIVHJhbnNmZXISEgoKYmxvY2tjaGFpbhgB",
+          "IAEoCRITCgtzcmNfYWRkcmVzcxgCIAEoCRITCgtkc3RfYWRkcmVzcxgDIAEo",
+          "CRINCgVvcmRlchgEIAEoCRIOCgZhbW91bnQYBSABKAkSCgoCdHgYBiABKAkS",
+          "DQoFYmxvY2sYByABKAkSEQoJcHJvY2Vzc2VkGAggASgIEg8KB3NpZ2hhc2gY",
+          "CSABKAliBnByb3RvMw=="));
     descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
         new pbr::FileDescriptor[] { },
         new pbr::GeneratedClrTypeInfo(null, new pbr::GeneratedClrTypeInfo[] {
-          new pbr::GeneratedClrTypeInfo(typeof(global::Transfer), global::Transfer.Parser, new[]{ "Blockchain", "Amount", "Fee", "Txid", "Network", "Orderid", "Sighash" }, null, null, null)
+          new pbr::GeneratedClrTypeInfo(typeof(global::Transfer), global::Transfer.Parser, new[]{ "Blockchain", "SrcAddress", "DstAddress", "Order", "Amount", "Tx", "Block", "Processed", "Sighash" }, null, null, null)
         }));
   }
   #endregion
@@ -62,11 +63,13 @@ public sealed partial class Transfer : pb::IMessage<Transfer> {
   [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
   public Transfer(Transfer other) : this() {
     blockchain_ = other.blockchain_;
+    srcAddress_ = other.srcAddress_;
+    dstAddress_ = other.dstAddress_;
+    order_ = other.order_;
     amount_ = other.amount_;
-    fee_ = other.fee_;
-    txid_ = other.txid_;
-    network_ = other.network_;
-    orderid_ = other.orderid_;
+    tx_ = other.tx_;
+    block_ = other.block_;
+    processed_ = other.processed_;
     sighash_ = other.sighash_;
     _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
   }
@@ -87,8 +90,41 @@ public sealed partial class Transfer : pb::IMessage<Transfer> {
     }
   }
 
+  /// <summary>Field number for the "src_address" field.</summary>
+  public const int SrcAddressFieldNumber = 2;
+  private string srcAddress_ = "";
+  [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+  public string SrcAddress {
+    get { return srcAddress_; }
+    set {
+      srcAddress_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+    }
+  }
+
+  /// <summary>Field number for the "dst_address" field.</summary>
+  public const int DstAddressFieldNumber = 3;
+  private string dstAddress_ = "";
+  [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+  public string DstAddress {
+    get { return dstAddress_; }
+    set {
+      dstAddress_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+    }
+  }
+
+  /// <summary>Field number for the "order" field.</summary>
+  public const int OrderFieldNumber = 4;
+  private string order_ = "";
+  [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+  public string Order {
+    get { return order_; }
+    set {
+      order_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+    }
+  }
+
   /// <summary>Field number for the "amount" field.</summary>
-  public const int AmountFieldNumber = 2;
+  public const int AmountFieldNumber = 5;
   private string amount_ = "";
   [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
   public string Amount {
@@ -98,52 +134,41 @@ public sealed partial class Transfer : pb::IMessage<Transfer> {
     }
   }
 
-  /// <summary>Field number for the "fee" field.</summary>
-  public const int FeeFieldNumber = 3;
-  private string fee_ = "";
+  /// <summary>Field number for the "tx" field.</summary>
+  public const int TxFieldNumber = 6;
+  private string tx_ = "";
   [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-  public string Fee {
-    get { return fee_; }
+  public string Tx {
+    get { return tx_; }
     set {
-      fee_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+      tx_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
     }
   }
 
-  /// <summary>Field number for the "txid" field.</summary>
-  public const int TxidFieldNumber = 4;
-  private string txid_ = "";
+  /// <summary>Field number for the "block" field.</summary>
+  public const int BlockFieldNumber = 7;
+  private string block_ = "";
   [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-  public string Txid {
-    get { return txid_; }
+  public string Block {
+    get { return block_; }
     set {
-      txid_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+      block_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
     }
   }
 
-  /// <summary>Field number for the "network" field.</summary>
-  public const int NetworkFieldNumber = 5;
-  private string network_ = "";
+  /// <summary>Field number for the "processed" field.</summary>
+  public const int ProcessedFieldNumber = 8;
+  private bool processed_;
   [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-  public string Network {
-    get { return network_; }
+  public bool Processed {
+    get { return processed_; }
     set {
-      network_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
-    }
-  }
-
-  /// <summary>Field number for the "orderid" field.</summary>
-  public const int OrderidFieldNumber = 6;
-  private string orderid_ = "";
-  [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
-  public string Orderid {
-    get { return orderid_; }
-    set {
-      orderid_ = pb::ProtoPreconditions.CheckNotNull(value, "value");
+      processed_ = value;
     }
   }
 
   /// <summary>Field number for the "sighash" field.</summary>
-  public const int SighashFieldNumber = 7;
+  public const int SighashFieldNumber = 9;
   private string sighash_ = "";
   [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
   public string Sighash {
@@ -167,11 +192,13 @@ public sealed partial class Transfer : pb::IMessage<Transfer> {
       return true;
     }
     if (Blockchain != other.Blockchain) return false;
+    if (SrcAddress != other.SrcAddress) return false;
+    if (DstAddress != other.DstAddress) return false;
+    if (Order != other.Order) return false;
     if (Amount != other.Amount) return false;
-    if (Fee != other.Fee) return false;
-    if (Txid != other.Txid) return false;
-    if (Network != other.Network) return false;
-    if (Orderid != other.Orderid) return false;
+    if (Tx != other.Tx) return false;
+    if (Block != other.Block) return false;
+    if (Processed != other.Processed) return false;
     if (Sighash != other.Sighash) return false;
     return Equals(_unknownFields, other._unknownFields);
   }
@@ -180,11 +207,13 @@ public sealed partial class Transfer : pb::IMessage<Transfer> {
   public override int GetHashCode() {
     int hash = 1;
     if (Blockchain.Length != 0) hash ^= Blockchain.GetHashCode();
+    if (SrcAddress.Length != 0) hash ^= SrcAddress.GetHashCode();
+    if (DstAddress.Length != 0) hash ^= DstAddress.GetHashCode();
+    if (Order.Length != 0) hash ^= Order.GetHashCode();
     if (Amount.Length != 0) hash ^= Amount.GetHashCode();
-    if (Fee.Length != 0) hash ^= Fee.GetHashCode();
-    if (Txid.Length != 0) hash ^= Txid.GetHashCode();
-    if (Network.Length != 0) hash ^= Network.GetHashCode();
-    if (Orderid.Length != 0) hash ^= Orderid.GetHashCode();
+    if (Tx.Length != 0) hash ^= Tx.GetHashCode();
+    if (Block.Length != 0) hash ^= Block.GetHashCode();
+    if (Processed != false) hash ^= Processed.GetHashCode();
     if (Sighash.Length != 0) hash ^= Sighash.GetHashCode();
     if (_unknownFields != null) {
       hash ^= _unknownFields.GetHashCode();
@@ -203,28 +232,36 @@ public sealed partial class Transfer : pb::IMessage<Transfer> {
       output.WriteRawTag(10);
       output.WriteString(Blockchain);
     }
-    if (Amount.Length != 0) {
+    if (SrcAddress.Length != 0) {
       output.WriteRawTag(18);
+      output.WriteString(SrcAddress);
+    }
+    if (DstAddress.Length != 0) {
+      output.WriteRawTag(26);
+      output.WriteString(DstAddress);
+    }
+    if (Order.Length != 0) {
+      output.WriteRawTag(34);
+      output.WriteString(Order);
+    }
+    if (Amount.Length != 0) {
+      output.WriteRawTag(42);
       output.WriteString(Amount);
     }
-    if (Fee.Length != 0) {
-      output.WriteRawTag(26);
-      output.WriteString(Fee);
-    }
-    if (Txid.Length != 0) {
-      output.WriteRawTag(34);
-      output.WriteString(Txid);
-    }
-    if (Network.Length != 0) {
-      output.WriteRawTag(42);
-      output.WriteString(Network);
-    }
-    if (Orderid.Length != 0) {
+    if (Tx.Length != 0) {
       output.WriteRawTag(50);
-      output.WriteString(Orderid);
+      output.WriteString(Tx);
+    }
+    if (Block.Length != 0) {
+      output.WriteRawTag(58);
+      output.WriteString(Block);
+    }
+    if (Processed != false) {
+      output.WriteRawTag(64);
+      output.WriteBool(Processed);
     }
     if (Sighash.Length != 0) {
-      output.WriteRawTag(58);
+      output.WriteRawTag(74);
       output.WriteString(Sighash);
     }
     if (_unknownFields != null) {
@@ -238,20 +275,26 @@ public sealed partial class Transfer : pb::IMessage<Transfer> {
     if (Blockchain.Length != 0) {
       size += 1 + pb::CodedOutputStream.ComputeStringSize(Blockchain);
     }
+    if (SrcAddress.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(SrcAddress);
+    }
+    if (DstAddress.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(DstAddress);
+    }
+    if (Order.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(Order);
+    }
     if (Amount.Length != 0) {
       size += 1 + pb::CodedOutputStream.ComputeStringSize(Amount);
     }
-    if (Fee.Length != 0) {
-      size += 1 + pb::CodedOutputStream.ComputeStringSize(Fee);
+    if (Tx.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(Tx);
     }
-    if (Txid.Length != 0) {
-      size += 1 + pb::CodedOutputStream.ComputeStringSize(Txid);
+    if (Block.Length != 0) {
+      size += 1 + pb::CodedOutputStream.ComputeStringSize(Block);
     }
-    if (Network.Length != 0) {
-      size += 1 + pb::CodedOutputStream.ComputeStringSize(Network);
-    }
-    if (Orderid.Length != 0) {
-      size += 1 + pb::CodedOutputStream.ComputeStringSize(Orderid);
+    if (Processed != false) {
+      size += 1 + 1;
     }
     if (Sighash.Length != 0) {
       size += 1 + pb::CodedOutputStream.ComputeStringSize(Sighash);
@@ -270,20 +313,26 @@ public sealed partial class Transfer : pb::IMessage<Transfer> {
     if (other.Blockchain.Length != 0) {
       Blockchain = other.Blockchain;
     }
+    if (other.SrcAddress.Length != 0) {
+      SrcAddress = other.SrcAddress;
+    }
+    if (other.DstAddress.Length != 0) {
+      DstAddress = other.DstAddress;
+    }
+    if (other.Order.Length != 0) {
+      Order = other.Order;
+    }
     if (other.Amount.Length != 0) {
       Amount = other.Amount;
     }
-    if (other.Fee.Length != 0) {
-      Fee = other.Fee;
+    if (other.Tx.Length != 0) {
+      Tx = other.Tx;
     }
-    if (other.Txid.Length != 0) {
-      Txid = other.Txid;
+    if (other.Block.Length != 0) {
+      Block = other.Block;
     }
-    if (other.Network.Length != 0) {
-      Network = other.Network;
-    }
-    if (other.Orderid.Length != 0) {
-      Orderid = other.Orderid;
+    if (other.Processed != false) {
+      Processed = other.Processed;
     }
     if (other.Sighash.Length != 0) {
       Sighash = other.Sighash;
@@ -304,26 +353,34 @@ public sealed partial class Transfer : pb::IMessage<Transfer> {
           break;
         }
         case 18: {
-          Amount = input.ReadString();
+          SrcAddress = input.ReadString();
           break;
         }
         case 26: {
-          Fee = input.ReadString();
+          DstAddress = input.ReadString();
           break;
         }
         case 34: {
-          Txid = input.ReadString();
+          Order = input.ReadString();
           break;
         }
         case 42: {
-          Network = input.ReadString();
+          Amount = input.ReadString();
           break;
         }
         case 50: {
-          Orderid = input.ReadString();
+          Tx = input.ReadString();
           break;
         }
         case 58: {
+          Block = input.ReadString();
+          break;
+        }
+        case 64: {
+          Processed = input.ReadBool();
+          break;
+        }
+        case 74: {
           Sighash = input.ReadString();
           break;
         }

@@ -37,7 +37,8 @@
     <ClInclude Include="..\ccprocessor\AskOrder.pb.h" />
     <ClInclude Include="..\ccprocessor\BidOrder.pb.h" />
     <ClInclude Include="..\ccprocessor\DealOrder.pb.h" />
-    <ClInclude Include="..\ccprocessor\Pledge.pb.h" />
+    <ClInclude Include="..\ccprocessor\Fee.pb.h" />
+    <ClInclude Include="..\ccprocessor\Offer.pb.h" />
     <ClInclude Include="..\ccprocessor\RepaymentOrder.pb.h" />
     <ClInclude Include="..\ccprocessor\stdafx.h" />
     <ClInclude Include="..\ccprocessor\targetver.h" />
@@ -49,7 +50,8 @@
     <ClCompile Include="..\ccprocessor\AskOrder.pb.cc" />
     <ClCompile Include="..\ccprocessor\BidOrder.pb.cc" />
     <ClCompile Include="..\ccprocessor\DealOrder.pb.cc" />
-    <ClCompile Include="..\ccprocessor\Pledge.pb.cc" />
+    <ClCompile Include="..\ccprocessor\Fee.pb.cc" />
+    <ClCompile Include="..\ccprocessor\Offer.pb.cc" />
     <ClCompile Include="..\ccprocessor\processor.cpp" />
     <ClCompile Include="..\ccprocessor\RepaymentOrder.pb.cc" />
     <ClCompile Include="..\ccprocessor\stdafx.cpp" />
@@ -69,9 +71,8 @@
     <None Include="..\proto\DealOrder.proto">
       <DeploymentContent>true</DeploymentContent>
     </None>
-    <None Include="..\proto\Pledge.proto">
-      <DeploymentContent>true</DeploymentContent>
-    </None>
+    <None Include="..\proto\Fee.proto" />
+    <None Include="..\proto\Offer.proto" />
     <None Include="..\proto\RepaymentOrder.proto">
       <DeploymentContent>true</DeploymentContent>
     </None>
