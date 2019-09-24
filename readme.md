@@ -1,4 +1,4 @@
-https://www.gluwa.com/creditcoin
+https://www.creditcoinfoundation.org/
 
 # Gluwa Creditcoin
 
@@ -9,7 +9,7 @@ Creditcoin is a network that enables cross-blockchain credit transaction and cre
 
 The Creditcoin protocol was created by Gluwa. Gluwa Creditcoin is the official implementation of the Creditcoin protocol by Gluwa.
 
-For more information, see https://www.gluwa.com/creditcoin, or read the original whitepaper.
+For more information, see https://www.creditcoinfoundation.org/, or read the original whitepaper.
 
 ## License
 -----------
