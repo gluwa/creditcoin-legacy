@@ -14,7 +14,7 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="2.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="2.0.0" />
     <PackageReference Include="Newtonsoft.Json" Version="11.0.2" />
-    <PackageReference Include="PeterO.Cbor" Version="3.3.0" />
+    <PackageReference Include="PeterO.Cbor" Version="4.0.0" />
     <PackageReference Include="Portable.BouncyCastle" Version="1.8.2" />
     <PackageReference Include="Sawtooth.Sdk" Version="1.0.14" />
     <PackageReference Include="runtime.native.System" Version="4.3.0" />
