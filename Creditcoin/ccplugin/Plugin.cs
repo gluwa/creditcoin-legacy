@@ -1,20 +1,20 @@
 /*
-	Copyright(c) 2018 Gluwa, Inc.
+    Copyright(c) 2018 Gluwa, Inc.
 
-	This file is part of Creditcoin.
+    This file is part of Creditcoin.
 
-	Creditcoin is free software: you can redistribute it and/or modify
-	it under the terms of the GNU Lesser General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
-	(at your option) any later version.
-	
-	This program is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-	GNU Lesser General Public License for more details.
-	
-	You should have received a copy of the GNU Lesser General Public License
-	along with Creditcoin. If not, see <https://www.gnu.org/licenses/>.
+    Creditcoin is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+    
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+    
+    You should have received a copy of the GNU Lesser General Public License
+    along with Creditcoin. If not, see <https://www.gnu.org/licenses/>.
 */
 
 using System;
@@ -106,7 +106,7 @@ namespace ccplugin
 
     public interface ICCClientPlugin
     {
-        bool Run(bool txid, IConfiguration cfg, HttpClient httpClient, ITxBuilder txBuilder, Dictionary<string, string> settings, string progressId, string pluginsFolder, string url, string[] command, out bool inProgress, out string msg);
+        bool Run(bool txid, IConfiguration cfg, string secretOverride, HttpClient httpClient, ITxBuilder txBuilder, ref string progressToken, string url, string[] command, out bool inProgress, out string msg, out string link);
     }
 
     public interface ICCGatewayPlugin

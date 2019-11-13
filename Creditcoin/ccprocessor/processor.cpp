@@ -36,6 +36,7 @@
 #include <setting.pb.h>
 
 #include <log4cxx/basicconfigurator.h>
+#include <log4cxx/logger.h>
 #include <nlohmann/json/json.hpp>
 #include <zmqpp/context.hpp>
 #include <zmqpp/socket.hpp>
@@ -120,6 +121,7 @@ static const int LOCAL_SOCKET_TIMEOUT_MILLISECONDS = 5000;
 static const int CONFIRMATION_COUNT = 30;
 static const int YEAR_OF_BLOCKS = 60 * 24 * 365;
 static const int BLOCKS_IN_PERIOD = YEAR_OF_BLOCKS * 6;
+static const boost::multiprecision::cpp_int BLOCKS_IN_PERIOD_UPDATE1 = 2500000;
 static const int REMAINDER_OF_LAST_PERIOD = 2646631;
 
 static char const* TX_FEE_STRING = "10000000000000000";
@@ -144,7 +146,8 @@ static char const* REWARD_AMOUNT_STRING[] = {
                         "0"
 };
 //static_assert(sizeof(REWARD_AMOUNT_STRING) / sizeof(REWARD_AMOUNT_STRING[0]) == REWARD_COUNT);
-boost::multiprecision::cpp_int REWARD_AMOUNT[] = {
+
+static const boost::multiprecision::cpp_int REWARD_AMOUNT[] = {
     boost::multiprecision::cpp_int(REWARD_AMOUNT_STRING[ 0]),
     boost::multiprecision::cpp_int(REWARD_AMOUNT_STRING[ 1]),
     boost::multiprecision::cpp_int(REWARD_AMOUNT_STRING[ 2]),
@@ -163,11 +166,15 @@ boost::multiprecision::cpp_int REWARD_AMOUNT[] = {
 };
 //static_assert(sizeof(REWARD_AMOUNT) / sizeof(REWARD_AMOUNT[0]) == REWARD_COUNT);
 
+static const boost::multiprecision::cpp_int REWARD_AMOUNT_START_UPDATE1("28000000000000000000");
+
 static std::map<std::string, std::string> settings;
 static std::string externalGatewayAddress = "";
 static zmqpp::socket* localGateway;
 static zmqpp::socket* externalGateway;
 static zmqpp::context* socketContext;
+
+static log4cxx::LoggerPtr logger(log4cxx::Logger::getLogger("sawtooth.TransactionProcessor"));
 
 static void usage(int exitCode = 1)
 {
@@ -282,6 +289,124 @@ static void parseArgs(int argc, char** argv)
     std::cout << "Using rest api URL: " << URL_REST_API << std::endl;
 }
 
+static const char* base64lookupString = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+static std::vector<int> MakeBase64lookupTable()
+{
+    std::vector<int> ret(256, -1);
+    for (int i = 0; i < 64; i++)
+    {
+        ret[base64lookupString[i]] = i;
+    }
+    return ret;
+}
+std::vector<int> base64lookupTable = MakeBase64lookupTable();
+
+static std::vector<std::uint8_t> decodeBase64(std::string const& in)
+{
+    std::vector<std::uint8_t> ret;
+    unsigned int val = 0;
+    int valb = -8;
+    for (unsigned char c : in)
+    {
+        if (c == '=')
+        {
+            break;
+        }
+        int lookup = base64lookupTable[c];
+        if (lookup == -1)
+        {
+            throw sawtooth::InvalidTransaction("Invalid character in base64");
+        }
+        val = (val << 6) + lookup;
+        valb += 6;
+        if (valb >= 0)
+        {
+            ret.push_back(char((val >> valb) & 0xFF));
+            valb -= 8;
+        }
+    }
+    return ret;
+}
+
+static void filter(std::string const& prefix, std::function<void(std::string const&, std::vector<std::uint8_t> const&)> const& lister)
+{
+    using namespace boost::network;
+    http::client client;
+
+    try
+    {
+        std::string url = URL_REST_API + "/state?address=" + prefix;
+        for (;;)
+        {
+            http::client::request request(url);
+            request << header("Connection", "close");
+            std::string json = body(client.get(request));
+            nlohmann::json response = nlohmann::json::parse(json);
+            if (response.count(ERR) || response.count(DATA) != 1)
+            {
+                throw sawtooth::InvalidTransaction(RPC_FAILURE);
+            }
+            auto data = response[DATA];
+            if (!data.is_array())
+            {
+                throw sawtooth::InvalidTransaction(RPC_FAILURE);
+            }
+            auto statesArray = data.get<std::vector<nlohmann::json::value_type>>();
+            for (auto state : statesArray)
+            {
+                if (state.count(ADDRESS) != 1 || state.count(DATA) != 1)
+                {
+                    throw sawtooth::InvalidTransaction(RPC_FAILURE);
+                }
+                std::string address = state[ADDRESS];
+                std::string content = state[DATA];
+                auto protobuf = decodeBase64(content);
+                lister(address, protobuf);
+            }
+            if (response.count(PAGING) != 1)
+            {
+                throw sawtooth::InvalidTransaction(RPC_FAILURE);
+            }
+            auto paging = response[PAGING];
+            if (!paging.is_object())
+            {
+                throw sawtooth::InvalidTransaction(RPC_FAILURE);
+            }
+            size_t pagingNext = paging.count(NEXT);
+            if (pagingNext == 0)
+                break;
+            if (pagingNext != 1)
+            {
+                throw sawtooth::InvalidTransaction(RPC_FAILURE);
+            }
+            std::string next = paging[NEXT];
+            url.swap(next);
+        }
+    }
+    catch (sawtooth::InvalidTransaction const&)
+    {
+        throw;
+    }
+    catch (...)
+    {
+        throw sawtooth::InvalidTransaction(RPC_FAILURE);
+    }
+}
+
+static void updateSettings()
+{
+    settings.clear();
+    filter(SETTINGS_NAMESPACE, [](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
+        Setting setting;
+        setting.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
+        for (auto entry : setting.entries())
+        {
+            settings[entry.key()] = entry.value();
+        }
+    });
+}
+
 static std::string sha512(const std::string& message)
 {
     std::string digest;
@@ -327,19 +452,6 @@ static std::string makeAddress(std::string const& prefix, std::string const& key
     return addr;
 }
 
-static const char* base64lookupString = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-
-static std::vector<int> MakeBase64lookupTable()
-{
-    std::vector<int> ret(256, -1);
-    for (int i = 0; i < 64; i++)
-    {
-        ret[base64lookupString[i]] = i;
-    }
-    return ret;
-}
-std::vector<int> base64lookupTable = MakeBase64lookupTable();
-
 static std::string encodeBase64(std::vector<std::uint8_t> const& in)
 {
     std::stringstream out;
@@ -365,33 +477,6 @@ static std::string encodeBase64(std::vector<std::uint8_t> const& in)
         out << '=';
     }
     return out.str();
-}
-
-static std::vector<std::uint8_t> decodeBase64(std::string const& in)
-{
-    std::vector<std::uint8_t> ret;
-    unsigned int val = 0;
-    int valb = -8;
-    for (unsigned char c : in)
-    {
-        if (c == '=')
-        {
-            break;
-        }
-        int lookup = base64lookupTable[c];
-        if (lookup == -1)
-        {
-            throw sawtooth::InvalidTransaction("Invalid character in base64");
-        }
-        val = (val << 6) + lookup;
-        valb += 6;
-        if (valb >= 0)
-        {
-            ret.push_back(char((val >> valb) & 0xFF));
-            valb -= 8;
-        }
-    }
-    return ret;
 }
 
 static std::string toString(std::vector<std::uint8_t> const& v)
@@ -580,6 +665,19 @@ static std::string lastBlock()
     {
         throw;
     }
+    //TODO: catch requast exceptions
+    //catch (boost::exception_detail::clone_impl<std::exception_ptr> const& x)
+    //{
+    //    try
+    //    {
+    //        std::rethrow_exception(x);
+    //    }
+    //    catch (std::exception const& e)
+    //    {
+    //        std::string msg = e.what();
+    //        throw sawtooth::InvalidTransaction(RPC_FAILURE);
+    //    }
+    //}
     catch (...)
     {
         throw sawtooth::InvalidTransaction(RPC_FAILURE);
@@ -591,71 +689,6 @@ static std::string lastBlock()
 static boost::multiprecision::cpp_int lastBlockInt()
 {
     return getBigint(lastBlock());
-}
-
-static void filter(std::string const& prefix, std::function<void(std::string const&, std::vector<std::uint8_t> const&)> const& lister)
-{
-    using namespace boost::network;
-    http::client client;
-
-    try
-    {
-        std::string url = URL_REST_API + "/state?address=" + prefix;
-        for (;;)
-        {
-            http::client::request request(url);
-            request << header("Connection", "close");
-            std::string json = body(client.get(request));
-            nlohmann::json response = nlohmann::json::parse(json);
-            if (response.count(ERR) || response.count(DATA) != 1)
-            {
-                throw sawtooth::InvalidTransaction(RPC_FAILURE);
-            }
-            auto data = response[DATA];
-            if (!data.is_array())
-            {
-                throw sawtooth::InvalidTransaction(RPC_FAILURE);
-            }
-            auto statesArray = data.get<std::vector<nlohmann::json::value_type>>();
-            for (auto state : statesArray)
-            {
-                if (state.count(ADDRESS) != 1 || state.count(DATA) != 1)
-                {
-                    throw sawtooth::InvalidTransaction(RPC_FAILURE);
-                }
-                std::string address = state[ADDRESS];
-                std::string content = state[DATA];
-                auto protobuf = decodeBase64(content);
-                lister(address, protobuf);
-            }
-            if (response.count(PAGING) != 1)
-            {
-                throw sawtooth::InvalidTransaction(RPC_FAILURE);
-            }
-            auto paging = response[PAGING];
-            if (!paging.is_object())
-            {
-                throw sawtooth::InvalidTransaction(RPC_FAILURE);
-            }
-            size_t pagingNext = paging.count(NEXT);
-            if (pagingNext == 0)
-                break;
-            if (pagingNext != 1)
-            {
-                throw sawtooth::InvalidTransaction(RPC_FAILURE);
-            }
-            std::string next = paging[NEXT];
-            url.swap(next);
-        }
-    }
-    catch (sawtooth::InvalidTransaction const&)
-    {
-        throw;
-    }
-    catch (...)
-    {
-        throw sawtooth::InvalidTransaction(RPC_FAILURE);
-    }
 }
 
 boost::multiprecision::cpp_int calcInterest(boost::multiprecision::cpp_int const& amount, boost::multiprecision::cpp_int const& ticks, boost::multiprecision::cpp_int const& interest)
@@ -780,6 +813,11 @@ private:
 
     std::string getStateData(std::string const& id, bool existing = false)
     {
+        return getStateData(state.get(), id, existing);
+    }
+
+    static std::string getStateData(sawtooth::GlobalState* state, std::string const& id, bool existing = false)
+    {
         std::string stateData;
         if (!state->GetState(&stateData, id))
         {
@@ -806,7 +844,7 @@ private:
         }
     }
 
-    void addState(std::vector<sawtooth::GlobalState::KeyValue>* states, std::string const& id, google::protobuf::Message const& message)
+    static void addState(std::vector<sawtooth::GlobalState::KeyValue>* states, std::string const& id, google::protobuf::Message const& message)
     {
         std::string data;
         message.SerializeToString(&data);
@@ -855,6 +893,17 @@ private:
 
         try
         {
+            bool newFormula = false;
+            updateSettings();
+            auto i = settings.find("sawtooth.validator.update1");
+            if (i != settings.end())
+            {
+                std::string updateBlockStr = i->second;
+                boost::multiprecision::cpp_int updateBlock = getBigint(updateBlockStr);
+                if (updateBlock + 500 < processedBlockIdx)
+                    newFormula = true;
+            }
+
             std::string url = URL_REST_API + "/blocks";
             for (;;)
             {
@@ -876,42 +925,57 @@ private:
                 for (auto block : blocksArray)
                 {
                     boost::multiprecision::cpp_int blockIdx = blockNumInt(block);
-                    if (blockIdx > startBlockIdx)
+
+                    // we are going in descending block index order
+                    if (blockIdx > startBlockIdx) // untill reaching the requested block
                     {
                         continue;
                     }
 
-                    if (blockIdx == processedBlockIdx)
+                    if (blockIdx == processedBlockIdx) // blocks with lower indicies have been processed already
                     {
                         return;
                     }
 
-                    unsigned int schedule = REWARD_COUNT - 1;
-                    boost::multiprecision::cpp_int period = blockIdx / BLOCKS_IN_PERIOD;
-                    if (period < REWARD_COUNT - 3)
+                    boost::multiprecision::cpp_int reward;
+                    std::string rewardString;
+                    if (newFormula)
                     {
-                        // for N = 0 to 11 of Nth 6-years periods the reward is 222/2**N
-                        schedule = period.convert_to<unsigned int>();
+                        int period = (blockIdx / BLOCKS_IN_PERIOD).convert_to<int>();
+                        reward = BLOCKS_IN_PERIOD_UPDATE1 * REWARD_AMOUNT_START_UPDATE1 * boost::multiprecision::cpp_int(pow(20.0 / 19.0, -period));
+                        rewardString = toString(reward);
                     }
-                    else if (period == REWARD_COUNT - 3)
+                    else
                     {
-                        // since sum 222/2^N, N = 0 to 11 is equal to 1399856554.6875 coins we have a remainder of 1400000000 - 1399856554.6875 = 143445.3125
-                        // the reward in 12th period is 222/2**12 = 0.05419921875
-                        // To pay off the remainder takes (1400000000 - 1399856554.6875)/0.05419921875 = 2646630.63063 blocks
-                        // which means the reward for 0 to 2646630 blocks of 12th period is 0.05419921875
-                        // and for 2646631 block is (1400000000 - 1399856554.6875) - 0.05419921875 * 2646630 = 0.0341796875
-                        boost::multiprecision::cpp_int remainder = blockIdx % BLOCKS_IN_PERIOD;
-                        if (remainder == REMAINDER_OF_LAST_PERIOD)
+                        unsigned int schedule = REWARD_COUNT - 1;
+                        boost::multiprecision::cpp_int period = blockIdx / BLOCKS_IN_PERIOD;
+                        if (period < REWARD_COUNT - 3)
                         {
-                            schedule = REWARD_COUNT - 2;
+                            // for N = 0 to 11 of Nth 6-years periods the reward is 222/2**N (28/2**N for v1.1)
+                            schedule = period.convert_to<unsigned int>();
                         }
-                        else if (remainder < REMAINDER_OF_LAST_PERIOD)
+                        else if (period == REWARD_COUNT - 3)
                         {
-                            schedule = REWARD_COUNT - 3;
+                            // since sum 222/2^N, N = 0 to 11 is equal to 1399856554.6875 coins we have a remainder of 1400000000 - 1399856554.6875 = 143445.3125
+                            // the reward in 12th period is 222/2**12 = 0.05419921875
+                            // To pay off the remainder takes (1400000000 - 1399856554.6875)/0.05419921875 = 2646630.63063 blocks
+                            // which means the reward for 0 to 2646630 blocks of 12th period is 0.05419921875
+                            // and for 2646631 block is (1400000000 - 1399856554.6875) - 0.05419921875 * 2646630 = 0.0341796875
+                            boost::multiprecision::cpp_int remainder = blockIdx % BLOCKS_IN_PERIOD;
+                            if (remainder == REMAINDER_OF_LAST_PERIOD)
+                            {
+                                schedule = REWARD_COUNT - 2;
+                            }
+                            else if (remainder < REMAINDER_OF_LAST_PERIOD)
+                            {
+                                schedule = REWARD_COUNT - 3;
+                            }
                         }
+                        reward = REWARD_AMOUNT[schedule];
+                        rewardString = REWARD_AMOUNT_STRING[schedule];
                     }
 
-                    if (REWARD_AMOUNT[schedule] > 0)
+                    if (reward > 0)
                     {
                         std::string signer = getFromHeader(block, SIGNER_PUBLIC_KEY);
                         const std::string signerSighash = sha512id(signer);
@@ -920,13 +984,13 @@ private:
                         Wallet wallet;
                         if (stateData.empty())
                         {
-                            wallet.set_amount(REWARD_AMOUNT_STRING[schedule]);
+                            wallet.set_amount(rewardString);
                         }
                         else
                         {
                             wallet.ParseFromString(stateData);
                             boost::multiprecision::cpp_int balance = getBigint(wallet.amount());
-                            balance += REWARD_AMOUNT[schedule];
+                            balance += reward;
                             wallet.set_amount(toString(balance));
                         }
                         std::vector<sawtooth::GlobalState::KeyValue> states;
@@ -1147,7 +1211,16 @@ private:
             throw sawtooth::InvalidTransaction("Only the owner can register");
         }
         const std::string blockchain = srcAddress.blockchain();
+        if (dstAddress.blockchain() != blockchain)
+        {
+            throw sawtooth::InvalidTransaction("Source and destination addresses must be on the same blockchain");
+        }
+
         const std::string network = srcAddress.network();
+        if (dstAddress.network() != network)
+        {
+            throw sawtooth::InvalidTransaction("Source and destination addresses must be on the same network");
+        }
 
         const std::string transferId = makeAddress(TRANSFER, blockchain + blockchainTxId + network);
         stateData = getStateData(transferId);
@@ -1531,6 +1604,11 @@ private:
             throw sawtooth::InvalidTransaction("The deal has been already locked");
         }
 
+        if (dealOrder.loan_transfer().empty())
+        {
+            throw sawtooth::InvalidTransaction("The deal has not been completed yet");
+        }
+
         if (mySighash != dealOrder.sighash())
         {
             throw sawtooth::InvalidTransaction("Only a fundraiser can lock a deal");
@@ -1650,7 +1728,7 @@ private:
 
         if (mySighash != address.sighash())
         {
-            throw sawtooth::InvalidTransaction("Only an investor can close a deal");
+            throw sawtooth::InvalidTransaction("Only an investor can exempt a deal");
         }
 
         dealOrder.set_repayment_transfer(transferId);
@@ -1892,7 +1970,8 @@ private:
         boost::multiprecision::cpp_int tip = lastBlockInt();
         if (blockIdx >= tip - CONFIRMATION_COUNT)
         {
-            throw sawtooth::InvalidTransaction("Premature processing");
+            LOG4CXX_INFO(logger, "Premature processing");
+            return;
         }
 
         sawtooth::GlobalState* s = state.get();
@@ -1933,6 +2012,17 @@ private:
             boost::multiprecision::cpp_int elapsed = blockIdx - start;
             if (dealOrder.expiration() < elapsed && dealOrder.loan_transfer().empty())
             {
+                const std::string walletId = namespacePrefix + WALLET + dealOrder.sighash();
+                std::string stateData = getStateData(s, walletId, true);
+                Wallet wallet;
+                wallet.ParseFromString(stateData);
+                boost::multiprecision::cpp_int balance = getBigint(wallet.amount());
+                balance += getBigint(dealOrder.fee());
+                wallet.set_amount(toString(balance));
+
+                std::vector<sawtooth::GlobalState::KeyValue> states;
+                addState(&states, walletId, wallet);
+                s->SetState(states);
                 s->DeleteState(address);
             }
         });
@@ -1988,7 +2078,7 @@ public:
 
     std::list<std::string> versions() const
     {
-        return { "1.0" };
+        return { "1.0", "1.1" };
     }
 
     std::list<std::string> namespaces() const
@@ -2006,15 +2096,7 @@ static void setupSettingsAndExternalGatewayAddress()
 {
     try
     {
-        filter(SETTINGS_NAMESPACE, [](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
-            Setting setting;
-            setting.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
-            for (auto entry : setting.entries())
-            {
-                settings[entry.key()] = entry.value();
-            }
-        });
-
+        updateSettings();
         auto i = settings.find("sawtooth.validator.gateway");
         if (i != settings.end())
         {
@@ -2073,7 +2155,7 @@ int main(int argc, char** argv)
         externalGateway->set(zmqpp::socket_option::receive_timeout, SOCKET_TIMEOUT_MILLISECONDS);
 
         log4cxx::BasicConfigurator::configure();
-        
+
         sawtooth::TransactionProcessorUPtr processor(sawtooth::TransactionProcessor::Create(URL_VALIDATOR));
         sawtooth::TransactionHandlerUPtr transactionHandler(new Handler());
         processor->RegisterHandler(std::move(transactionHandler));
