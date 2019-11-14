@@ -1,20 +1,20 @@
 /*
-	Copyright(c) 2018 Gluwa, Inc.
+    Copyright(c) 2018 Gluwa, Inc.
 
-	This file is part of Creditcoin.
+    This file is part of Creditcoin.
 
-	Creditcoin is free software: you can redistribute it and/or modify
-	it under the terms of the GNU Lesser General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
-	(at your option) any later version.
-	
-	This program is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-	GNU Lesser General Public License for more details.
-	
-	You should have received a copy of the GNU Lesser General Public License
-	along with Creditcoin. If not, see <https://www.gnu.org/licenses/>.
+    Creditcoin is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+    
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+    GNU Lesser General Public License for more details.
+    
+    You should have received a copy of the GNU Lesser General Public License
+    along with Creditcoin. If not, see <https://www.gnu.org/licenses/>.
 */
 
 using PeterO.Cbor;
@@ -34,7 +34,7 @@ namespace ccplugin
     {
         private Signer mSigner;
         private const string CREDITCOIN = "CREDITCOIN";
-        private const string version = "1.0";
+        private const string version = "1.1";
         private const string pluginsFolderName = "plugins";
         private static string prefix = CREDITCOIN.ToByteArray().ToSha512().ToHexString().Substring(0, 6);
         private const int SKIP_TO_GET_60 = 512 / 8 * 2 - 60; // 512 - hash size, 8 - bits in byte, 2 - hex digits for byte, 60 - merkle address length (70) without namespace length (6) and prexix length (4)
