@@ -127,46 +127,8 @@ static const int REMAINDER_OF_LAST_PERIOD = 2646631;
 static char const* TX_FEE_STRING = "10000000000000000";
 boost::multiprecision::cpp_int TX_FEE(TX_FEE_STRING);
 
-static const int REWARD_COUNT = 15;
-static char const* REWARD_AMOUNT_STRING[] = {
-    "222000000000000000000",
-    "111000000000000000000",
-     "55500000000000000000",
-     "27750000000000000000",
-     "13875000000000000000",
-      "6937500000000000000",
-      "3468750000000000000",
-      "1734375000000000000",
-       "867187500000000000",
-       "433593750000000000",
-       "216796875000000000",
-       "108398437500000000",
-        "54199218750000000",
-        "34179687500000000",
-                        "0"
-};
-//static_assert(sizeof(REWARD_AMOUNT_STRING) / sizeof(REWARD_AMOUNT_STRING[0]) == REWARD_COUNT);
-
-static const boost::multiprecision::cpp_int REWARD_AMOUNT[] = {
-    boost::multiprecision::cpp_int(REWARD_AMOUNT_STRING[ 0]),
-    boost::multiprecision::cpp_int(REWARD_AMOUNT_STRING[ 1]),
-    boost::multiprecision::cpp_int(REWARD_AMOUNT_STRING[ 2]),
-    boost::multiprecision::cpp_int(REWARD_AMOUNT_STRING[ 3]),
-    boost::multiprecision::cpp_int(REWARD_AMOUNT_STRING[ 4]),
-    boost::multiprecision::cpp_int(REWARD_AMOUNT_STRING[ 5]),
-    boost::multiprecision::cpp_int(REWARD_AMOUNT_STRING[ 6]),
-    boost::multiprecision::cpp_int(REWARD_AMOUNT_STRING[ 7]),
-    boost::multiprecision::cpp_int(REWARD_AMOUNT_STRING[ 8]),
-    boost::multiprecision::cpp_int(REWARD_AMOUNT_STRING[ 9]),
-    boost::multiprecision::cpp_int(REWARD_AMOUNT_STRING[10]),
-    boost::multiprecision::cpp_int(REWARD_AMOUNT_STRING[11]),
-    boost::multiprecision::cpp_int(REWARD_AMOUNT_STRING[12]),
-    boost::multiprecision::cpp_int(REWARD_AMOUNT_STRING[13]),
-    boost::multiprecision::cpp_int(REWARD_AMOUNT_STRING[14]),
-};
-//static_assert(sizeof(REWARD_AMOUNT) / sizeof(REWARD_AMOUNT[0]) == REWARD_COUNT);
-
-static const boost::multiprecision::cpp_int REWARD_AMOUNT_START_UPDATE1("28000000000000000000");
+static char const* REWARD_AMOUNT_STRING = "222000000000000000000";
+static const boost::multiprecision::cpp_int REWARD_AMOUNT(REWARD_AMOUNT_STRING);
 
 static std::map<std::string, std::string> settings;
 static std::string externalGatewayAddress = "";
@@ -941,38 +903,32 @@ private:
                     std::string rewardString;
                     if (newFormula)
                     {
-                        int period = (blockIdx / BLOCKS_IN_PERIOD).convert_to<int>();
-                        reward = BLOCKS_IN_PERIOD_UPDATE1 * REWARD_AMOUNT_START_UPDATE1 * boost::multiprecision::cpp_int(pow(20.0 / 19.0, -period));
+                        int period = (blockIdx / BLOCKS_IN_PERIOD_UPDATE1).convert_to<int>();
+                        double fraction = pow(19.0 / 20.0, period);
+                        std::ostringstream fractionStringBuilder;
+                        fractionStringBuilder << std::fixed << fraction;
+                        std::string fractionString = fractionStringBuilder.str();
+                        size_t pos = fractionString.find('.');
+                        assert(pos > 0);
+                        std::ostringstream fractionInWeiStringBuilder;
+                        if (fractionString[0] != '0')
+                        {
+                            fractionInWeiStringBuilder << fractionString.substr(0, pos) << std::left << std::setfill('0') << std::setw(18) << fractionString.substr(pos + 1);
+                        }
+                        else
+                        {
+                            int pos = 2;
+                            for (; fractionString[pos] == '0'; ++pos);
+                            fractionInWeiStringBuilder << std::left << std::setfill('0') << std::setw(20 - pos) << fractionString.substr(pos);
+                        }
+                        std::string fractionInWeiString = fractionInWeiStringBuilder.str();
+                        reward = boost::multiprecision::cpp_int(28) * boost::multiprecision::cpp_int(fractionInWeiString);
                         rewardString = toString(reward);
                     }
                     else
                     {
-                        unsigned int schedule = REWARD_COUNT - 1;
-                        boost::multiprecision::cpp_int period = blockIdx / BLOCKS_IN_PERIOD;
-                        if (period < REWARD_COUNT - 3)
-                        {
-                            // for N = 0 to 11 of Nth 6-years periods the reward is 222/2**N (28/2**N for v1.1)
-                            schedule = period.convert_to<unsigned int>();
-                        }
-                        else if (period == REWARD_COUNT - 3)
-                        {
-                            // since sum 222/2^N, N = 0 to 11 is equal to 1399856554.6875 coins we have a remainder of 1400000000 - 1399856554.6875 = 143445.3125
-                            // the reward in 12th period is 222/2**12 = 0.05419921875
-                            // To pay off the remainder takes (1400000000 - 1399856554.6875)/0.05419921875 = 2646630.63063 blocks
-                            // which means the reward for 0 to 2646630 blocks of 12th period is 0.05419921875
-                            // and for 2646631 block is (1400000000 - 1399856554.6875) - 0.05419921875 * 2646630 = 0.0341796875
-                            boost::multiprecision::cpp_int remainder = blockIdx % BLOCKS_IN_PERIOD;
-                            if (remainder == REMAINDER_OF_LAST_PERIOD)
-                            {
-                                schedule = REWARD_COUNT - 2;
-                            }
-                            else if (remainder < REMAINDER_OF_LAST_PERIOD)
-                            {
-                                schedule = REWARD_COUNT - 3;
-                            }
-                        }
-                        reward = REWARD_AMOUNT[schedule];
-                        rewardString = REWARD_AMOUNT_STRING[schedule];
+                        reward = REWARD_AMOUNT;
+                        rewardString = REWARD_AMOUNT_STRING;
                     }
 
                     if (reward > 0)
@@ -1952,7 +1908,7 @@ private:
         verifyGatewaySigner();
 
         boost::multiprecision::cpp_int blockIdx;
-        getBigint(query, "p1", "blockIdx", &blockIdx);
+        std::string ingore = getBigint(query, "p1", "blockIdx", &blockIdx);
 
         const std::string processedBlockIdx = namespacePrefix + PROCESSED_BLOCK + PROCESSED_BLOCK_ID;
         std::string stateData = getStateData(processedBlockIdx);
