@@ -3,6 +3,7 @@ using System.Numerics;
 using Microsoft.AspNetCore.Mvc;
 using ccbe.Models;
 using Microsoft.Extensions.Logging;
+using System.Text;
 
 namespace ccbe.Controllers
 {
@@ -40,62 +41,42 @@ namespace ccbe.Controllers
             return Json(blockchain);
         }
 
-
-        private static BigInteger[] REWARD_AMOUNT = new BigInteger[]
-        {
-            BigInteger.Parse("222000000000000000000"),
-            BigInteger.Parse("111000000000000000000"),
-            BigInteger.Parse( "55500000000000000000"),
-            BigInteger.Parse( "27750000000000000000"),
-            BigInteger.Parse( "13875000000000000000"),
-            BigInteger.Parse(  "6937500000000000000"),
-            BigInteger.Parse(  "3468750000000000000"),
-            BigInteger.Parse(  "1734375000000000000"),
-            BigInteger.Parse(   "867187500000000000"),
-            BigInteger.Parse(   "433593750000000000"),
-            BigInteger.Parse(   "216796875000000000"),
-            BigInteger.Parse(   "108398437500000000"),
-            BigInteger.Parse(    "54199218750000000"),
-            BigInteger.Parse(    "34179687500000000"),
-            BigInteger.Parse(                    "0")
-        };
-
-        private static int REWARD_COUNT = REWARD_AMOUNT.Length;
-
-        private const int YEAR_OF_BLOCKS = 60 * 24 * 365;
-        private const int BLOCKS_IN_PERIOD = YEAR_OF_BLOCKS * 6;
-        private const int REMAINDER_OF_LAST_PERIOD = 2646631;
+        private static BigInteger OLD_REWARD = BigInteger.Parse("222000000000000000000");
+        private static BigInteger NEW_REWARD = BigInteger.Parse("28");
+        private static BigInteger LAST_BLOCK_WITH_OLD_REWARD = BigInteger.Parse("278300");
+        private const int BLOCKS_IN_PERIOD = 2500000;
 
         internal static string calculateBlockReward(string tipBlockNumStr)
         {
-            int schedule = REWARD_COUNT - 1;
             var tipBlockNum = BigInteger.Parse(tipBlockNumStr);
-
-            var period = tipBlockNum / BLOCKS_IN_PERIOD;
-            if (period < REWARD_COUNT - 3)
+            if (tipBlockNum > LAST_BLOCK_WITH_OLD_REWARD)
             {
-                // for N = 0 to 11 of Nth 6-years periods the reward is 222/2**N
-                schedule = (int)period;
+                var period = (int)(tipBlockNum / BLOCKS_IN_PERIOD);
+                var fraction = Math.Pow(19.0 / 20.0, period);
+                var number = fraction.ToString();
+                var pos = number.IndexOf('.');
+                var builder = new StringBuilder();
+                if (number[0] != '0')
+                {
+                    builder.Append(number.Substring(0, pos));
+                    builder.Append(number.Substring(pos + 1));
+                    builder.Append(new String('0', 18 - (number.Length - pos)));
+                }
+                else
+                {
+                    pos = 2;
+                    for (; number[pos] == '0'; ++pos);
+                    builder.Append(number.Substring(pos + 1));
+                    builder.Append(new String('0', 18 - (number.Length - 2)));
+                }
+                var fractionStr = builder.ToString();
+                var reward = NEW_REWARD * (BigInteger.Parse(fractionStr));
+                return reward.ToString();
             }
-            else if (period == REWARD_COUNT - 3)
+            else
             {
-                // since sum 222/2^N, N = 0 to 11 is equal to 1399856554.6875 coins we have a remainder of 1400000000 - 1399856554.6875 = 143445.3125
-                // the reward in 12th period is 222/2**12 = 0.05419921875
-                // To pay off the remainder takes (1400000000 - 1399856554.6875)/0.05419921875 = 2646630.63063 blocks
-                // which means the reward for 0 to 2646630 blocks of 12th period is 0.05419921875
-                // and for 2646631 block is (1400000000 - 1399856554.6875) - 0.05419921875 * 2646630 = 0.0341796875
-                var remainder = tipBlockNum % BLOCKS_IN_PERIOD;
-                if (remainder == REMAINDER_OF_LAST_PERIOD)
-                {
-                    schedule = REWARD_COUNT - 2;
-                }
-                else if (remainder < REMAINDER_OF_LAST_PERIOD)
-                {
-                    schedule = REWARD_COUNT - 3;
-                }
+                return OLD_REWARD.ToString();
             }
-
-            return REWARD_AMOUNT[schedule].ToString();
         }
 
         private static string calculateNetworkWeight(string difficultyStr)
