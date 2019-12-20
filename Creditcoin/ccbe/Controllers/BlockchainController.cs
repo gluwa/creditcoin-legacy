@@ -43,7 +43,7 @@ namespace ccbe.Controllers
 
         private static BigInteger OLD_REWARD = BigInteger.Parse("222000000000000000000");
         private static BigInteger NEW_REWARD = BigInteger.Parse("28");
-        private static BigInteger LAST_BLOCK_WITH_OLD_REWARD = BigInteger.Parse("278300");
+        private static BigInteger LAST_BLOCK_WITH_OLD_REWARD = BigInteger.Parse("279410");
         private const int BLOCKS_IN_PERIOD = 2500000;
 
         internal static string calculateBlockReward(string tipBlockNumStr)
@@ -53,21 +53,19 @@ namespace ccbe.Controllers
             {
                 var period = (int)(tipBlockNum / BLOCKS_IN_PERIOD);
                 var fraction = Math.Pow(19.0 / 20.0, period);
-                var number = fraction.ToString();
+                var number = fraction.ToString("F18");
                 var pos = number.IndexOf('.');
                 var builder = new StringBuilder();
                 if (number[0] != '0')
                 {
                     builder.Append(number.Substring(0, pos));
                     builder.Append(number.Substring(pos + 1));
-                    builder.Append(new String('0', 18 - (number.Length - pos)));
                 }
                 else
                 {
                     pos = 2;
                     for (; number[pos] == '0'; ++pos);
-                    builder.Append(number.Substring(pos + 1));
-                    builder.Append(new String('0', 18 - (number.Length - 2)));
+                    builder.Append(number.Substring(pos));
                 }
                 var fractionStr = builder.ToString();
                 var reward = NEW_REWARD * (BigInteger.Parse(fractionStr));

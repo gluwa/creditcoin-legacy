@@ -25,6 +25,7 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <mutex>
 
 #include <cryptopp/sha.h>
 #include <cryptopp/filters.h>
@@ -131,8 +132,10 @@ static char const* REWARD_AMOUNT_STRING = "222000000000000000000";
 static const boost::multiprecision::cpp_int REWARD_AMOUNT(REWARD_AMOUNT_STRING);
 
 static std::map<std::string, std::string> settings;
+std::mutex settingsLock;
 static std::string externalGatewayAddress = "";
 static zmqpp::socket* localGateway;
+std::mutex localGatewayLock;
 static zmqpp::socket* externalGateway;
 static zmqpp::context* socketContext;
 
@@ -291,59 +294,63 @@ static std::vector<std::uint8_t> decodeBase64(std::string const& in)
     return ret;
 }
 
-static void filter(std::string const& prefix, std::function<void(std::string const&, std::vector<std::uint8_t> const&)> const& lister)
+static void filter(std::string* url, std::string const& prefix, std::function<void(std::string const&, std::vector<std::uint8_t> const&)> const& lister)
 {
     using namespace boost::network;
     http::client client;
 
     try
     {
-        std::string url = URL_REST_API + "/state?address=" + prefix;
-        for (;;)
+        if (url->empty())
+            *url = URL_REST_API + "/state?address=" + prefix;
+
+        http::client::request request(*url);
+        request << header("Connection", "close");
+        std::string json = body(client.get(request));
+        nlohmann::json response = nlohmann::json::parse(json);
+        if (response.count(ERR) || response.count(DATA) != 1)
         {
-            http::client::request request(url);
-            request << header("Connection", "close");
-            std::string json = body(client.get(request));
-            nlohmann::json response = nlohmann::json::parse(json);
-            if (response.count(ERR) || response.count(DATA) != 1)
+            throw sawtooth::InvalidTransaction(RPC_FAILURE);
+        }
+        auto data = response[DATA];
+        if (!data.is_array())
+        {
+            throw sawtooth::InvalidTransaction(RPC_FAILURE);
+        }
+        auto statesArray = data.get<std::vector<nlohmann::json::value_type>>();
+        for (auto state : statesArray)
+        {
+            if (state.count(ADDRESS) != 1 || state.count(DATA) != 1)
             {
                 throw sawtooth::InvalidTransaction(RPC_FAILURE);
             }
-            auto data = response[DATA];
-            if (!data.is_array())
-            {
-                throw sawtooth::InvalidTransaction(RPC_FAILURE);
-            }
-            auto statesArray = data.get<std::vector<nlohmann::json::value_type>>();
-            for (auto state : statesArray)
-            {
-                if (state.count(ADDRESS) != 1 || state.count(DATA) != 1)
-                {
-                    throw sawtooth::InvalidTransaction(RPC_FAILURE);
-                }
-                std::string address = state[ADDRESS];
-                std::string content = state[DATA];
-                auto protobuf = decodeBase64(content);
-                lister(address, protobuf);
-            }
-            if (response.count(PAGING) != 1)
-            {
-                throw sawtooth::InvalidTransaction(RPC_FAILURE);
-            }
-            auto paging = response[PAGING];
-            if (!paging.is_object())
-            {
-                throw sawtooth::InvalidTransaction(RPC_FAILURE);
-            }
-            size_t pagingNext = paging.count(NEXT);
-            if (pagingNext == 0)
-                break;
+            std::string address = state[ADDRESS];
+            std::string content = state[DATA];
+            auto protobuf = decodeBase64(content);
+            lister(address, protobuf);
+        }
+        if (response.count(PAGING) != 1)
+        {
+            throw sawtooth::InvalidTransaction(RPC_FAILURE);
+        }
+        auto paging = response[PAGING];
+        if (!paging.is_object())
+        {
+            throw sawtooth::InvalidTransaction(RPC_FAILURE);
+        }
+        size_t pagingNext = paging.count(NEXT);
+        if (pagingNext == 0)
+        {
+            url->clear();
+        }
+        else
+        {
             if (pagingNext != 1)
             {
                 throw sawtooth::InvalidTransaction(RPC_FAILURE);
             }
             std::string next = paging[NEXT];
-            url.swap(next);
+            url->swap(next);
         }
     }
     catch (sawtooth::InvalidTransaction const&)
@@ -352,21 +359,31 @@ static void filter(std::string const& prefix, std::function<void(std::string con
     }
     catch (...)
     {
+        url->clear();
         throw sawtooth::InvalidTransaction(RPC_FAILURE);
     }
 }
 
 static void updateSettings()
 {
-    settings.clear();
-    filter(SETTINGS_NAMESPACE, [](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
-        Setting setting;
-        setting.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
-        for (auto entry : setting.entries())
-        {
-            settings[entry.key()] = entry.value();
-        }
-    });
+    std::map<std::string, std::string> newSettings;
+    std::string url;
+    for (;;)
+    {
+        filter(&url, SETTINGS_NAMESPACE, [&newSettings](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
+            Setting setting;
+            setting.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
+            for (auto entry : setting.entries())
+            {
+                newSettings[entry.key()] = entry.value();
+            }
+        });
+        if (url.empty())
+            break;
+    }
+    settingsLock.lock();
+    settings.swap(newSettings);
+    settingsLock.unlock();
 }
 
 static std::string sha512(const std::string& message)
@@ -816,6 +833,7 @@ private:
     void verify(std::stringstream const& gatewayCommand)
     {
         std::string response = "";
+        localGatewayLock.lock();
         if (localGateway->send(gatewayCommand.str()))
         {
             localGateway->receive(response);
@@ -840,6 +858,7 @@ private:
                 externalGateway->disconnect(externalGatewayAddress);
             }
         }
+        localGatewayLock.unlock();
         if (response != "good")
         {
             throw sawtooth::InvalidTransaction("Couldn't validate the transaction");
@@ -856,7 +875,8 @@ private:
         try
         {
             bool newFormula = false;
-            updateSettings();
+            if (processedBlockIdx % 100 == 0)
+                updateSettings();
             auto i = settings.find("sawtooth.validator.update1");
             if (i != settings.end())
             {
@@ -1021,6 +1041,14 @@ private:
         const std::string signer = compress(txn->header()->GetValue(sawtooth::TransactionHeaderField::TransactionHeaderSignerPublicKey));
         return sha512id(signer);
     }
+
+private:
+    std::string askOrderUrl;
+    std::string bidOrderUrl;
+    std::string offerUrl;
+    std::string dealOrderUrl;
+    std::string repaymentOrderUrl;
+    std::string feeUrl;
 
 private:
     void SendFunds(nlohmann::json const& query)
@@ -1908,7 +1936,7 @@ private:
         verifyGatewaySigner();
 
         boost::multiprecision::cpp_int blockIdx;
-        std::string ingore = getBigint(query, "p1", "blockIdx", &blockIdx);
+        std::string ignore = getBigint(query, "p1", "blockIdx", &blockIdx);
 
         const std::string processedBlockIdx = namespacePrefix + PROCESSED_BLOCK + PROCESSED_BLOCK_ID;
         std::string stateData = getStateData(processedBlockIdx);
@@ -1931,7 +1959,7 @@ private:
         }
 
         sawtooth::GlobalState* s = state.get();
-        filter(namespacePrefix + ASK_ORDER, [blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
+        filter(&askOrderUrl, namespacePrefix + ASK_ORDER, [blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
             AskOrder askOrder;
             askOrder.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
             boost::multiprecision::cpp_int start = getBigint(askOrder.block());
@@ -1941,7 +1969,7 @@ private:
                 s->DeleteState(address);
             }
         });
-        filter(namespacePrefix + BID_ORDER, [blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
+        filter(&bidOrderUrl, namespacePrefix + BID_ORDER, [blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
             BidOrder bidOrder;
             bidOrder.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
             boost::multiprecision::cpp_int start = getBigint(bidOrder.block());
@@ -1951,7 +1979,7 @@ private:
                 s->DeleteState(address);
             }
         });
-        filter(namespacePrefix + OFFER, [blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
+        filter(&offerUrl ,namespacePrefix + OFFER, [blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
             Offer offer;
             offer.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
             boost::multiprecision::cpp_int start = getBigint(offer.block());
@@ -1961,7 +1989,7 @@ private:
                 s->DeleteState(address);
             }
         });
-        filter(namespacePrefix + DEAL_ORDER, [blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
+        filter(&dealOrderUrl, namespacePrefix + DEAL_ORDER, [blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
             DealOrder dealOrder;
             dealOrder.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
             boost::multiprecision::cpp_int start = getBigint(dealOrder.block());
@@ -1982,7 +2010,7 @@ private:
                 s->DeleteState(address);
             }
         });
-        filter(namespacePrefix + REPAYMENT_ORDER, [blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
+        filter(&repaymentOrderUrl, namespacePrefix + REPAYMENT_ORDER, [blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
             RepaymentOrder repaymentOrder;
             repaymentOrder.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
             boost::multiprecision::cpp_int start = getBigint(repaymentOrder.block());
@@ -1992,7 +2020,7 @@ private:
                 s->DeleteState(address);
             }
         });
-        filter(namespacePrefix + FEE, [blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
+        filter(&feeUrl, namespacePrefix + FEE, [blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
             Fee fee;
             fee.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
             boost::multiprecision::cpp_int start(fee.block());
@@ -2034,7 +2062,7 @@ public:
 
     std::list<std::string> versions() const
     {
-        return { "1.0", "1.1" };
+        return { "1.0", "1.1", "1.2" };
     }
 
     std::list<std::string> namespaces() const
@@ -2098,6 +2126,7 @@ int main(int argc, char** argv)
     parseArgs(argc, argv);
     setupSettingsAndExternalGatewayAddress();
 
+    int ret = -1;
     try
     {
         zmqpp::context context;
@@ -2119,13 +2148,7 @@ int main(int argc, char** argv)
         std::cout << "Running" << std::endl;
         processor->Run();
 
-        localGateway->close();
-        delete localGateway;
-
-        externalGateway->close();
-        delete externalGateway;
-
-        return 0;
+        ret = 0;
     }
     catch (std::exception& e)
     {
@@ -2142,5 +2165,5 @@ int main(int argc, char** argv)
     externalGateway->close();
     delete externalGateway;
 
-    return -1;
+    return ret;
 }
