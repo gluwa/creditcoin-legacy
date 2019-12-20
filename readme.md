@@ -11,6 +11,7 @@ The Creditcoin protocol was created by Gluwa. Gluwa Creditcoin is the official i
 
 For more information, see https://www.creditcoin.org, or read the original whitepaper.
 
+
 ## License
 -----------
 
