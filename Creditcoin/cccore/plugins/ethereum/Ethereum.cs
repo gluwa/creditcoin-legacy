@@ -74,26 +74,13 @@ namespace cethereum
                     return false;
                 }
 
-                string gainString = "0";
-                string orderId = null;
-                string amountString = null;
-                if (erc20)
+                string rpcUrl = cfg["rpc"];
+                if (string.IsNullOrWhiteSpace(rpcUrl))
                 {
-                    amountString = command[1];
-                }
-                else
-                {
-                    gainString = command[1];
-                    orderId = command[2];
-                }
-
-                string secret = secretOverride ?? cfg["secret"];
-                if (string.IsNullOrWhiteSpace(secret))
-                {
-                    msg = "ethereum.secret is not set";
+                    msg = "ethereum.rpc is not set";
                     return false;
                 }
-                var ethereumPrivateKey = secret;
+                var web3 = new Nethereum.Web3.Web3(rpcUrl);
 
 #if DEBUG
                 string confirmationsCount = cfg["confirmationsCount"];
@@ -103,70 +90,97 @@ namespace cethereum
                 }
 #endif
 
-                string rpcUrl = cfg["rpc"];
-                if (string.IsNullOrWhiteSpace(rpcUrl))
+                string payTxId;
+                string ethSrcAddress = null;
+                string amountString = null;
+                string gainString = null;
+                string orderId = null;
+                if (progressToken != null)
                 {
-                    msg = "ethereum.rpc is not set";
-                    return false;
-                }
+                    var progressTokenComponents = progressToken.Split(':');
+                    Debug.Assert(progressTokenComponents.Length == 3);
 
-                string ethSrcAddress = EthECKey.GetPublicAddress(ethereumPrivateKey);
-                var web3 = new Nethereum.Web3.Web3(rpcUrl);
+                    payTxId = progressTokenComponents[0];
 
-                string srcAddressId = null;
-                string dstAddressId = null;
-                if (!erc20)
-                {
-                    var protobuf = RpcHelper.ReadProtobuf(httpClient, $"{url}/state/{orderId}", out msg);
-                    if (protobuf == null)
+                    if (erc20)
                     {
-                        msg = "failed to extract address data through RPC";
-                        return false;
-                    }
-                    if (orderId.StartsWith(RpcHelper.creditCoinNamespace + RpcHelper.dealOrderPrefix))
-                    {
-                        var dealOrder = DealOrder.Parser.ParseFrom(protobuf);
-                        if (gainString.Equals("0"))
-                        {
-                            srcAddressId = dealOrder.SrcAddress;
-                            dstAddressId = dealOrder.DstAddress;
-                        }
-                        else
-                        {
-                            dstAddressId = dealOrder.SrcAddress;
-                            srcAddressId = dealOrder.DstAddress;
-                        }
-                        amountString = dealOrder.Amount;
-                    }
-                    else if (orderId.StartsWith(RpcHelper.creditCoinNamespace + RpcHelper.repaymentOrderPrefix))
-                    {
-                        var repaymentOrder = RepaymentOrder.Parser.ParseFrom(protobuf);
-                        if (gainString.Equals("0"))
-                        {
-                            srcAddressId = repaymentOrder.SrcAddress;
-                            dstAddressId = repaymentOrder.DstAddress;
-                        }
-                        else
-                        {
-                            dstAddressId = repaymentOrder.SrcAddress;
-                            srcAddressId = repaymentOrder.DstAddress;
-                        }
-                        amountString = repaymentOrder.Amount;
+                        ethSrcAddress = progressTokenComponents[1];
+                        amountString = progressTokenComponents[2];
                     }
                     else
                     {
-                        msg = "unexpected referred order";
-                        return false;
+                        gainString = progressTokenComponents[1];
+                        orderId = progressTokenComponents[2];
                     }
-                }
-
-                string payTxId;
-                if (progressToken != null)
-                {
-                    payTxId = progressToken;
                 }
                 else
                 {
+                    gainString = "0";
+                    if (erc20)
+                    {
+                        amountString = command[1];
+                    }
+                    else
+                    {
+                        gainString = command[1];
+                        orderId = command[2];
+                    }
+
+                    string ethereumPrivateKey = secretOverride ?? cfg["secret"];
+                    if (string.IsNullOrWhiteSpace(ethereumPrivateKey))
+                    {
+                        msg = "ethereum.secret is not set";
+                        return false;
+                    }
+                    ethSrcAddress = EthECKey.GetPublicAddress(ethereumPrivateKey);
+
+                    string srcAddressId = null;
+                    string dstAddressId = null;
+                    if (!erc20)
+                    {
+                        var protobuf = RpcHelper.ReadProtobuf(httpClient, $"{url}/state/{orderId}", out msg);
+                        if (protobuf == null)
+                        {
+                            msg = "failed to extract address data through RPC";
+                            return false;
+                        }
+                        if (orderId.StartsWith(RpcHelper.creditCoinNamespace + RpcHelper.dealOrderPrefix))
+                        {
+                            var dealOrder = DealOrder.Parser.ParseFrom(protobuf);
+                            if (gainString.Equals("0"))
+                            {
+                                srcAddressId = dealOrder.SrcAddress;
+                                dstAddressId = dealOrder.DstAddress;
+                            }
+                            else
+                            {
+                                dstAddressId = dealOrder.SrcAddress;
+                                srcAddressId = dealOrder.DstAddress;
+                            }
+                            amountString = dealOrder.Amount;
+                        }
+                        else if (orderId.StartsWith(RpcHelper.creditCoinNamespace + RpcHelper.repaymentOrderPrefix))
+                        {
+                            var repaymentOrder = RepaymentOrder.Parser.ParseFrom(protobuf);
+                            if (gainString.Equals("0"))
+                            {
+                                srcAddressId = repaymentOrder.SrcAddress;
+                                dstAddressId = repaymentOrder.DstAddress;
+                            }
+                            else
+                            {
+                                dstAddressId = repaymentOrder.SrcAddress;
+                                srcAddressId = repaymentOrder.DstAddress;
+                            }
+                            amountString = repaymentOrder.Amount;
+                        }
+                        else
+                        {
+                            msg = "unexpected referred order";
+                            return false;
+                        }
+                    }
+
                     string ethDstAddress = null;
                     if (!erc20)
                     {
@@ -264,7 +278,14 @@ namespace cethereum
                     string txRaw = signer.SignTransaction(ethereumPrivateKey, to, amount, txCount, gasPrice, gasLimit, data);
                     payTxId = web3.Eth.Transactions.SendRawTransaction.SendRequestAsync("0x" + txRaw).Result;
 
-                    progressToken = payTxId;
+                    if (erc20)
+                    {
+                        progressToken = $"{payTxId}:{ethSrcAddress}:{amountString}";
+                    }
+                    else
+                    {
+                        progressToken = $"{payTxId}:{gainString}:{orderId}";
+                    }
                 }
 
                 inProgress = true;
@@ -272,6 +293,11 @@ namespace cethereum
                 var receipt = web3.Eth.TransactionManager.TransactionReceiptService.PollForReceiptAsync(payTxId).Result;
                 if (receipt.BlockNumber != null)
                 {
+                    if (receipt.Status.Value == 0)
+                    {
+                        msg = $"Failed transcaction {progressToken}";
+                        return false;
+                    }
                     var blockNumber = web3.Eth.Blocks.GetBlockNumber.SendRequestAsync().Result;
                     if (blockNumber.Value - receipt.BlockNumber.Value >= mConfirmationsExpected)
                     {

@@ -20,5 +20,7 @@ namespace ccbe.Models
         public string CirculationSupply;
         /// <summary>The current hashpower of the Creditcoin network</summary>
         public string NetworkWeight;
+        /// <summary>Amount of CTC coins in circulation currently</summary>
+        public string CtcInCirculation;
     }
 }

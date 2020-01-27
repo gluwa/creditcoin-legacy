@@ -70,20 +70,6 @@ namespace cbitcoin
 
                 string gainString = command[1];
                 string orderId = command[2];
-                string sourceTxIdString = command[3];
-
-                string secret = secretOverride ?? cfg["secret"];
-                if (string.IsNullOrWhiteSpace(secret))
-                {
-                    msg = "bitcoin.secret is not set";
-                    return false;
-                }
-                string rpcAddress = cfg["rpc"];
-                if (string.IsNullOrWhiteSpace(rpcAddress))
-                {
-                    msg = "bitcoin.rpc is not set";
-                    return false;
-                }
 
                 string credential = cfg["credential"];
                 if (string.IsNullOrWhiteSpace(credential))
@@ -92,75 +78,23 @@ namespace cbitcoin
                     return false;
                 }
 
-#if DEBUG
-                string confirmationsCount = cfg["confirmationsCount"];
-                if (int.TryParse(confirmationsCount, out int parsedCount))
+                string rpcAddress = cfg["rpc"];
+                if (string.IsNullOrWhiteSpace(rpcAddress))
                 {
-                    mConfirmationsExpected = parsedCount;
-                }
-#endif
-
-                string feeString = cfg["fee"];
-                if (string.IsNullOrWhiteSpace(feeString))
-                {
-                    msg = "bitcoin.fee is not set";
-                    return false;
-                }
-                if (!int.TryParse(feeString, out int fee))
-                {
-                    msg = "bitcoin.fee is not an int";
+                    msg = "bitcoin.rpc is not set";
                     return false;
                 }
 
+                string secret = secretOverride ?? cfg["secret"];
+                if (string.IsNullOrWhiteSpace(secret))
+                {
+                    msg = "bitcoin.secret is not set";
+                    return false;
+                }
                 var bitcoinPrivateKey = new BitcoinSecret(secret);
+
                 var network = bitcoinPrivateKey.Network;
                 var rpcClient = new RPCClient(credential, new Uri(rpcAddress), network);
-
-                string srcAddressId;
-                string dstAddressId;
-                string amountString;
-
-                var protobuf = RpcHelper.ReadProtobuf(httpClient, $"{url}/state/{orderId}", out msg);
-                if (protobuf == null)
-                {
-                    msg = "failed to extract address data through RPC";
-                    return false;
-                }
-                if (orderId.StartsWith(RpcHelper.creditCoinNamespace + RpcHelper.dealOrderPrefix))
-                {
-                    var dealOrder = DealOrder.Parser.ParseFrom(protobuf);
-                    if (gainString.Equals("0"))
-                    {
-                        srcAddressId = dealOrder.SrcAddress;
-                        dstAddressId = dealOrder.DstAddress;
-                    }
-                    else
-                    {
-                        dstAddressId = dealOrder.SrcAddress;
-                        srcAddressId = dealOrder.DstAddress;
-                    }
-                    amountString = dealOrder.Amount;
-                }
-                else if (orderId.StartsWith(RpcHelper.creditCoinNamespace + RpcHelper.repaymentOrderPrefix))
-                {
-                    var repaymentOrder = RepaymentOrder.Parser.ParseFrom(protobuf);
-                    if (gainString.Equals("0"))
-                    {
-                        srcAddressId = repaymentOrder.SrcAddress;
-                        dstAddressId = repaymentOrder.DstAddress;
-                    }
-                    else
-                    {
-                        dstAddressId = repaymentOrder.SrcAddress;
-                        srcAddressId = repaymentOrder.DstAddress;
-                    }
-                    amountString = repaymentOrder.Amount;
-                }
-                else
-                {
-                    msg = "unexpected referred order";
-                    return false;
-                }
 
                 string payTxIdHash;
                 uint256 payTxId;
@@ -175,6 +109,74 @@ namespace cbitcoin
                 }
                 else
                 {
+                    string sourceTxIdString = command[3];
+
+#if DEBUG
+                    string confirmationsCount = cfg["confirmationsCount"];
+                    if (int.TryParse(confirmationsCount, out int parsedCount))
+                    {
+                        mConfirmationsExpected = parsedCount;
+                    }
+#endif
+
+                    string feeString = cfg["fee"];
+                    if (string.IsNullOrWhiteSpace(feeString))
+                    {
+                        msg = "bitcoin.fee is not set";
+                        return false;
+                    }
+                    if (!int.TryParse(feeString, out int fee))
+                    {
+                        msg = "bitcoin.fee is not an int";
+                        return false;
+                    }
+
+                    string srcAddressId;
+                    string dstAddressId;
+                    string amountString;
+
+                    var protobuf = RpcHelper.ReadProtobuf(httpClient, $"{url}/state/{orderId}", out msg);
+                    if (protobuf == null)
+                    {
+                        msg = "failed to extract address data through RPC";
+                        return false;
+                    }
+                    if (orderId.StartsWith(RpcHelper.creditCoinNamespace + RpcHelper.dealOrderPrefix))
+                    {
+                        var dealOrder = DealOrder.Parser.ParseFrom(protobuf);
+                        if (gainString.Equals("0"))
+                        {
+                            srcAddressId = dealOrder.SrcAddress;
+                            dstAddressId = dealOrder.DstAddress;
+                        }
+                        else
+                        {
+                            dstAddressId = dealOrder.SrcAddress;
+                            srcAddressId = dealOrder.DstAddress;
+                        }
+                        amountString = dealOrder.Amount;
+                    }
+                    else if (orderId.StartsWith(RpcHelper.creditCoinNamespace + RpcHelper.repaymentOrderPrefix))
+                    {
+                        var repaymentOrder = RepaymentOrder.Parser.ParseFrom(protobuf);
+                        if (gainString.Equals("0"))
+                        {
+                            srcAddressId = repaymentOrder.SrcAddress;
+                            dstAddressId = repaymentOrder.DstAddress;
+                        }
+                        else
+                        {
+                            dstAddressId = repaymentOrder.SrcAddress;
+                            srcAddressId = repaymentOrder.DstAddress;
+                        }
+                        amountString = repaymentOrder.Amount;
+                    }
+                    else
+                    {
+                        msg = "unexpected referred order";
+                        return false;
+                    }
+
                     protobuf = RpcHelper.ReadProtobuf(httpClient, $"{url}/state/{srcAddressId}", out msg);
                     if (protobuf == null)
                     {
