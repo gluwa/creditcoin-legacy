@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using ccbe.Models;
 using Microsoft.Extensions.Logging;
 using System.Text;
+using System.Collections.Generic;
 
 namespace ccbe.Controllers
 {
@@ -14,6 +15,14 @@ namespace ccbe.Controllers
     [ApiController]
     public class BlockchainController : Controller
     {
+        private static Dictionary<int, BigInteger> vesting = new Dictionary<int, BigInteger>()
+        {
+            { 183, BigInteger.Parse("118244648000000000000000000") },
+            { 365, BigInteger.Parse("6263784000000000000000000") },
+            { 730, BigInteger.Parse("5020233000000000000000000") },
+            { 1095, BigInteger.Parse("70471335000000000000000000") }
+        };
+
         // GET api/blockchain
         /// <summary>Creditcoin blockchain info</summary>
         /// <returns>A new Blockchain object</returns>
@@ -36,7 +45,8 @@ namespace ccbe.Controllers
                 BlockReward = calculateBlockReward(tip.BlockNum),
                 TrnsactionFee = "10000000000000000",
                 CirculationSupply = Cache.calculateSupply(),
-                NetworkWeight = calculateNetworkWeight(tip.Difficulty)
+                NetworkWeight = calculateNetworkWeight(tip.Difficulty),
+                CtcInCirculation = calculateCtcInCirculation()
             };
             return Json(blockchain);
         }
@@ -81,6 +91,22 @@ namespace ccbe.Controllers
         {
             var difficulty = int.Parse(difficultyStr);
             return Math.Pow(2, difficulty).ToString();
+        }
+
+        private static string calculateCtcInCirculation()
+        {
+            var vestingStart = new DateTime(2019, 4, 22);
+            var now = DateTime.Now;
+            var days = (now - vestingStart).Days - 1;
+            BigInteger circulated = 0;
+            foreach (var i in vesting)
+            {
+                if (days >= i.Key)
+                    circulated += i.Value;
+                else
+                    circulated += i.Value / i.Key * days;
+            }
+            return circulated.ToString();
         }
     }
 }

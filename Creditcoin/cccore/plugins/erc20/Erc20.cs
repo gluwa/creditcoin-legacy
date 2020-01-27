@@ -46,6 +46,9 @@ namespace cerc20
         private const string DATA = "data";
         private const string MESSAGE = "message";
 
+        private string erc20TransferAbi = "[{\"constant\":true,\"inputs\":[],\"name\":\"getErc20\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"erc20\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"ccid\",\"type\":\"string\"}],\"name\":\"transfer\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]";
+        private string erc20Abi = "[{\"constant\":false,\"inputs\":[{\"internalType\":\"address\",\"name\":\"spender\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"}],\"name\":\"approve\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]";
+
         private int mConfirmationsExpected = 12;
 
         public bool Run(bool txid, IConfiguration cfg, string secretOverride, HttpClient httpClient, ITxBuilder txBuilder, ref string progressToken, string url, string[] command, out bool inProgress, out string msg, out string link)
@@ -75,13 +78,13 @@ namespace cerc20
                 string gainString = command[1];
                 string orderId = command[2];
 
-                string secret = secretOverride ?? cfg["secret"];
-                if (string.IsNullOrWhiteSpace(secret))
+                string rpcUrl = cfg["rpc"];
+                if (string.IsNullOrWhiteSpace(rpcUrl))
                 {
-                    msg = "ethereum.secret is not set";
+                    msg = "ethereum.rpc is not set";
                     return false;
                 }
-                var ethereumPrivateKey = secret;
+                var web3 = new Nethereum.Web3.Web3(rpcUrl);
 
 #if DEBUG
                 string confirmationsCount = cfg["confirmationsCount"];
@@ -91,70 +94,78 @@ namespace cerc20
                 }
 #endif
 
-                string rpcUrl = cfg["rpc"];
-                if (string.IsNullOrWhiteSpace(rpcUrl))
-                {
-                    msg = "ethereum.rpc is not set";
-                    return false;
-                }
-
-                string ethSrcAddress = EthECKey.GetPublicAddress(ethereumPrivateKey);
-                var web3 = new Nethereum.Web3.Web3(rpcUrl);
-
-                string srcAddressId = null;
-                string dstAddressId = null;
-
-                var protobuf = RpcHelper.ReadProtobuf(httpClient, $"{url}/state/{orderId}", out msg);
-                if (protobuf == null)
-                {
-                    msg = "failed to extract address data through RPC";
-                    return false;
-                }
-
-                string amountString = null;
-                if (orderId.StartsWith(RpcHelper.creditCoinNamespace + RpcHelper.dealOrderPrefix))
-                {
-                    var dealOrder = DealOrder.Parser.ParseFrom(protobuf);
-                    if (gainString.Equals("0"))
-                    {
-                        srcAddressId = dealOrder.SrcAddress;
-                        dstAddressId = dealOrder.DstAddress;
-                    }
-                    else
-                    {
-                        dstAddressId = dealOrder.SrcAddress;
-                        srcAddressId = dealOrder.DstAddress;
-                    }
-                    amountString = dealOrder.Amount;
-                }
-                else if (orderId.StartsWith(RpcHelper.creditCoinNamespace + RpcHelper.repaymentOrderPrefix))
-                {
-                    var repaymentOrder = RepaymentOrder.Parser.ParseFrom(protobuf);
-                    if (gainString.Equals("0"))
-                    {
-                        srcAddressId = repaymentOrder.SrcAddress;
-                        dstAddressId = repaymentOrder.DstAddress;
-                    }
-                    else
-                    {
-                        dstAddressId = repaymentOrder.SrcAddress;
-                        srcAddressId = repaymentOrder.DstAddress;
-                    }
-                    amountString = repaymentOrder.Amount;
-                }
-                else
-                {
-                    msg = "unexpected referred order";
-                    return false;
-                }
-
                 string payTxId;
+                string erc20Transfer = null;
+                string ethDstAddress = null;
+                string amountString = null;
                 if (progressToken != null)
                 {
-                    payTxId = progressToken;
+                    var progressTokenComponents = progressToken.Split(':');
+                    payTxId = progressTokenComponents[0];
+                    Debug.Assert(progressTokenComponents.Length == 1 || progressTokenComponents.Length == 4);
+                    if (progressTokenComponents.Length == 4)
+                    {
+                        erc20Transfer = progressTokenComponents[1];
+                        ethDstAddress = progressTokenComponents[2];
+                        amountString = progressTokenComponents[3];
+                    }
                 }
                 else
                 {
+                    string ethereumPrivateKey;
+                    string ethSrcAddress = getSourceAddress(secretOverride, cfg, out ethereumPrivateKey);
+                    if (ethSrcAddress == null)
+                    {
+                        msg = "ethereum.secret is not set";
+                        return false;
+                    }
+
+                    string srcAddressId = null;
+                    string dstAddressId = null;
+
+                    var protobuf = RpcHelper.ReadProtobuf(httpClient, $"{url}/state/{orderId}", out msg);
+                    if (protobuf == null)
+                    {
+                        msg = "failed to extract address data through RPC";
+                        return false;
+                    }
+
+                    if (orderId.StartsWith(RpcHelper.creditCoinNamespace + RpcHelper.dealOrderPrefix))
+                    {
+                        var dealOrder = DealOrder.Parser.ParseFrom(protobuf);
+                        if (gainString.Equals("0"))
+                        {
+                            srcAddressId = dealOrder.SrcAddress;
+                            dstAddressId = dealOrder.DstAddress;
+                        }
+                        else
+                        {
+                            dstAddressId = dealOrder.SrcAddress;
+                            srcAddressId = dealOrder.DstAddress;
+                        }
+                        amountString = dealOrder.Amount;
+                    }
+                    else if (orderId.StartsWith(RpcHelper.creditCoinNamespace + RpcHelper.repaymentOrderPrefix))
+                    {
+                        var repaymentOrder = RepaymentOrder.Parser.ParseFrom(protobuf);
+                        if (gainString.Equals("0"))
+                        {
+                            srcAddressId = repaymentOrder.SrcAddress;
+                            dstAddressId = repaymentOrder.DstAddress;
+                        }
+                        else
+                        {
+                            dstAddressId = repaymentOrder.SrcAddress;
+                            srcAddressId = repaymentOrder.DstAddress;
+                        }
+                        amountString = repaymentOrder.Amount;
+                    }
+                    else
+                    {
+                        msg = "unexpected referred order";
+                        return false;
+                    }
+
                     protobuf = RpcHelper.ReadProtobuf(httpClient, $"{url}/state/{srcAddressId}", out msg);
                     if (protobuf == null)
                     {
@@ -192,7 +203,7 @@ namespace cerc20
                     srcAddress.Value = scrAddressSegments[1];
                     dstAddress.Value = dstAddressSegments[1];
 
-                    string ethDstAddress = dstAddress.Value;
+                    ethDstAddress = dstAddress.Value;
 
                     if (!ethSrcAddress.Equals(srcAddress.Value, StringComparison.OrdinalIgnoreCase))
                     {
@@ -219,42 +230,26 @@ namespace cerc20
                         return false;
                     }
 
-                    var txCount = web3.Eth.Transactions.GetTransactionCount.SendRequestAsync(ethSrcAddress).Result;
                     TransactionSigner signer = new TransactionSigner();
 
-                    HexBigInteger gasPrice;
+                    erc20Transfer = scrAddressSegments[0];
+                    var erc20TransferContract = web3.Eth.GetContract(erc20TransferAbi, erc20Transfer);
 
-                    string gasPriceInGweiString = cfg["gasPriceInGwei"];
-                    if (int.TryParse(gasPriceInGweiString, out int gasPriceOverride))
-                    {
-                        gasPrice = new HexBigInteger(Nethereum.Util.UnitConversion.Convert.ToWei(gasPriceOverride, Nethereum.Util.UnitConversion.EthUnit.Gwei));
-                    }
-                    else
-                    {
-                        gasPrice = web3.Eth.GasPrice.SendRequestAsync().Result;
-                    }
+                    var getErc20 = erc20TransferContract.GetFunction("getErc20");
+                    string erc20 = getErc20.CallAsync<string>().Result;
+                    var erc20Contract = web3.Eth.GetContract(erc20Abi, erc20);
+                    var approve = erc20Contract.GetFunction("approve");
+                    var approveInput = new object[] { erc20Transfer, transferAmount };
 
-                    string to;
-                    string data;
-                    BigInteger amount;
-                    HexBigInteger gasLimit;
-
-                    string erc20Transfer = scrAddressSegments[0];
-                    string erc20TransferAbi = "[{\"constant\": false,\"inputs\": [{\"internalType\": \"address\",\"name\": \"to\",\"type\": \"address\"},{\"internalType\": \"uint256\",\"name\": \"value\",\"type\": \"uint256\"},{\"internalType\":\"string\",\"name\": \"sighash\",\"type\": \"string\"}],\"name\": \"transfer\",\"outputs\": [{\"internalType\": \"bool\",\"name\": \"success\",\"type\": \"bool\"}],\"payable\": false,\"stateMutability\": \"nonpayable\",\"type\": \"function\"},{\"constant\": false,\"inputs\": [{\"internalType\": \"address\",\"name\": \"from\",\"type\": \"address\"},{\"internalType\": \"address\",\"name\": \"to\",\"type\": \"address\"},{\"internalType\": \"uint256\",\"name\": \"value\",\"type\": \"uint256\"},{\"internalType\": \"uint256\",\"name\": \"fee\",\"type\": \"uint256\"},{\"internalType\": \"uint256\",\"name\": \"nonce\",\"type\": \"uint256\"},{\"internalType\": \"bytes\",\"name\": \"sig\",\"type\": \"bytes\"},{\"internalType\": \"string\",\"name\": \"sighash\",\"type\": \"string\"}],\"name\": \"transfer\",\"outputs\": [{\"internalType\": \"bool\",\"name\": \"success\",\"type\": \"bool\"}],\"payable\": false,\"stateMutability\":\"nonpayable\",\"type\": \"function\"},{\"inputs\": [{\"internalType\": \"address\",\"name\": \"creditcoinErc20\",\"type\": \"address\"}],\"payable\": false,\"stateMutability\":\"nonpayable\",\"type\": \"constructor\"},{\"anonymous\": false,\"inputs\": [{\"indexed\": true,\"internalType\": \"address\",\"name\": \"from\",\"type\": \"address\"},{\"indexed\": false,\"internalType\": \"address\",\"name\":\"to\",\"type\": \"address\"},{\"indexed\": false,\"internalType\": \"uint256\",\"name\": \"value\",\"type\": \"uint256\"},{\"indexed\": true,\"internalType\": \"string\",\"name\":\"sighash\",\"type\": \"string\"}],\"name\": \"Erc20Transfer\",\"type\": \"event\"},{\"anonymous\": false,\"inputs\": [{\"indexed\": true,\"internalType\": \"address\",\"name\": \"from\",\"type\": \"address\"},{\"indexed\": false,\"internalType\": \"address\",\"name\": \"to\",\"type\": \"address\"},{\"indexed\": false,\"internalType\": \"uint256\",\"name\": \"value\",\"type\":\"uint256\"},{\"indexed\": false,\"internalType\": \"uint256\",\"name\": \"_fee\",\"type\": \"uint256\"},{\"indexed\": true,\"internalType\": \"string\",\"name\": \"sighash\",\"type\":\"string\"}],\"name\": \"Erc20TransferEthless\",\"type\": \"event\"}]";
-
-                    to = erc20Transfer;
-
-                    var contract = web3.Eth.GetContract(erc20TransferAbi, erc20Transfer);
-                    var transfer = contract.GetFunction("transfer");
-                    var functionInput = new object[] { ethDstAddress, transferAmount, txBuilder.getSighash() };
-                    data = transfer.GetData(functionInput);
-                    gasLimit = transfer.EstimateGasAsync(functionInput).Result;
-                    amount = transferAmount;
-
+                    string to = erc20;
+                    var amount = 0;
+                    var txCount = web3.Eth.Transactions.GetTransactionCount.SendRequestAsync(ethSrcAddress).Result;
+                    HexBigInteger gasPrice = getGasPrice(web3, cfg);
+                    HexBigInteger gasLimit = new HexBigInteger(approve.EstimateGasAsync(approveInput).Result);
+                    string data = approve.GetData(approveInput);
                     string txRaw = signer.SignTransaction(ethereumPrivateKey, to, amount, txCount, gasPrice, gasLimit, data);
                     payTxId = web3.Eth.Transactions.SendRawTransaction.SendRequestAsync("0x" + txRaw).Result;
-
-                    progressToken = payTxId;
+                    progressToken = $"{payTxId}:{erc20Transfer}:{ethDstAddress}:{amountString}";
                 }
 
                 inProgress = true;
@@ -262,10 +257,43 @@ namespace cerc20
                 var receipt = web3.Eth.TransactionManager.TransactionReceiptService.PollForReceiptAsync(payTxId).Result; //TODO process separately if tx doesn't exist?
                 if (receipt.BlockNumber != null)
                 {
+                    if (receipt.Status.Value == 0)
+                    {
+                        msg = $"Failed transcaction {progressToken}";
+                        return false;
+                    }
+
                     var blockNumber = web3.Eth.Blocks.GetBlockNumber.SendRequestAsync().Result;
                     if (blockNumber.Value - receipt.BlockNumber.Value >= mConfirmationsExpected)
                     {
-                        progressToken = null;
+                        if (erc20Transfer != null)
+                        {
+                            string ethereumPrivateKey;
+                            string ethSrcAddress = getSourceAddress(secretOverride, cfg, out ethereumPrivateKey);
+
+                            BigInteger transferAmount = BigInteger.Parse(amountString);
+
+                            var erc20TransferContract = web3.Eth.GetContract(erc20TransferAbi, erc20Transfer);
+                            var transfer = erc20TransferContract.GetFunction("transfer");
+                            var transferInput = new object[] { ethDstAddress, transferAmount, orderId };
+
+                            string to = erc20Transfer;
+                            var amount = 0;
+                            var txCount = web3.Eth.Transactions.GetTransactionCount.SendRequestAsync(ethSrcAddress).Result;
+                            HexBigInteger gasPrice = getGasPrice(web3, cfg);
+                            HexBigInteger gasLimit = new HexBigInteger(transfer.EstimateGasAsync(transferInput).Result);
+                            string data = transfer.GetData(transferInput);
+
+                            TransactionSigner signer = new TransactionSigner();
+                            string txRaw = signer.SignTransaction(ethereumPrivateKey, to, amount, txCount, gasPrice, gasLimit, data);
+                            payTxId = web3.Eth.Transactions.SendRawTransaction.SendRequestAsync("0x" + txRaw).Result;
+
+                            progressToken = payTxId;
+                        }
+                        else
+                        {
+                            progressToken = null;
+                        }
                     }
                 }
 
@@ -304,6 +332,31 @@ namespace cerc20
                 msg = "Unknown command: " + command[0];
                 return false;
             }
+        }
+
+        private static string getSourceAddress(string secretOverride, IConfiguration cfg, out string ethereumPrivateKey)
+        {
+            ethereumPrivateKey = secretOverride ?? cfg["secret"];
+            if (string.IsNullOrWhiteSpace(ethereumPrivateKey))
+                return null;
+            return EthECKey.GetPublicAddress(ethereumPrivateKey);
+        }
+
+        private static HexBigInteger getGasPrice(Nethereum.Web3.Web3 web3, IConfiguration cfg)
+        {
+            HexBigInteger gasPrice;
+
+            string gasPriceInGweiString = cfg["gasPriceInGwei"];
+            if (int.TryParse(gasPriceInGweiString, out int gasPriceOverride))
+            {
+                gasPrice = new HexBigInteger(Nethereum.Util.UnitConversion.Convert.ToWei(gasPriceOverride, Nethereum.Util.UnitConversion.EthUnit.Gwei));
+            }
+            else
+            {
+                gasPrice = web3.Eth.GasPrice.SendRequestAsync().Result;
+            }
+
+            return gasPrice;
         }
     }
 }

@@ -1,25 +1,59 @@
 pragma solidity ^0.5.1;
 
-interface CreditcoinErc20 {
-    function transfer(address to, uint256 value) external returns (bool success);
-}
-
-contract Erc20TransferContract
+contract Owned
 {
-    address private _creditcoinErc20;
+    address payable internal _owner;
 
-    event Erc20Transfer(address indexed from, address to, uint256 value, string indexed sighash);
-
-    constructor(address creditcoinErc20) public
+    constructor() public
     {
-        _creditcoinErc20 = creditcoinErc20;
+        _owner = msg.sender;
     }
 
-    function transfer(address to, uint256 value, string memory sighash) public returns (bool success)
+    modifier onlyOwner 
     {
-        require(bytes(sighash).length == 60, "Invalid sighash length");
-        CreditcoinErc20 creditcoinErc20 = CreditcoinErc20(_creditcoinErc20);
-        success = creditcoinErc20.transfer(to, value);
-        emit Erc20Transfer(msg.sender, to, value, sighash);
+        require(msg.sender == _owner, "Only contract owner can do this.");
+        _;
+    }   
+
+    function () external payable 
+    {
+        require(false, "eth transfer is disabled."); // throw
+    }
+}
+
+contract Mortal is Owned {
+    function die() public onlyOwner
+    {
+        selfdestruct(_owner);
+    }
+}
+
+contract Erc20
+{
+    function transferFrom(address from, address to, uint256 value) public returns (bool success);
+}
+
+contract Erc20TransferContract is Mortal
+{
+    address private _erc20;
+
+    event Erc20Transfer(address indexed from, address to, uint256 value, string indexed ccid);
+
+    constructor(address erc20) public
+    {
+        _erc20 = erc20;
+    }
+    
+    function getActualContract() public view returns (address erc20)
+    {
+        erc20 = _erc20;
+    }
+
+    function transfer(address to, uint256 value, string memory ccid) public returns (bool success)
+    {
+        require(bytes(ccid).length == 70, "Invalid creditcoin id length");
+        Erc20 erc20 = Erc20(_erc20);
+        success = erc20.transferFrom(msg.sender, to, value);
+        emit Erc20Transfer(msg.sender, to, value, ccid);
     }
 }

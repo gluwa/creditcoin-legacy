@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Swashbuckle.AspNetCore.Swagger;
+using Microsoft.OpenApi.Models;
 using System;
 using System.IO;
 using System.Reflection;
@@ -29,7 +29,7 @@ namespace ccbe
             // Register the Swagger generator, defining 1 or more Swagger documents
             services.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc("v1", new Info { Title = "Gluwa Creditcoin Block Explorer API", Version = "v1" });
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "Creditcoin Block Explorer API", Version = "v1" });
                 c.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, $"{Assembly.GetExecutingAssembly().GetName().Name}.xml"));
             });
         }
@@ -50,6 +50,8 @@ namespace ccbe
 
             app.UseCors(options => options.AllowAnyOrigin());
 
+            app.UseStaticFiles();
+
             // Enable middleware to serve generated Swagger as a JSON endpoint.
             app.UseSwagger();
 
@@ -57,7 +59,7 @@ namespace ccbe
             // specifying the Swagger JSON endpoint.
             app.UseSwaggerUI(c =>
             {
-                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Gluwa Creditcoin Block Explorer API V1");
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "Creditcoin Block Explorer API V1");
                 c.RoutePrefix = string.Empty;
             });
 

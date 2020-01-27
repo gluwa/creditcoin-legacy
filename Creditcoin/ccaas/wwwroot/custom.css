@@ -1,3 +1,7 @@
 .topbar-wrapper img {
-    content:url('./logo.png');
+    content: url('./logo.png');
+}
+
+.download-url-wrapper {
+    visibility: hidden;
 }

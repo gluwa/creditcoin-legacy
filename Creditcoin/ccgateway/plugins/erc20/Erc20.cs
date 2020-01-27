@@ -116,7 +116,7 @@ namespace gerc20
                     return false;
                 }
 
-                string ercTransferContractAbi = "[{\"constant\": false,\"inputs\": [{\"internalType\": \"address\",\"name\": \"to\",\"type\": \"address\"},{\"internalType\": \"uint256\",\"name\": \"value\",\"type\": \"uint256\"},{\"internalType\":\"string\",\"name\": \"sighash\",\"type\": \"string\"}],\"name\": \"transfer\",\"outputs\": [{\"internalType\": \"bool\",\"name\": \"success\",\"type\": \"bool\"}],\"payable\": false,\"stateMutability\": \"nonpayable\",\"type\": \"function\"},{\"constant\": false,\"inputs\": [{\"internalType\": \"address\",\"name\": \"from\",\"type\": \"address\"},{\"internalType\": \"address\",\"name\": \"to\",\"type\": \"address\"},{\"internalType\": \"uint256\",\"name\": \"value\",\"type\": \"uint256\"},{\"internalType\": \"uint256\",\"name\": \"fee\",\"type\": \"uint256\"},{\"internalType\": \"uint256\",\"name\": \"nonce\",\"type\": \"uint256\"},{\"internalType\": \"bytes\",\"name\": \"sig\",\"type\": \"bytes\"},{\"internalType\": \"string\",\"name\": \"sighash\",\"type\": \"string\"}],\"name\": \"transfer\",\"outputs\": [{\"internalType\": \"bool\",\"name\": \"success\",\"type\": \"bool\"}],\"payable\": false,\"stateMutability\":\"nonpayable\",\"type\": \"function\"},{\"inputs\": [{\"internalType\": \"address\",\"name\": \"creditcoinErc20\",\"type\": \"address\"}],\"payable\": false,\"stateMutability\":\"nonpayable\",\"type\": \"constructor\"},{\"anonymous\": false,\"inputs\": [{\"indexed\": true,\"internalType\": \"address\",\"name\": \"from\",\"type\": \"address\"},{\"indexed\": false,\"internalType\": \"address\",\"name\":\"to\",\"type\": \"address\"},{\"indexed\": false,\"internalType\": \"uint256\",\"name\": \"value\",\"type\": \"uint256\"},{\"indexed\": true,\"internalType\": \"string\",\"name\":\"sighash\",\"type\": \"string\"}],\"name\": \"Erc20Transfer\",\"type\": \"event\"},{\"anonymous\": false,\"inputs\": [{\"indexed\": true,\"internalType\": \"address\",\"name\": \"from\",\"type\": \"address\"},{\"indexed\": false,\"internalType\": \"address\",\"name\": \"to\",\"type\": \"address\"},{\"indexed\": false,\"internalType\": \"uint256\",\"name\": \"value\",\"type\":\"uint256\"},{\"indexed\": false,\"internalType\": \"uint256\",\"name\": \"_fee\",\"type\": \"uint256\"},{\"indexed\": true,\"internalType\": \"string\",\"name\": \"sighash\",\"type\":\"string\"}],\"name\": \"Erc20TransferEthless\",\"type\": \"event\"}]";
+                string ercTransferContractAbi = "[{\"constant\":false,\"inputs\":[{\"internalType\":\"address\",\"name\":\"to\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"value\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"ccid\",\"type\":\"string\"}],\"name\":\"transfer\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]";
                 if (string.IsNullOrWhiteSpace(ercTransferContractAbi))
                 {
                     msg = "ethereum.ercTransferContractAbi is not set";
@@ -129,7 +129,7 @@ namespace gerc20
                 Debug.Assert(inputs.Count == 3);
 
                 var to = inputs[0].Result.ToString();
-                if (!destinationAddressString.Equals(to))
+                if (!destinationAddressString.Equals(to, StringComparison.InvariantCultureIgnoreCase))
                 {
                     msg = "Invalid transaction: wrong destination";
                     return false;

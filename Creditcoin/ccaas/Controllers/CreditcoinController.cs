@@ -144,7 +144,7 @@ namespace ccaas.Controllers
                     return StatusCode(400, missingPrameters);
             }
 
-            List<string> output = output = cccore.Core.Run(httpClient, creditcoinUrl, args.ToArray(), config, false, pluginFolder, null, null, out bool ignoreMe, null, out string link);
+            List<string> output = cccore.Core.Run(httpClient, creditcoinUrl, args.ToArray(), config, false, pluginFolder, null, null, out bool ignoreMe, null, out string link);
             Debug.Assert(output != null && link == null);
 
             if (output.Count != 2 || output[0].StartsWith("Error") || !output[output.Count - 1].Equals("Success"))
@@ -577,7 +577,7 @@ namespace ccaas.Controllers
                 Debug.Assert(output != null && link == null);
                 if (outputDeals.Count < 1 || outputDeals[0].StartsWith("Error") || !outputDeals[outputDeals.Count - 1].Equals("Success"))
                     return statusCodeByMsg(outputDeals[0]);
-                var dealComponents = outputDeals[i].Split(' ');
+                var dealComponents = outputDeals[0].Split(' ');
                 if (dealComponents.Length != 14)
                     return StatusCode(503, unexpectedError);
                 //ret.Add($"dealOrder({objid}) blockchain:{dealOrder.Blockchain} srcAddress:{dealOrder.SrcAddress} dstAddress:{dealOrder.DstAddress} amount:{dealOrder.Amount} interest:{dealOrder.Interest} maturity:{dealOrder.Maturity} fee:{dealOrder.Fee} expiration:{dealOrder.Expiration} block:{dealOrder.Block} loanTransfer:{(dealOrder.LoanTransfer.Equals(string.Empty) ? "*" : dealOrder.LoanTransfer)} repaymentTransfer:{(dealOrder.RepaymentTransfer.Equals(string.Empty) ? "*" : dealOrder.RepaymentTransfer)} lock:{(dealOrder.Lock.Equals(string.Empty) ? "*" : dealOrder.Lock)} sighash:{dealOrder.Sighash}");
