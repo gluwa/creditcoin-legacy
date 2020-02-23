@@ -115,6 +115,8 @@ namespace ccclient
                 Console.WriteLine("creditcoin CollectCoins addressId amount txId");
                 Console.WriteLine("bitcoin RegisterTransfer gain orderId sourceTxId");
                 Console.WriteLine("ethereum RegisterTransfer gain orderId");
+                Console.WriteLine("erc20 RegisterTransfer gain orderId");
+                Console.WriteLine("ethless RegisterTransfer gain orderId fee sig-base64");
                 Console.WriteLine("ethereum CollectCoins amount");
                 return;
             }

@@ -14,8 +14,10 @@ namespace ccbe.Models
         public string Difficulty;
         /// <summary>The current reward for mining blocks in the Creditcoin blockchain</summary>
         public string BlockReward;
-        /// <summary>The current transaction fee in the Creditcoin blockchain</summary>
+        /// <summary>The current transaction fee in the Creditcoin blockchain (obsolete, please use TransactionFee)</summary>
         public string TrnsactionFee;
+        /// <summary>The current transaction fee in the Creditcoin blockchain</summary>
+        public string TransactionFee;
         /// <summary>The current amount of Creditcoins in Credos in the Creditcoin blockchain excluding withheld transaction fees</summary>
         public string CirculationSupply;
         /// <summary>The current hashpower of the Creditcoin network</summary>

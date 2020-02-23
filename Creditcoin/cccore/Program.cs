@@ -49,9 +49,9 @@ namespace cccore
             {
                 return $"Error (unexpected): {x.Message}"; //TODO: consolidate error handling
             }
-}
+        }
 
-public static List<string> Run(HttpClient httpClient, string creditcoinUrl, string[] args, IConfiguration config, bool txid, string pluginFolder, string progressToken, Signer signer, out bool inProgress, string secretOverride, out string link)
+        public static List<string> Run(HttpClient httpClient, string creditcoinUrl, string[] args, IConfiguration config, bool txid, string pluginFolder, string progressToken, Signer signer, out bool inProgress, string secretOverride, out string link)
         {
             link = null;
 
@@ -87,7 +87,7 @@ public static List<string> Run(HttpClient httpClient, string creditcoinUrl, stri
                 {
                     if (command.Length > 2)
                     {
-                        throw new Exception("1 or 2 parametersd expected");
+                        throw new Exception("1 or 2 parameters expected");
                     }
                     string id = null;
                     if (command.Length == 2)
@@ -211,7 +211,7 @@ public static List<string> Run(HttpClient httpClient, string creditcoinUrl, stri
                 {
                     BigInteger headIdx = GetHeadIdx(httpClient, creditcoinUrl);
 
-                    if (command.Length <= 1) throw new Exception("1 or more parametersd expected");
+                    if (command.Length <= 1) throw new Exception("1 or more parameters expected");
                     string sighash;
                     if (command[1].Equals("0"))
                     {
@@ -224,7 +224,7 @@ public static List<string> Run(HttpClient httpClient, string creditcoinUrl, stri
 
                     if (command[0].Equals("balance", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (command.Length != 2) throw new Exception("2 parametersd expected");
+                        if (command.Length != 2) throw new Exception("2 parameters expected");
                         string prefix = RpcHelper.creditCoinNamespace + RpcHelper.walletPrefix;
                         string id = prefix + sighash;
                         string amount = "0";
@@ -240,7 +240,7 @@ public static List<string> Run(HttpClient httpClient, string creditcoinUrl, stri
                     }
                     else if (command[0].Equals("address", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (command.Length != 5) throw new Exception("5 parametersd expected");
+                        if (command.Length != 5) throw new Exception("5 parameters expected");
                         var blockchain = command[2].ToLower();
                         var addr = command[3];
                         var network = command[4].ToLower();
@@ -255,7 +255,7 @@ public static List<string> Run(HttpClient httpClient, string creditcoinUrl, stri
                     }
                     else if (command[0].Equals("matchingOrders", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (command.Length != 2) throw new Exception("2 parametersd expected");
+                        if (command.Length != 2) throw new Exception("2 parameters expected");
 
                         var askOrders = new Dictionary<string, AskOrder>();
                         filter(httpClient, creditcoinUrl, ret, RpcHelper.creditCoinNamespace + RpcHelper.askOrderPrefix, (string objid, byte[] protobuf) =>
@@ -290,7 +290,7 @@ public static List<string> Run(HttpClient httpClient, string creditcoinUrl, stri
                     }
                     else if (command[0].Equals("currentOffers", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (command.Length != 2) throw new Exception("2 parametersd expected");
+                        if (command.Length != 2) throw new Exception("2 parameters expected");
 
                         var bidOrders = new Dictionary<string, BidOrder>();
                         filter(httpClient, creditcoinUrl, ret, RpcHelper.creditCoinNamespace + RpcHelper.bidOrderPrefix, (string objid, byte[] protobuf) =>
@@ -319,7 +319,7 @@ public static List<string> Run(HttpClient httpClient, string creditcoinUrl, stri
                     }
                     else if (command[0].Equals("creditHistory", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (command.Length != 2) throw new Exception("2 parametersd expected");
+                        if (command.Length != 2) throw new Exception("2 parameters expected");
 
                         filterDeals(httpClient, creditcoinUrl, ret, null, sighash, (string dealAddress, DealOrder dealOrder) =>
                         {
@@ -333,7 +333,7 @@ public static List<string> Run(HttpClient httpClient, string creditcoinUrl, stri
                     }
                     else if (command[0].Equals("newDeals", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (command.Length != 2) throw new Exception("2 parametersd expected");
+                        if (command.Length != 2) throw new Exception("2 parameters expected");
 
                         filterDeals(httpClient, creditcoinUrl, ret, sighash, null, (string dealAddress, DealOrder dealOrder) =>
                         {
@@ -353,7 +353,7 @@ public static List<string> Run(HttpClient httpClient, string creditcoinUrl, stri
                     }
                     else if (command[0].Equals("transfer", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (command.Length != 3) throw new Exception("3 parametersd expected");
+                        if (command.Length != 3) throw new Exception("3 parameters expected");
                         var orderId = command[2];
 
                         filter(httpClient, creditcoinUrl, ret, RpcHelper.creditCoinNamespace + RpcHelper.transferPrefix, (string objid, byte[] protobuf) =>
@@ -365,7 +365,7 @@ public static List<string> Run(HttpClient httpClient, string creditcoinUrl, stri
                     }
                     else if (command[0].Equals("currentLoans", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (command.Length != 2) throw new Exception("2 parametersd expected");
+                        if (command.Length != 2) throw new Exception("2 parameters expected");
 
                         filterDeals(httpClient, creditcoinUrl, ret, null, sighash, (string dealAddress, DealOrder dealOrder) =>
                         {
@@ -377,7 +377,7 @@ public static List<string> Run(HttpClient httpClient, string creditcoinUrl, stri
                     }
                     else if (command[0].Equals("lockedLoans", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (command.Length != 2) throw new Exception("2 parametersd expected");
+                        if (command.Length != 2) throw new Exception("2 parameters expected");
 
                         filterDeals(httpClient, creditcoinUrl, ret, null, sighash, (string dealAddress, DealOrder dealOrder) =>
                         {
@@ -389,7 +389,7 @@ public static List<string> Run(HttpClient httpClient, string creditcoinUrl, stri
                     }
                     else if (command[0].Equals("newRepaymentOrders", StringComparison.OrdinalIgnoreCase))
                     {
-                        if (command.Length != 2) throw new Exception("2 parametersd expected");
+                        if (command.Length != 2) throw new Exception("2 parameters expected");
 
                         var addresses = new Dictionary<string, Address>();
                         filter(httpClient, creditcoinUrl, ret, RpcHelper.creditCoinNamespace + RpcHelper.addressPrefix, (string objid, byte[] protobuf) =>

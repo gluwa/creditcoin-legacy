@@ -44,7 +44,7 @@ contract Erc20TransferContract is Mortal
         _erc20 = erc20;
     }
     
-    function getActualContract() public view returns (address erc20)
+    function getErc20() public view returns (address erc20)
     {
         erc20 = _erc20;
     }

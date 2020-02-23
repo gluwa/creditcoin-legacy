@@ -141,7 +141,7 @@ namespace cethereum
                         var protobuf = RpcHelper.ReadProtobuf(httpClient, $"{url}/state/{orderId}", out msg);
                         if (protobuf == null)
                         {
-                            msg = "failed to extract address data through RPC";
+                            msg = $"failed to extract address data through RPC: {msg}";
                             return false;
                         }
                         if (orderId.StartsWith(RpcHelper.creditCoinNamespace + RpcHelper.dealOrderPrefix))
@@ -187,7 +187,7 @@ namespace cethereum
                         var protobuf = RpcHelper.ReadProtobuf(httpClient, $"{url}/state/{srcAddressId}", out msg);
                         if (protobuf == null)
                         {
-                            msg = "failed to extract address data through RPC";
+                            msg = $"failed to extract address data through RPC: {msg}";
                             return false;
                         }
                         var srcAddress = Address.Parser.ParseFrom(protobuf);
@@ -195,7 +195,7 @@ namespace cethereum
                         protobuf = RpcHelper.ReadProtobuf(httpClient, $"{url}/state/{dstAddressId}", out msg);
                         if (protobuf == null)
                         {
-                            msg = "failed to extract address data through RPC";
+                            msg = $"failed to extract address data through RPC: {msg}";
                             return false;
                         }
                         Address dstAddress = Address.Parser.ParseFrom(protobuf);
@@ -206,6 +206,12 @@ namespace cethereum
                             return false;
                         }
                         ethDstAddress = dstAddress.Value;
+
+                        if (!srcAddress.Network.Equals(dstAddress.Network))
+                        {
+                            msg = $"ethereum RegisterTransfer can only transfer ether on the same network.\nThis source is registered for {srcAddress.Network} and destination for {dstAddress.Network}";
+                            return false;
+                        }
 
                         if (!ethSrcAddress.Equals(srcAddress.Value, StringComparison.OrdinalIgnoreCase))
                         {
@@ -223,13 +229,13 @@ namespace cethereum
                     BigInteger gain;
                     if (!BigInteger.TryParse(gainString, out gain))
                     {
-                        msg = "Invalid amount";
+                        msg = "Invalid gain";
                         return false;
                     }
                     transferAmount = transferAmount + gain;
                     if (transferAmount < 0)
                     {
-                        msg = "Invalid amount";
+                        msg = "Overflow";
                         return false;
                     }
 
@@ -295,7 +301,7 @@ namespace cethereum
                 {
                     if (receipt.Status.Value == 0)
                     {
-                        msg = $"Failed transcaction {progressToken}";
+                        msg = $"Failed transaction {progressToken}";
                         return false;
                     }
                     var blockNumber = web3.Eth.Blocks.GetBlockNumber.SendRequestAsync().Result;

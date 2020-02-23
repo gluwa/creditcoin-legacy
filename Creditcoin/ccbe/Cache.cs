@@ -367,7 +367,8 @@ namespace ccbe
 
                                 var payloadBytes = Convert.FromBase64String((string)transactionObj[PAYLOAD]);
                                 string payload;
-                                if (familyName.Equals("CREDITCOIN") && (familyVersion.Equals("1.0") || familyVersion.Equals("1.1") || familyVersion.Equals("1.2")))
+                                string[] supportedVersions = { "1.0", "1.1", "1.2", "1.3" };
+                                if (familyName.Equals("CREDITCOIN") && Array.Exists(supportedVersions, v => v == familyVersion))
                                 {
                                     var cbor = CBORObject.DecodeFromBytes(payloadBytes);
                                     var sb = new StringBuilder();

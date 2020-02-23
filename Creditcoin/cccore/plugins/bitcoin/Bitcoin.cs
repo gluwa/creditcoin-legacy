@@ -138,7 +138,7 @@ namespace cbitcoin
                     var protobuf = RpcHelper.ReadProtobuf(httpClient, $"{url}/state/{orderId}", out msg);
                     if (protobuf == null)
                     {
-                        msg = "failed to extract address data through RPC";
+                        msg = $"failed to extract address data through RPC: {msg}";
                         return false;
                     }
                     if (orderId.StartsWith(RpcHelper.creditCoinNamespace + RpcHelper.dealOrderPrefix))
@@ -180,7 +180,7 @@ namespace cbitcoin
                     protobuf = RpcHelper.ReadProtobuf(httpClient, $"{url}/state/{srcAddressId}", out msg);
                     if (protobuf == null)
                     {
-                        msg = "failed to extract address data through RPC";
+                        msg = $"failed to extract address data through RPC: {msg}";
                         return false;
                     }
 
@@ -189,7 +189,7 @@ namespace cbitcoin
                     protobuf = RpcHelper.ReadProtobuf(httpClient, $"{url}/state/{dstAddressId}", out msg);
                     if (protobuf == null)
                     {
-                        msg = "failed to extract address data through RPC";
+                        msg = $"failed to extract address data through RPC: {msg}";
                         return false;
                     }
 
@@ -204,7 +204,7 @@ namespace cbitcoin
                     long gain;
                     if (!long.TryParse(gainString, out gain))
                     {
-                        msg = "Invalid amount";
+                        msg = "Invalid gain";
                         return false;
                     }
                     if (transferAmount + gain < transferAmount)
@@ -230,6 +230,12 @@ namespace cbitcoin
                     if (!srcAddress.Blockchain.Equals(name) || !dstAddress.Blockchain.Equals(name))
                     {
                         msg = $"bitcoin RegisterTransfer can only transfer bitcoins.\nThis source is registered for {srcAddress.Blockchain} and destination for {dstAddress.Blockchain}";
+                        return false;
+                    }
+
+                    if (!srcAddress.Network.Equals(dstAddress.Network))
+                    {
+                        msg = $"bitcoin RegisterTransfer can only transfer bitcoins on the same network.\nThis source is registered for {srcAddress.Network} and destination for {dstAddress.Network}";
                         return false;
                     }
 

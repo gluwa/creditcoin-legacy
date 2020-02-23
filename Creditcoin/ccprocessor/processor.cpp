@@ -635,9 +635,9 @@ static std::string lastBlock()
             throw sawtooth::InvalidTransaction(RPC_FAILURE);
         }
         auto blocksArray = data.get<std::vector<nlohmann::json::value_type>>();
-        for (auto block : blocksArray)
+        if (blocksArray.size())
         {
-            return blockNum(block);
+            return blockNum(blocksArray[0]);
         }
     }
     catch (sawtooth::InvalidTransaction const&)
@@ -662,7 +662,7 @@ static std::string lastBlock()
         throw sawtooth::InvalidTransaction(RPC_FAILURE);
     }
 
-    return 0;
+    return "0";
 }
 
 static boost::multiprecision::cpp_int lastBlockInt()
@@ -673,7 +673,7 @@ static boost::multiprecision::cpp_int lastBlockInt()
 boost::multiprecision::cpp_int calcInterest(boost::multiprecision::cpp_int const& amount, boost::multiprecision::cpp_int const& ticks, boost::multiprecision::cpp_int const& interest)
 {
     boost::multiprecision::cpp_int total = amount;
-    for (boost::multiprecision::cpp_int i = 0; i < ticks; i++)
+    for (boost::multiprecision::cpp_int i = 0; i < ticks; ++i)
     {
         boost::multiprecision::cpp_int compound = (total * interest) / INTEREST_MULTIPLIER;
         total += compound;
@@ -834,29 +834,37 @@ private:
     {
         std::string response = "";
         localGatewayLock.lock();
-        if (localGateway->send(gatewayCommand.str()))
+        try
         {
-            localGateway->receive(response);
-        }
-        if (response.empty() || response == "miss") // couldn't interact with the local gateway or it wasn't able to validate
-        {
-            // need to reset the socket here or else it will always fail next time
-            // TODO: need a way to handle the local gateway coming back online and start replying to old messages
-            localGateway->close();
-            delete localGateway;
-            localGateway = new zmqpp::socket(*socketContext, zmqpp::socket_type::request);
-            localGateway->connect(URL_GATEWAY);
-            localGateway->set(zmqpp::socket_option::receive_timeout, LOCAL_SOCKET_TIMEOUT_MILLISECONDS);
-
-            if (!externalGatewayAddress.empty())
+            if (localGateway->send(gatewayCommand.str()))
             {
-                externalGateway->connect(externalGatewayAddress);
-                if (externalGateway->send(gatewayCommand.str()))
-                {
-                    externalGateway->receive(response);
-                }
-                externalGateway->disconnect(externalGatewayAddress);
+                localGateway->receive(response);
             }
+            if (response.empty() || response == "miss") // couldn't interact with the local gateway or it wasn't able to validate
+            {
+                // need to reset the socket here or else it will always fail next time
+                // TODO: need a way to handle the local gateway coming back online and start replying to old messages
+                localGateway->close();
+                delete localGateway;
+                localGateway = new zmqpp::socket(*socketContext, zmqpp::socket_type::request);
+                localGateway->connect(URL_GATEWAY);
+                localGateway->set(zmqpp::socket_option::receive_timeout, LOCAL_SOCKET_TIMEOUT_MILLISECONDS);
+
+                if (!externalGatewayAddress.empty())
+                {
+                    externalGateway->connect(externalGatewayAddress);
+                    if (externalGateway->send(gatewayCommand.str()))
+                    {
+                        externalGateway->receive(response);
+                    }
+                    externalGateway->disconnect(externalGatewayAddress);
+                }
+            }
+        }
+        catch (...)
+        {
+            localGatewayLock.unlock();
+            throw;
         }
         localGatewayLock.unlock();
         if (response != "good")
@@ -2062,7 +2070,7 @@ public:
 
     std::list<std::string> versions() const
     {
-        return { "1.0", "1.1", "1.2" };
+        return { "1.0", "1.1", "1.2", "1.3" };
     }
 
     std::list<std::string> namespaces() const
