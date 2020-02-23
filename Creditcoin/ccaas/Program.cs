@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore;
 using Microsoft.AspNetCore.Hosting;
@@ -30,6 +31,7 @@ namespace ccaas
 
             string creditcoinRestApiURL = Controllers.CreditcoinController.config.GetValue<string>("creditcoinRestApiURL");
             Controllers.CreditcoinController.creditcoinUrl = string.IsNullOrWhiteSpace(creditcoinRestApiURL) ? "http://localhost:8008" : creditcoinRestApiURL;
+            Controllers.CreditcoinController.minimalFee = BigInteger.Parse(Controllers.CreditcoinController.config.GetValue<string>("minimalFee"));
 
             host.Run();
         }

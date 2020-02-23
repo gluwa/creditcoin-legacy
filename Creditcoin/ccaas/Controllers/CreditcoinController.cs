@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Net.Http;
+using System.Numerics;
 using System.Threading.Tasks;
 using System.Web;
 using Microsoft.AspNetCore.Mvc;
@@ -19,12 +20,19 @@ namespace ccaas.Controllers
         public static IConfiguration config;
         public static string pluginFolder;
         public static string creditcoinUrl;
+        public static BigInteger minimalFee;
         private static HttpClient httpClient = new HttpClient();
 
         private const string keyIsMissing = "Key is missing";
-        private const string missingPrameters = "Missing required parameter(s)";
+        private const string missingParameters = "Missing required parameter(s)";
         private const string unexpectedError = "Error (unexpected)";
         private const string invalidSighash = "Invalid sighash format";
+
+        [HttpGet("MinimalEthlessFee")]
+        public IActionResult GetMinimalEthlessFee()
+        {
+            return Ok(minimalFee.ToString());
+        }
 
         [HttpGet("RetrieveAccount/{sighash}")]
         public IActionResult GetRetrieveAccount(string sighash)
@@ -94,7 +102,7 @@ namespace ccaas.Controllers
             foreach (var arg in args)
             {
                 if (string.IsNullOrWhiteSpace(arg))
-                    return StatusCode(400, missingPrameters);
+                    return StatusCode(400, missingParameters);
             }
 
             string key = queryParam.key;
@@ -129,7 +137,7 @@ namespace ccaas.Controllers
             if (blockchain.Equals("erc20"))
             {
                 if (string.IsNullOrWhiteSpace(erc20))
-                    return StatusCode(400, missingPrameters);
+                    return StatusCode(400, missingParameters);
                 args.Add($"{erc20}@{address}");
             }
             else
@@ -141,7 +149,7 @@ namespace ccaas.Controllers
             foreach (var arg in args)
             {
                 if (string.IsNullOrWhiteSpace(arg))
-                    return StatusCode(400, missingPrameters);
+                    return StatusCode(400, missingParameters);
             }
 
             List<string> output = cccore.Core.Run(httpClient, creditcoinUrl, args.ToArray(), config, false, pluginFolder, null, null, out bool ignoreMe, null, out string link);
@@ -170,7 +178,7 @@ namespace ccaas.Controllers
             foreach (var arg in args)
             {
                 if (string.IsNullOrWhiteSpace(arg))
-                    return StatusCode(400, missingPrameters);
+                    return StatusCode(400, missingParameters);
             }
 
             string key = queryParam.key;
@@ -208,7 +216,7 @@ namespace ccaas.Controllers
             foreach (var arg in args)
             {
                 if (string.IsNullOrWhiteSpace(arg))
-                    return StatusCode(400, missingPrameters);
+                    return StatusCode(400, missingParameters);
             }
 
             string key = queryParam.key;
@@ -346,7 +354,7 @@ namespace ccaas.Controllers
             foreach (var arg in args)
             {
                 if (string.IsNullOrWhiteSpace(arg))
-                    return StatusCode(400, missingPrameters);
+                    return StatusCode(400, missingParameters);
             }
 
             string key = queryParam.key;
@@ -509,7 +517,7 @@ namespace ccaas.Controllers
             foreach (var arg in args)
             {
                 if (string.IsNullOrWhiteSpace(arg))
-                    return StatusCode(400, missingPrameters);
+                    return StatusCode(400, missingParameters);
             }
 
             string key = queryParam.key;
@@ -676,14 +684,46 @@ namespace ccaas.Controllers
             //erc20 RegisterTransfer gain orderId
             // or
             //creditcoin RegisterTransfer gain orderId txid
+            // or
+            //ethless RegisterTransfer gain orderId fee sig
             string txid = queryParam.query.txid;
             if (txid != null && txid.Equals(string.Empty))
                 txid = null;
+            string sig = queryParam.query.sig;
+            if (sig != null && sig.Equals(string.Empty))
+                sig = null;
+            string feeString = queryParam.query.fee;
+            if (feeString != null && feeString.Equals(string.Empty))
+                feeString = null;
 
             if (txid == null)
             {
-                if (string.IsNullOrEmpty(queryParam.query.ethKey))
-                    return StatusCode(400, missingPrameters);
+                if (sig != null)
+                {
+                    if (!string.IsNullOrEmpty(queryParam.query.secretKey))
+                        return StatusCode(400, "secretKey cannot be set if sig is set");
+                    if (feeString == null)
+                        return StatusCode(400, missingParameters);
+                    BigInteger fee;
+                    if (!BigInteger.TryParse(feeString, out fee))
+                        return StatusCode(400, "fee must be numeric");
+                    if (fee < minimalFee)
+                        return StatusCode(400, "fee is too small");
+                }
+                else
+                {
+                    if (string.IsNullOrEmpty(queryParam.query.secretKey))
+                        return StatusCode(400, missingParameters);
+                    if (feeString != null)
+                        return StatusCode(400, "fee must be set only for ethless transfers");
+                }
+            }
+            else
+            {
+                if (sig != null)
+                    return StatusCode(400, "sig cannot be set if txid is set");
+                if (!string.IsNullOrEmpty(queryParam.query.secretKey))
+                    return StatusCode(400, "secretKey cannot be set if txid is set in RegisterTransfer queries");
             }
 
             string key = queryParam.key;
@@ -691,24 +731,41 @@ namespace ccaas.Controllers
                 return StatusCode(400, keyIsMissing);
 
             var args = new List<string>();
-            args.Add(txid == null? "erc20": "creditcoin");
+            if (txid != null)
+            {
+                args.Add("creditcoin");
+            }
+            else
+            {
+                if (sig != null)
+                    args.Add("ethless");
+                else
+                    args.Add("erc20");
+            }
             args.Add("RegisterTransfer");
             args.Add(queryParam.query.gain);
             args.Add(queryParam.query.dealOrderId);
             if (txid != null)
+            {
                 args.Add(txid);
+            }
+            else if (sig != null)
+            {
+                args.Add(feeString);
+                args.Add(sig);
+            }
 
             foreach (var arg in args)
             {
                 if (string.IsNullOrWhiteSpace(arg))
-                    return StatusCode(400, missingPrameters);
+                    return StatusCode(400, missingParameters);
             }
 
             Signer signer = null;
             if (key != null)
                 signer = cccore.Core.getSigner(config, key);
 
-            List<string> output = cccore.Core.Run(httpClient, creditcoinUrl, args.ToArray(), config, false, pluginFolder, null, signer, out bool ignoreMe, queryParam.query.ethKey, out string link);
+            List<string> output = cccore.Core.Run(httpClient, creditcoinUrl, args.ToArray(), config, false, pluginFolder, null, signer, out bool ignoreMe, queryParam.query.secretKey, out string link);
             Debug.Assert(output == null && link != null || link == null);
             if (link != null)
                 return Json(new Models.ContinuationResponse { reason = "waitingCreditcoinCommit", waitingCreditcoinCommit = HttpUtility.UrlEncode(link) });
@@ -735,16 +792,24 @@ namespace ccaas.Controllers
             foreach (var arg in args)
             {
                 if (string.IsNullOrWhiteSpace(arg))
-                    return StatusCode(400, missingPrameters);
+                    return StatusCode(400, missingParameters);
             }
 
             string key = queryParam.key;
             if (string.IsNullOrWhiteSpace(key))
                 return StatusCode(400, keyIsMissing);
+            if (string.IsNullOrWhiteSpace(queryParam.query.secretKey))
+                return StatusCode(400, "secretKey is missing");
+            if (string.IsNullOrWhiteSpace(queryParam.query.txid))
+                return StatusCode(400, "txid is missing");
+            if (!string.IsNullOrWhiteSpace(queryParam.query.sig))
+                return StatusCode(400, "sig is not expected");
+            if (!string.IsNullOrWhiteSpace(queryParam.query.fee))
+                return StatusCode(400, "fee is not expected");
 
             Signer signer = cccore.Core.getSigner(config, key);
 
-            List<string> output = cccore.Core.Run(httpClient, creditcoinUrl, args.ToArray(), config, false, pluginFolder, queryParam.query.txid, signer, out bool ignoreMe, queryParam.query.ethKey, out string link);
+            List<string> output = cccore.Core.Run(httpClient, creditcoinUrl, args.ToArray(), config, false, pluginFolder, queryParam.query.txid, signer, out bool ignoreMe, queryParam.query.secretKey, out string link);
             Debug.Assert(output == null && link != null || link == null);
 
             if (link != null)
@@ -774,14 +839,19 @@ namespace ccaas.Controllers
             foreach (var arg in args)
             {
                 if (string.IsNullOrWhiteSpace(arg))
-                    return StatusCode(400, missingPrameters);
+                    return StatusCode(400, missingParameters);
             }
 
             List<string> output = cccore.Core.Run(httpClient, creditcoinUrl, args.ToArray(), config, false, pluginFolder, null, null, out bool ignoreMe, null, out string link);
             Debug.Assert(output != null && link == null);
+            Debug.Assert(output.Count == 1 || output.Count == 2);
 
             if (output.Count != 2 || output[0].StartsWith("Error") || !output[output.Count - 1].Equals("Success"))
+            {
+                if (output[0].Equals("Success"))
+                    return StatusCode(404, "Transfer not found for the deal order ID provided");
                 return statusCodeByMsg(output[0]);
+            }
 
             return Ok(output[0]);
         }
@@ -799,7 +869,7 @@ namespace ccaas.Controllers
             foreach (var arg in args)
             {
                 if (string.IsNullOrWhiteSpace(arg))
-                    return StatusCode(400, missingPrameters);
+                    return StatusCode(400, missingParameters);
             }
 
             string key = queryParam.key;
@@ -832,7 +902,7 @@ namespace ccaas.Controllers
             foreach (var arg in args)
             {
                 if (string.IsNullOrWhiteSpace(arg))
-                    return StatusCode(400, missingPrameters);
+                    return StatusCode(400, missingParameters);
             }
 
             string key = queryParam.key;
@@ -866,7 +936,7 @@ namespace ccaas.Controllers
             foreach (var arg in args)
             {
                 if (string.IsNullOrWhiteSpace(arg))
-                    return StatusCode(400, missingPrameters);
+                    return StatusCode(400, missingParameters);
             }
 
             string key = queryParam.key;
@@ -900,7 +970,7 @@ namespace ccaas.Controllers
             foreach (var arg in args)
             {
                 if (string.IsNullOrWhiteSpace(arg))
-                    return StatusCode(400, missingPrameters);
+                    return StatusCode(400, missingParameters);
             }
 
             string key = queryParam.key;

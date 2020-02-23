@@ -43,12 +43,33 @@ namespace ccbe.Controllers
                 BlockHeight = tip.BlockNum,
                 Difficulty = tip.Difficulty,
                 BlockReward = calculateBlockReward(tip.BlockNum),
-                TrnsactionFee = "10000000000000000",
+                TrnsactionFee = "10000000000000000", //TODO: remove, use only TransactionFee
+                TransactionFee = "10000000000000000",
                 CirculationSupply = Cache.calculateSupply(),
                 NetworkWeight = calculateNetworkWeight(tip.Difficulty),
                 CtcInCirculation = calculateCtcInCirculation()
             };
             return Json(blockchain);
+        }
+
+        // GET api/blockchain/ctcInCirculation
+        /// <summary>The amount of CTC currently available for exchange</summary>
+        /// <returns>The amount in CTC</returns>
+        /// <response code="200">If succeeds</response>
+        [HttpGet("ctcInCirculation")]
+        [ProducesResponseType(200)]
+        public IActionResult GetCtcInCirculation()
+        {
+            var amount = calculateCtcInCirculation();
+            if (amount.Length > 18)
+            {
+                amount = $"{amount.Substring(0, amount.Length - 18)}.{amount.Substring(amount.Length - 18)}";
+            }
+            else
+            {
+                amount = $"0.{new String('0', 18 - amount.Length)}{amount}";
+            }
+            return Ok(amount);
         }
 
         private static BigInteger OLD_REWARD = BigInteger.Parse("222000000000000000000");
