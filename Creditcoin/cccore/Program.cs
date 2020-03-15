@@ -126,7 +126,7 @@ namespace cccore
                             if (id == null || id != null && id.Equals(objid))
                             {
                                 Address address = Address.Parser.ParseFrom(protobuf);
-                                ret.Add($"address({objid}) blockchain:{address.Blockchain} value:{address.Value} network:{address.Network} sighash:{address.Sighash}");
+                                ret.Add($"address({objid}) blockchain:{quote(address.Blockchain)} value:{quote(address.Value)} network:{quote(address.Network)} sighash:{address.Sighash}");
                             }
                         });
                     }
@@ -137,7 +137,7 @@ namespace cccore
                             if (id == null || id != null && id.Equals(objid))
                             {
                                 Transfer transfer = Transfer.Parser.ParseFrom(protobuf);
-                                ret.Add($"transfer({objid}) blockchain:{transfer.Blockchain} srcAddress:{transfer.SrcAddress} dstAddress:{transfer.DstAddress} order:{transfer.Order} amount:{transfer.Amount} tx:{transfer.Tx} block:{transfer.Block} processed:{transfer.Processed} sighash:{transfer.Sighash}");
+                                ret.Add($"transfer({objid}) blockchain:{quote(transfer.Blockchain)} srcAddress:{transfer.SrcAddress} dstAddress:{transfer.DstAddress} order:{transfer.Order} amount:{transfer.Amount} tx:{transfer.Tx} block:{transfer.Block} processed:{transfer.Processed} sighash:{transfer.Sighash}");
                             }
                         });
                     }
@@ -148,7 +148,7 @@ namespace cccore
                             if (id == null || id != null && id.Equals(objid))
                             {
                                 AskOrder askOrder = AskOrder.Parser.ParseFrom(protobuf);
-                                ret.Add($"askOrder({objid}) blockchain:{askOrder.Blockchain} address:{askOrder.Address} amount:{askOrder.Amount} interest:{askOrder.Interest} maturity:{askOrder.Maturity} fee:{askOrder.Fee} expiration:{askOrder.Expiration} block:{askOrder.Block} sighash:{askOrder.Sighash}");
+                                ret.Add($"askOrder({objid}) blockchain:{quote(askOrder.Blockchain)} address:{askOrder.Address} amount:{askOrder.Amount} interest:{askOrder.Interest} maturity:{askOrder.Maturity} fee:{askOrder.Fee} expiration:{askOrder.Expiration} block:{askOrder.Block} sighash:{askOrder.Sighash}");
                             }
                         });
                     }
@@ -159,7 +159,7 @@ namespace cccore
                             if (id == null || id != null && id.Equals(objid))
                             {
                                 BidOrder bidOrder = BidOrder.Parser.ParseFrom(protobuf);
-                                ret.Add($"bidOrder({objid}) blockchain:{bidOrder.Blockchain} address:{bidOrder.Address} amount:{bidOrder.Amount} interest:{bidOrder.Interest} maturity:{bidOrder.Maturity} fee:{bidOrder.Fee} expiration:{bidOrder.Expiration} block:{bidOrder.Block} sighash:{bidOrder.Sighash}");
+                                ret.Add($"bidOrder({objid}) blockchain:{quote(bidOrder.Blockchain)} address:{bidOrder.Address} amount:{bidOrder.Amount} interest:{bidOrder.Interest} maturity:{bidOrder.Maturity} fee:{bidOrder.Fee} expiration:{bidOrder.Expiration} block:{bidOrder.Block} sighash:{bidOrder.Sighash}");
                             }
                         });
                     }
@@ -170,7 +170,7 @@ namespace cccore
                             if (id == null || id != null && id.Equals(objid))
                             {
                                 Offer offer = Offer.Parser.ParseFrom(protobuf);
-                                ret.Add($"offer({objid}) blockchain:{offer.Blockchain} askOrder:{offer.AskOrder} bidOrder:{offer.BidOrder} expiration:{offer.Expiration} block:{offer.Block}");
+                                ret.Add($"offer({objid}) blockchain:{quote(offer.Blockchain)} askOrder:{offer.AskOrder} bidOrder:{offer.BidOrder} expiration:{offer.Expiration} block:{offer.Block}");
                             }
                         });
                     }
@@ -181,7 +181,7 @@ namespace cccore
                             if (id == null || id != null && id.Equals(objid))
                             {
                                 DealOrder dealOrder = DealOrder.Parser.ParseFrom(protobuf);
-                                ret.Add($"dealOrder({objid}) blockchain:{dealOrder.Blockchain} srcAddress:{dealOrder.SrcAddress} dstAddress:{dealOrder.DstAddress} amount:{dealOrder.Amount} interest:{dealOrder.Interest} maturity:{dealOrder.Maturity} fee:{dealOrder.Fee} expiration:{dealOrder.Expiration} block:{dealOrder.Block} loanTransfer:{(dealOrder.LoanTransfer.Equals(string.Empty) ? "*" : dealOrder.LoanTransfer)} repaymentTransfer:{(dealOrder.RepaymentTransfer.Equals(string.Empty) ? "*" : dealOrder.RepaymentTransfer)} lock:{(dealOrder.Lock.Equals(string.Empty) ? "*" : dealOrder.Lock)} sighash:{dealOrder.Sighash}");
+                                ret.Add($"dealOrder({objid}) blockchain:{quote(dealOrder.Blockchain)} srcAddress:{dealOrder.SrcAddress} dstAddress:{dealOrder.DstAddress} amount:{dealOrder.Amount} interest:{dealOrder.Interest} maturity:{dealOrder.Maturity} fee:{dealOrder.Fee} expiration:{dealOrder.Expiration} block:{dealOrder.Block} loanTransfer:{(dealOrder.LoanTransfer.Equals(string.Empty) ? "*" : dealOrder.LoanTransfer)} repaymentTransfer:{(dealOrder.RepaymentTransfer.Equals(string.Empty) ? "*" : dealOrder.RepaymentTransfer)} lock:{(dealOrder.Lock.Equals(string.Empty) ? "*" : dealOrder.Lock)} sighash:{dealOrder.Sighash}");
                             }
                         });
                     }
@@ -192,7 +192,7 @@ namespace cccore
                             if (id == null || id != null && id.Equals(objid))
                             {
                                 RepaymentOrder repaymentOrder = RepaymentOrder.Parser.ParseFrom(protobuf);
-                                ret.Add($"repaymentOrder({objid}) blockchain:{repaymentOrder.Blockchain} srcAddress:{repaymentOrder.SrcAddress} dstAddress:{repaymentOrder.DstAddress} amount:{repaymentOrder.Amount} expiration:{repaymentOrder.Expiration} block:{repaymentOrder.Block} deal:{repaymentOrder.Deal} previousOwner:{(repaymentOrder.PreviousOwner.Equals(string.Empty)? "*": repaymentOrder.PreviousOwner)} transfer:{(repaymentOrder.Transfer.Equals(string.Empty) ? "*" : repaymentOrder.Transfer)} sighash:{repaymentOrder.Sighash}");
+                                ret.Add($"repaymentOrder({objid}) blockchain:{quote(repaymentOrder.Blockchain)} srcAddress:{repaymentOrder.SrcAddress} dstAddress:{repaymentOrder.DstAddress} amount:{repaymentOrder.Amount} expiration:{repaymentOrder.Expiration} block:{repaymentOrder.Block} deal:{repaymentOrder.Deal} previousOwner:{(repaymentOrder.PreviousOwner.Equals(string.Empty)? "*": repaymentOrder.PreviousOwner)} transfer:{(repaymentOrder.Transfer.Equals(string.Empty) ? "*" : repaymentOrder.Transfer)} sighash:{repaymentOrder.Sighash}");
                             }
                         });
                     }
@@ -328,7 +328,7 @@ namespace cccore
                             {
                                 status = "CLOSED";
                             }
-                            ret.Add($"status:{status}, amount:{dealOrder.Amount}, blockchain:{dealOrder.Blockchain}");
+                            ret.Add($"status:{status}, amount:{dealOrder.Amount}, blockchain:{quote(dealOrder.Blockchain)}");
                         });
                     }
                     else if (command[0].Equals("newDeals", StringComparison.OrdinalIgnoreCase))
@@ -536,6 +536,29 @@ namespace cccore
             }
 
             return headIdx;
+        }
+
+        public static string quote(string str)
+        {
+            if (str.IndexOf(' ') == -1 && str.IndexOf('"') == -1)
+                return str;
+            return $"\"{str.Replace("\"", "\\\"")}\"";
+        }
+
+        public static string unquote(string str)
+        {
+            if (str.StartsWith('"'))
+            {
+                if (!str.EndsWith('"'))
+                    throw new Exception($"Unexpected quoted string, no end quote: {str}");
+                str = str.Substring(1, str.Length - 1);
+                if (str.IndexOf(' ') == -1 && str.IndexOf('"') == -1)
+                    throw new Exception($"Unexpected quoted string, contains no spaces or quotes: {str}");
+                return str.Replace("\\\"", "\"");
+            }
+            if (str.IndexOf(' ') != -1 || str.IndexOf('"') != -1)
+                throw new Exception($"Unexpected quoted string, must have been in quotes, but is not: {str}");
+            return str;
         }
 
         public static Dictionary<string, string> getSettings(HttpClient httpClient, string creditcoinUrl, List<string> ret)

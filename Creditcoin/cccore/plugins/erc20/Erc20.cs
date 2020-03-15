@@ -112,14 +112,6 @@ namespace cerc20
                 }
                 else
                 {
-                    string ethereumPrivateKey;
-                    string ethSrcAddress = getSourceAddress(secretOverride, cfg, out ethereumPrivateKey);
-                    if (ethSrcAddress == null)
-                    {
-                        msg = "erc20.secret is not set";
-                        return false;
-                    }
-
                     string srcAddressId = null;
                     string dstAddressId = null;
 
@@ -186,6 +178,14 @@ namespace cerc20
                     if (!srcAddress.Blockchain.Equals(name) || !dstAddress.Blockchain.Equals(name))
                     {
                         msg = $"erc20 RegisterTransfer can only transfer ethereum erc20 tokens.\nThis source is registered for {srcAddress.Blockchain} and destination for {dstAddress.Blockchain}";
+                        return false;
+                    }
+
+                    string ethereumPrivateKey;
+                    string ethSrcAddress = getSourceAddress(secretOverride, cfg, out ethereumPrivateKey);
+                    if (ethSrcAddress == null)
+                    {
+                        msg = "erc20.secret is not set";
                         return false;
                     }
 
@@ -282,7 +282,7 @@ namespace cerc20
                             var amount = 0;
                             var txCount = web3.Eth.Transactions.GetTransactionCount.SendRequestAsync(ethSrcAddress).Result;
                             HexBigInteger gasPrice = getGasPrice(web3, cfg);
-                            HexBigInteger gasLimit = new HexBigInteger("0xFFFF");//TODO transfer.EstimateGasAsync(transferInput).Result doesn't work for some Ethereum reason, using an excessive manual estimate instead (it actually takes about 40000 weis)
+                            HexBigInteger gasLimit = new HexBigInteger("0x3FFFF");//TODO transfer.EstimateGasAsync(transferInput).Result doesn't work for some Ethereum reason, using an excessive manual estimate instead (it actually takes about 40000 weis)
                             string data = transfer.GetData(transferInput);
 
                             TransactionSigner signer = new TransactionSigner();
