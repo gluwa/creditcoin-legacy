@@ -2070,7 +2070,7 @@ public:
 
     std::list<std::string> versions() const
     {
-        return { "1.0", "1.1", "1.2", "1.3" };
+        return { "1.0", "1.1", "1.2", "1.3", "1.4" };
     }
 
     std::list<std::string> namespaces() const
