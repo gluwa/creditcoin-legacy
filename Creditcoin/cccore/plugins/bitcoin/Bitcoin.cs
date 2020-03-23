@@ -287,7 +287,7 @@ namespace cbitcoin
                     var message = orderId;
                     var bytes = Encoding.UTF8.GetBytes(message);
 
-                    var bitcoinTransactionBuilder = new TransactionBuilder();
+                    var bitcoinTransactionBuilder = network.CreateTransactionBuilder();
 
                     var transaction = bitcoinTransactionBuilder
                         .AddCoins(new Coin(outPointToSpend, outTxToSpend))

@@ -8,14 +8,14 @@
 
   <ItemGroup>
     <PackageReference Include="Common.Logging.Core" Version="3.4.1" />
-    <PackageReference Include="Google.Protobuf" Version="3.6.1" />
-    <PackageReference Include="Nethereum.Contracts" Version="2.5.1" />
-    <PackageReference Include="Nethereum.Hex" Version="2.5.1" />
-    <PackageReference Include="Nethereum.JsonRpc.Client" Version="2.5.1" />
-    <PackageReference Include="Nethereum.JsonRpc.RpcClient" Version="2.5.1" />
-    <PackageReference Include="Nethereum.RPC" Version="2.5.1" />
-    <PackageReference Include="Nethereum.Signer" Version="2.5.1" />
-    <PackageReference Include="Nethereum.Web3" Version="2.5.1" />
+    <PackageReference Include="Google.Protobuf" Version="3.11.4" />
+    <PackageReference Include="Nethereum.Contracts" Version="3.7.1" />
+    <PackageReference Include="Nethereum.Hex" Version="3.7.1" />
+    <PackageReference Include="Nethereum.JsonRpc.Client" Version="3.7.1" />
+    <PackageReference Include="Nethereum.JsonRpc.RpcClient" Version="3.7.1" />
+    <PackageReference Include="Nethereum.RPC" Version="3.7.1" />
+    <PackageReference Include="Nethereum.Signer" Version="3.7.1" />
+    <PackageReference Include="Nethereum.Web3" Version="3.7.1" />
   </ItemGroup>
 
   <ItemGroup>

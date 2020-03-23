@@ -680,11 +680,13 @@ namespace ccaas.Controllers
             // or
             //ethless RegisterTransfer gain orderId fee sig
 
+            if (!string.IsNullOrEmpty(queryParam.query.continuation))
+                return StatusCode(400, "'continuation' cannot be set");
             var args = new List<string>();
             var msg = checkTransferParameters(queryParam, args, out Signer signer);
             if (msg != null)
                 return StatusCode(400, msg);
-            List<string> output = cccore.Core.Run(httpClient, creditcoinUrl, args.ToArray(), config, false, pluginFolder, null, signer, out _, queryParam.query.secretKey, out string link);
+            List<string> output = cccore.Core.Run(httpClient, creditcoinUrl, args.ToArray(), config, false, pluginFolder, null, signer, out _, queryParam.query.ethKey, out string link);
             Debug.Assert(output == null && link != null || link == null);
             if (link != null)
                 return Json(new Models.ContinuationResponse { reason = "waitingCreditcoinCommit", waitingCreditcoinCommit = HttpUtility.UrlEncode(link) });
@@ -705,14 +707,17 @@ namespace ccaas.Controllers
             // or
             //creditcoin RegisterTransfer gain orderId txid
             // or
-            //ethless RegisterTransfer gain orderId fee sig
+            //ethless RegisterTransfer gain orderId fee
+
+            if (string.IsNullOrEmpty(queryParam.query.continuation))
+                return StatusCode(400, "'continuation' must be set");
 
             var args = new List<string>();
             var msg = checkTransferParameters(queryParam, args, out Signer signer);
             if (msg != null)
                 return StatusCode(400, msg);
 
-            List<string> output = cccore.Core.Run(httpClient, creditcoinUrl, args.ToArray(), config, false, pluginFolder, queryParam.query.txid, signer, out _, queryParam.query.secretKey, out string link);
+            List<string> output = cccore.Core.Run(httpClient, creditcoinUrl, args.ToArray(), config, false, pluginFolder, queryParam.query.continuation, signer, out _, queryParam.query.ethKey, out string link);
             Debug.Assert(output == null && link != null || link == null);
 
             if (link != null)
@@ -734,46 +739,35 @@ namespace ccaas.Controllers
             string txid = queryParam.query.txid;
             if (txid != null && txid.Equals(string.Empty))
                 txid = null;
-            string sig = queryParam.query.sig;
-            if (sig != null && sig.Equals(string.Empty))
-                sig = null;
             string feeString = queryParam.query.fee;
             if (feeString != null && feeString.Equals(string.Empty))
                 feeString = null;
 
             if (txid == null)
             {
-                if (sig != null) // ethless thansfer
+                if (string.IsNullOrEmpty(queryParam.query.ethKey))
+                    return missingParameters;
+                if (feeString != null) // ethless thansfer
                 {
-                    if (!string.IsNullOrEmpty(queryParam.query.secretKey))
-                        return "secretKey cannot be set if sig is set";
-                    if (feeString == null)
-                        return missingParameters;
                     BigInteger fee;
                     if (!BigInteger.TryParse(feeString, out fee))
-                        return "fee must be numeric";
+                        return "'fee' must be numeric";
                     if (fee < minimalFee)
-                        return "fee is too small";
+                        return "'fee' is too small";
                 }
                 else
                 {
-                    if (string.IsNullOrEmpty(queryParam.query.secretKey))
-                        return missingParameters;
                     if (feeString != null)
-                        return "fee must be set only for ethless transfers";
+                        return "'fee' must be set only for ethless transfers";
                 }
             }
             else
             {
-                if (sig != null)
-                    return "sig cannot be set if txid is set";
-                if (!string.IsNullOrEmpty(queryParam.query.secretKey))
-                    return "secretKey cannot be set if txid is set in RegisterTransfer queries";
+                if (feeString != null)
+                    return "'fee' cannot be set if 'txid' is set";
+                if (!string.IsNullOrEmpty(queryParam.query.ethKey))
+                    return "'ethKey' cannot be set if 'txid' is set";
             }
-
-            string key = queryParam.key;
-            if (string.IsNullOrWhiteSpace(key))
-                return keyIsMissing;
 
             if (txid != null)
             {
@@ -781,7 +775,7 @@ namespace ccaas.Controllers
             }
             else
             {
-                if (sig != null)
+                if (feeString != null)
                     args.Add("ethless");
                 else
                     args.Add("erc20");
@@ -790,14 +784,9 @@ namespace ccaas.Controllers
             args.Add(queryParam.query.gain);
             args.Add(queryParam.query.dealOrderId);
             if (txid != null)
-            {
                 args.Add(txid);
-            }
-            else if (sig != null)
-            {
+            else if (feeString != null)
                 args.Add(feeString);
-                args.Add(sig);
-            }
 
             foreach (var arg in args)
             {
@@ -805,8 +794,10 @@ namespace ccaas.Controllers
                     return missingParameters;
             }
 
-            if (key != null)
-                signer = cccore.Core.getSigner(config, key);
+            string key = queryParam.key;
+            if (string.IsNullOrWhiteSpace(key))
+                return keyIsMissing;
+            signer = cccore.Core.getSigner(config, key);
 
             return null;
         }

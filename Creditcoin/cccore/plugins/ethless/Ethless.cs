@@ -21,6 +21,7 @@ using ccplugin;
 using Microsoft.Extensions.Configuration;
 using Nethereum.Hex.HexTypes;
 using Nethereum.Signer;
+using Nethereum.ABI;
 using System;
 using System.Diagnostics;
 using System.Net.Http;
@@ -68,7 +69,7 @@ namespace cethless
 
                 inProgress = false;
 
-                if (command.Length != 5)
+                if (command.Length != 4)
                 {
                     msg = "invalid parameter count";
                     return false;
@@ -77,7 +78,6 @@ namespace cethless
                 string gainString = command[1];
                 string orderId = command[2];
                 string feeString = command[3];
-                var sig = Convert.FromBase64String(command[4]);
 
                 string rpcUrl = cfg["rpc"];
                 if (string.IsNullOrWhiteSpace(rpcUrl))
@@ -102,11 +102,17 @@ namespace cethless
                 }
                 else
                 {
-                    string ethereumPrivateKey;
-                    string ethSrcAddress = getSourceAddress(secretOverride, cfg, out ethereumPrivateKey);
-                    if (ethSrcAddress == null)
+                    string facilitatorEthPrivateKey = cfg["secret"];
+                    if (string.IsNullOrWhiteSpace(facilitatorEthPrivateKey))
                     {
                         msg = "ethless.secret is not set";
+                        return false;
+                    }
+                    string facilitatorEthSrcAddress = EthECKey.GetPublicAddress(facilitatorEthPrivateKey);
+
+                    if (string.IsNullOrWhiteSpace(secretOverride))
+                    {
+                        msg = "secret override is not provided";
                         return false;
                     }
 
@@ -194,6 +200,7 @@ namespace cethless
                     srcAddress.Value = scrAddressSegments[1];
                     dstAddress.Value = dstAddressSegments[1];
 
+                    string ethSrcAddress = EthECKey.GetPublicAddress(secretOverride);
                     string ethDstAddress = dstAddress.Value;
 
                     if (!ethSrcAddress.Equals(srcAddress.Value, StringComparison.OrdinalIgnoreCase))
@@ -230,19 +237,38 @@ namespace cethless
                     var nonce = new HexBigInteger("0x" + orderId.Substring(10)); //namespace length 6 plus prefix length 4
 
                     TransactionSigner signer = new TransactionSigner();
-
                     string ethless = scrAddressSegments[0];
+
+                    byte[] sig;
+                    {
+                        var msgSigner = new EthereumMessageSigner();
+                        var abiEncode = new ABIEncode();
+
+                        var hash = abiEncode.GetSha3ABIEncodedPacked(
+                            new ABIValue("address", ethless),
+                            new ABIValue("address", ethSrcAddress),
+                            new ABIValue("address", ethDstAddress),
+                            new ABIValue("uint256", transferAmount),
+                            new ABIValue("uint256", fee),
+                            new ABIValue("uint256", nonce.Value)
+                        );
+
+                        var signedHash = msgSigner.Sign(hash, secretOverride);
+                        var hexValue = new HexBigInteger(signedHash);
+                        sig = hexValue.ToHexByteArray();
+                    }
+
                     var ethlessContract = web3.Eth.GetContract(ethlessAbi, ethless);
                     var transfer = ethlessContract.GetFunction("transfer");
-                    var transferInput = new object[] { ethSrcAddress, ethDstAddress, transferAmount, fee, nonce, sig };
+                    var transferInput = new object[] { ethSrcAddress, ethDstAddress, transferAmount, fee, nonce.Value, sig };
 
                     string to = ethless;
                     var amount = 0;
-                    var txCount = web3.Eth.Transactions.GetTransactionCount.SendRequestAsync(ethSrcAddress).Result;
+                    var txCount = web3.Eth.Transactions.GetTransactionCount.SendRequestAsync(facilitatorEthSrcAddress).Result;
                     HexBigInteger gasPrice = getGasPrice(web3, cfg);
                     HexBigInteger gasLimit = new HexBigInteger(transfer.EstimateGasAsync(transferInput).Result);
                     string data = transfer.GetData(transferInput);
-                    string txRaw = signer.SignTransaction(ethereumPrivateKey, to, amount, txCount, gasPrice, gasLimit, data);
+                    string txRaw = signer.SignTransaction(facilitatorEthPrivateKey, to, amount, txCount, gasPrice, gasLimit, data);
                     payTxId = web3.Eth.Transactions.SendRawTransaction.SendRequestAsync("0x" + txRaw).Result;
                     progressToken = payTxId;
                 }
@@ -299,14 +325,6 @@ namespace cethless
                 msg = "Unknown command: " + command[0];
                 return false;
             }
-        }
-
-        private static string getSourceAddress(string secretOverride, IConfiguration cfg, out string ethereumPrivateKey)
-        {
-            ethereumPrivateKey = secretOverride ?? cfg["secret"];
-            if (string.IsNullOrWhiteSpace(ethereumPrivateKey))
-                return null;
-            return EthECKey.GetPublicAddress(ethereumPrivateKey);
         }
 
         private static HexBigInteger getGasPrice(Nethereum.Web3.Web3 web3, IConfiguration cfg)
