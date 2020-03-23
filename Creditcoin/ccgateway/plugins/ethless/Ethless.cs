@@ -19,6 +19,7 @@
 
 using ccplugin;
 using Microsoft.Extensions.Configuration;
+using Nethereum.Hex.HexTypes;
 using System;
 using System.Diagnostics;
 
@@ -96,12 +97,6 @@ namespace gethless
                     return false;
                 }
 
-                if (!sourceAddressString.Equals(tx.From, System.StringComparison.OrdinalIgnoreCase))
-                {
-                    msg = "Invalid transaction: wrong sourceAddressString";
-                    return false;
-                }
-
                 string ethlessContract = sourceAddressStringSegments[0];
 
                 if (string.IsNullOrWhiteSpace(ethlessContract))
@@ -145,7 +140,8 @@ namespace gethless
                 }
 
                 var tag = inputs[4].Result.ToString();
-                if (!tag.Equals("0x" + proof.Substring(10)))
+                var nonce = new HexBigInteger("0x" + proof.Substring(10)); //namespace length 6 plus prefix length 4
+                if (!tag.Equals(nonce.Value.ToString()))
                 {
                     msg = "Invalid transaction: wrong proof";
                     return false;

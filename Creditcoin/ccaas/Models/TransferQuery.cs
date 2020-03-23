@@ -7,11 +7,11 @@ namespace ccaas.Models
 {
     public class TransferQuery
     {
-        public string secretKey;
+        public string ethKey;
         public string gain;
         public string dealOrderId;
         public string txid;
-        public string sig;
         public string fee;
+        public string continuation;
     }
 }
