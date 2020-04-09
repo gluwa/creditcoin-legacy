@@ -26,7 +26,7 @@ namespace ccaas.Controllers
         private const string keyIsMissing = "Key is missing";
         private const string missingParameters = "Missing required parameter(s)";
         private const string unexpectedError = "Error (unexpected)";
-        private const string invalidSighash = "Invalid sighash format";
+        private const string invalidSighash = "Invalid sighash format, expecting 60 hexadecimal digits";
 
         [HttpGet("MinimalEthlessFee")]
         public IActionResult GetMinimalEthlessFee()
@@ -54,13 +54,23 @@ namespace ccaas.Controllers
             return Json(ret);
         }
 
+        private static string ValidateKey(string key)
+        {
+            if (string.IsNullOrWhiteSpace(key))
+                return keyIsMissing;
+            if (key.Length != 64 || !key.All("1234567890abcdef".Contains))
+                return "Invalid key format, expecting 64 hexadecimal digits";
+            return null;
+        }
+
         [HttpPost("Sighash")]
         public IActionResult PostSighash(Models.SighashQueryParam queryParam)
         {
             //sighash
             string key = queryParam.key;
-            if (string.IsNullOrWhiteSpace(key))
-                return StatusCode(400, keyIsMissing);
+            string message = ValidateKey(key);
+            if (message != null)
+                return BadRequest(message);
 
             Signer signer = cccore.Core.getSigner(config, key);
             var sighash = ccplugin.TxBuilder.getSighash(signer);
@@ -79,6 +89,41 @@ namespace ccaas.Controllers
             return Ok();
         }
 
+        [HttpPost("SendFunds")]
+        public IActionResult PostSendFunds(Models.SendFundsQueryParam queryParam)
+        {
+            //creditcoin SendFunds amount sighash
+            var args = new List<string>();
+            args.Add("creditcoin");
+            args.Add("SendFunds");
+            args.Add(queryParam.query.amount);
+            args.Add(queryParam.query.destinationSighash);
+
+            foreach (var arg in args)
+            {
+                if (string.IsNullOrWhiteSpace(arg))
+                    return BadRequest(missingParameters);
+            }
+
+            string key = queryParam.key;
+            string message = ValidateKey(key);
+            if (message != null)
+                return BadRequest(message);
+
+            Signer signer = cccore.Core.getSigner(config, key);
+
+            List<string> output = cccore.Core.Run(httpClient, creditcoinUrl, args.ToArray(), config, false, pluginFolder, null, signer, out bool _, null, out string link);
+            Debug.Assert(output == null && link != null || link == null);
+
+            if (link != null)
+                return Json(new Models.ContinuationResponse { reason = "waitingCreditcoinCommit", waitingCreditcoinCommit = HttpUtility.UrlEncode(link) });
+
+            if (output.Count != 1 || output[0].StartsWith("Error") || !output[0].Equals("Success"))
+                return statusCodeByMsg(output[0]);
+
+            return Ok();
+        }
+
         [HttpPost("RegisterAddress")]
         public IActionResult PostRegisterAddress(Models.RegisterAddressQueryParam queryParam)
         {
@@ -90,7 +135,7 @@ namespace ccaas.Controllers
             if (queryParam.query.blockchain.Equals("erc20") || queryParam.query.blockchain.Equals("ethless"))
             {
                 if (string.IsNullOrWhiteSpace(queryParam.query.erc20))
-                    return StatusCode(400, "expecting erc20 parameter for erc20 and ethless blockchains");
+                    return BadRequest("expecting erc20 parameter for erc20 and ethless blockchains");
                 args.Add($"{queryParam.query.erc20}@{queryParam.query.address}");
             }
             else
@@ -102,12 +147,13 @@ namespace ccaas.Controllers
             foreach (var arg in args)
             {
                 if (string.IsNullOrWhiteSpace(arg))
-                    return StatusCode(400, missingParameters);
+                    return BadRequest(missingParameters);
             }
 
             string key = queryParam.key;
-            if (string.IsNullOrWhiteSpace(key))
-                return StatusCode(400, keyIsMissing);
+            string message = ValidateKey(key);
+            if (message != null)
+                return BadRequest(message);
 
             Signer signer = cccore.Core.getSigner(config, key);
 
@@ -137,7 +183,7 @@ namespace ccaas.Controllers
             if (blockchain.Equals("erc20") || blockchain.Equals("ethless"))
             {
                 if (string.IsNullOrWhiteSpace(erc20))
-                    return StatusCode(400, missingParameters);
+                    return BadRequest(missingParameters);
                 args.Add($"{erc20}@{address}");
             }
             else
@@ -149,7 +195,7 @@ namespace ccaas.Controllers
             foreach (var arg in args)
             {
                 if (string.IsNullOrWhiteSpace(arg))
-                    return StatusCode(400, missingParameters);
+                    return BadRequest(missingParameters);
             }
 
             List<string> output = cccore.Core.Run(httpClient, creditcoinUrl, args.ToArray(), config, false, pluginFolder, null, null, out bool _, null, out string link);
@@ -178,12 +224,13 @@ namespace ccaas.Controllers
             foreach (var arg in args)
             {
                 if (string.IsNullOrWhiteSpace(arg))
-                    return StatusCode(400, missingParameters);
+                    return BadRequest(missingParameters);
             }
 
             string key = queryParam.key;
-            if (string.IsNullOrWhiteSpace(key))
-                return StatusCode(400, keyIsMissing);
+            string message = ValidateKey(key);
+            if (message != null)
+                return BadRequest(message);
 
             Signer signer = cccore.Core.getSigner(config, key);
 
@@ -216,12 +263,13 @@ namespace ccaas.Controllers
             foreach (var arg in args)
             {
                 if (string.IsNullOrWhiteSpace(arg))
-                    return StatusCode(400, missingParameters);
+                    return BadRequest(missingParameters);
             }
 
             string key = queryParam.key;
-            if (string.IsNullOrWhiteSpace(key))
-                return StatusCode(400, keyIsMissing);
+            string message = ValidateKey(key);
+            if (message != null)
+                return BadRequest(message);
 
             Signer signer = cccore.Core.getSigner(config, key);
 
@@ -360,12 +408,13 @@ namespace ccaas.Controllers
             foreach (var arg in args)
             {
                 if (string.IsNullOrWhiteSpace(arg))
-                    return StatusCode(400, missingParameters);
+                    return BadRequest(missingParameters);
             }
 
             string key = queryParam.key;
-            if (string.IsNullOrWhiteSpace(key))
-                return StatusCode(400, keyIsMissing);
+            string message = ValidateKey(key);
+            if (message != null)
+                return BadRequest(message);
 
             Signer signer = cccore.Core.getSigner(config, key);
 
@@ -516,12 +565,13 @@ namespace ccaas.Controllers
             foreach (var arg in args)
             {
                 if (string.IsNullOrWhiteSpace(arg))
-                    return StatusCode(400, missingParameters);
+                    return BadRequest(missingParameters);
             }
 
             string key = queryParam.key;
-            if (string.IsNullOrWhiteSpace(key))
-                return StatusCode(400, keyIsMissing);
+            string message = ValidateKey(key);
+            if (message != null)
+                return BadRequest(message);
 
             Signer signer = cccore.Core.getSigner(config, key);
 
@@ -681,11 +731,11 @@ namespace ccaas.Controllers
             //ethless RegisterTransfer gain orderId fee sig
 
             if (!string.IsNullOrEmpty(queryParam.query.continuation))
-                return StatusCode(400, "'continuation' cannot be set");
+                return BadRequest("'continuation' cannot be set");
             var args = new List<string>();
             var msg = checkTransferParameters(queryParam, args, out Signer signer);
             if (msg != null)
-                return StatusCode(400, msg);
+                return BadRequest(msg);
             List<string> output = cccore.Core.Run(httpClient, creditcoinUrl, args.ToArray(), config, false, pluginFolder, null, signer, out _, queryParam.query.ethKey, out string link);
             Debug.Assert(output == null && link != null || link == null);
             if (link != null)
@@ -710,12 +760,12 @@ namespace ccaas.Controllers
             //ethless RegisterTransfer gain orderId fee
 
             if (string.IsNullOrEmpty(queryParam.query.continuation))
-                return StatusCode(400, "'continuation' must be set");
+                return BadRequest("'continuation' must be set");
 
             var args = new List<string>();
             var msg = checkTransferParameters(queryParam, args, out Signer signer);
             if (msg != null)
-                return StatusCode(400, msg);
+                return BadRequest(msg);
 
             List<string> output = cccore.Core.Run(httpClient, creditcoinUrl, args.ToArray(), config, false, pluginFolder, queryParam.query.continuation, signer, out _, queryParam.query.ethKey, out string link);
             Debug.Assert(output == null && link != null || link == null);
@@ -795,8 +845,9 @@ namespace ccaas.Controllers
             }
 
             string key = queryParam.key;
-            if (string.IsNullOrWhiteSpace(key))
-                return keyIsMissing;
+            string message = ValidateKey(key);
+            if (message != null)
+                return message;
             signer = cccore.Core.getSigner(config, key);
 
             return null;
@@ -817,7 +868,7 @@ namespace ccaas.Controllers
             foreach (var arg in args)
             {
                 if (string.IsNullOrWhiteSpace(arg))
-                    return StatusCode(400, missingParameters);
+                    return BadRequest(missingParameters);
             }
 
             List<string> output = cccore.Core.Run(httpClient, creditcoinUrl, args.ToArray(), config, false, pluginFolder, null, null, out bool _, null, out string link);
@@ -847,12 +898,13 @@ namespace ccaas.Controllers
             foreach (var arg in args)
             {
                 if (string.IsNullOrWhiteSpace(arg))
-                    return StatusCode(400, missingParameters);
+                    return BadRequest(missingParameters);
             }
 
             string key = queryParam.key;
-            if (string.IsNullOrWhiteSpace(key))
-                return StatusCode(400, keyIsMissing);
+            string message = ValidateKey(key);
+            if (message != null)
+                return BadRequest(message);
 
             Signer signer = cccore.Core.getSigner(config, key);
 
@@ -880,12 +932,13 @@ namespace ccaas.Controllers
             foreach (var arg in args)
             {
                 if (string.IsNullOrWhiteSpace(arg))
-                    return StatusCode(400, missingParameters);
+                    return BadRequest(missingParameters);
             }
 
             string key = queryParam.key;
-            if (string.IsNullOrWhiteSpace(key))
-                return StatusCode(400, keyIsMissing);
+            string message = ValidateKey(key);
+            if (message != null)
+                return BadRequest(message);
 
             Signer signer = cccore.Core.getSigner(config, key);
 
@@ -914,12 +967,13 @@ namespace ccaas.Controllers
             foreach (var arg in args)
             {
                 if (string.IsNullOrWhiteSpace(arg))
-                    return StatusCode(400, missingParameters);
+                    return BadRequest(missingParameters);
             }
 
             string key = queryParam.key;
-            if (string.IsNullOrWhiteSpace(key))
-                return StatusCode(400, keyIsMissing);
+            string message = ValidateKey(key);
+            if (message != null)
+                return BadRequest(message);
 
             Signer signer = cccore.Core.getSigner(config, key);
 
@@ -948,12 +1002,13 @@ namespace ccaas.Controllers
             foreach (var arg in args)
             {
                 if (string.IsNullOrWhiteSpace(arg))
-                    return StatusCode(400, missingParameters);
+                    return BadRequest(missingParameters);
             }
 
             string key = queryParam.key;
-            if (string.IsNullOrWhiteSpace(key))
-                return StatusCode(400, keyIsMissing);
+            string message = ValidateKey(key);
+            if (message != null)
+                return BadRequest(message);
 
             Signer signer = cccore.Core.getSigner(config, key);
 
