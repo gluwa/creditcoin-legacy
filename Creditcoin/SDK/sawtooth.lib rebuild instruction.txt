@@ -275,38 +275,130 @@ build libprotobufd.lib:
 make sure all libs refer the same Runtime Library (i.e. Multi-threaded Debug DLL)
 
 ------------------------------------------------------------------------------- Building sawtooth
-cd D:\Job\gluwa\Creditcoin\Sawtooth\sawtooth-core\sdk\cxx
-D:\dev\vcpkg\downloads\cmake-3.10.2-win32-x86\bin\cmake.exe -G"Visual Studio 15 2017 Win64" .
-open resulting solution
-add include directories:
-	D:\sawtooth\apache-log4cxx-0.10.0\src\main\include
-	D:\sawtooth\protobuf-3.5.1\src
-	D:\sawtooth\zmqpp-master\src
-	D:\sawtooth\zeromq-3.2.5\include
-	D:\sawtooth\zmqpp-master\build
+unzip sawtooth-sdk-cxx-master:
+	D:\Job\gluwa\sawtooth-sdk-cxx-master
 
-in src/message_stream.cpp on line 61
-	Replace
-	message.add(msg_data.data(), msg_data.length()); 
+to configure cmake to use D:\dev\vcpkg:
+	Open the CMake GUI and select your source and build directories
+		source is the folder that contains src and CMakeLists.txt (D:\Job\gluwa\sawtooth-sdk-cxx-master)
+		build is where the generated project/make files will be stored (may be a new unexisting folder, then it will be created) (D:\Job\gluwa\sawtooth-sdk-cxx-master\build)
+	click Configure
+		confirm creation of build volder if asked
+	When asked to specify the generator (default 'Visual Studio 16 2019' is fine), platform (default <empty - for x64> is fine), toolset (default <empty> is fine) and radio buttons:
+		select 'Specify toolchain file for cross-compiling' and click next;
+		enter D:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake in 'Specify the Toolchain file') and click Finish
+	After Configuring done, click Generate
 
-	With
-	message.add(msg_data.data());
+open:
+	D:\Job\gluwa\sawtooth-sdk-cxx-master\build\sawtooth.sln
+		(optionally remove all configurations but Debug and Release)
+	open satooth properties:
+		change General/Output Directory to D:\Job\gluwa\dev\Creditcoin\SDK\lib\Debug for Debug (D:\Job\gluwa\dev\Creditcoin\SDK\lib\Release for Release)
+		add include directories (C/C++, General, Additional Include Directories):
+			D:\sawtooth\apache-log4cxx-0.10.0\src\main\include
+			D:\sawtooth\protobuf-3.5.1\src
+			D:\sawtooth\zmqpp-master\src
+			D:\sawtooth\zeromq-3.2.5\include
+			D:\sawtooth\zmqpp-master\build
+		define (C/C++, Preprocessor, Preprocessor Definitions):
+			ZMQ_STATIC;ZMQPP_STATIC_DEFINE;LOG4CXX_STATIC;
+		add dependendencies (Librarian, General, Additional Dependenceies):
+			D:\sawtooth\zeromq-3.2.5\bin\x64\libzmq_d.lib (D:\sawtooth\zeromq-3.2.5\bin\x64\libzmq.lib)
+			D:\sawtooth\zmqpp-master\build\Debug\zmqpp-static.lib (D:\sawtooth\zmqpp-master\build\Release\zmqpp-static.lib)
+			D:\sawtooth\libexpat-R_2_2_5\expat\win32\bin\Debug\libexpatMT.lib (D:\sawtooth\libexpat-R_2_2_5\expat\win32\bin\Release\libexpatMT.lib)
+			D:\sawtooth\apr\x64\LibD\apr-1.lib (D:\sawtooth\apr\x64\LibR\apr-1.lib)
+			D:\sawtooth\apr-util\x64\LibD\aprutil-1.lib (D:\sawtooth\apr-util\x64\LibR\aprutil-1.lib)
+			D:\sawtooth\apache-log4cxx-0.10.0\projects\x64\Debug\log4cxx.lib (D:\sawtooth\apache-log4cxx-0.10.0\projects\x64\Release\log4cxx.lib)
+			D:\sawtooth\protobuf-3.5.1\cmake\build\Debug\libprotobufd.lib (D:\sawtooth\protobuf-3.5.1\cmake\build\Release\libprotobufd.lib)
+			D:\Job\gluwa\sawtooth-sdk-cxx-master\build\lib\Debug\proto.lib (D:\Job\gluwa\sawtooth-sdk-cxx-master\build\lib\Release\proto.lib)
 
-add #include <signal.h> in transaction_processor.cpp
-	and change implementation of s_catch_signals() replacing sigaction with:
+D:\Job\gluwa\sawtooth-sdk-cxx-master\protos\processor.proto#86
+	add:
+    uint64 tip = 5; // The block number
+
+D:\Job\gluwa\sawtooth-sdk-cxx-master\src\message_dispatcher.cpp#177
+	replace:
+            message.add(msg_data.data(), msg_data.length());
+	with
+            message.add(msg_data.data());
+
+D:\Job\gluwa\sawtooth-sdk-cxx-master\src\message_dispatcher.cpp#232
+	replace:
+        zmsg.add(msg_data.data(), msg_data.length());
+	with
+        zmsg.add(msg_data.data());
+
+D:\Job\gluwa\sawtooth-sdk-cxx-master\src\message_dispatcher.cpp#32
+	add
+#undef ERROR
+
+D:\Job\gluwa\sawtooth-sdk-cxx-master\src\message_stream.cpp#61
+	replace:
+    message.add(msg_data.data(), msg_data.length());
+	with
+    message.add(msg_data.data());
+
+D:\Job\gluwa\sawtooth-core\sdk\cxx\include\sawtooth_sdk.h#123
+	add
+    virtual ::google::protobuf::uint64 GetTip() const = 0;
+
+D:\Job\gluwa\sawtooth-core\sdk\cxx\include\sawtooth\global_state.h#35
+	replace
+        const std::string& context_id);
+	with
+        const std::string& context_id, ::google::protobuf::uint64 tip);
+
+D:\Job\gluwa\sawtooth-core\sdk\cxx\include\sawtooth\global_state.h#72
+	add
+    virtual ::google::protobuf::uint64 GetTip() const;
+
+D:\Job\gluwa\sawtooth-core\sdk\cxx\include\sawtooth\global_state.h#75
+    ::google::protobuf::uint64 tip;
+
+D:\Job\gluwa\sawtooth-sdk-cxx-master\src\global_state.cpp#35
+	replace:
+    const MessageStreamPtr& message_stream, const std::string& context_id):
+	with
+    const MessageStreamPtr& message_stream, const std::string& context_id, ::google::protobuf::uint64 newTip):
+
+D:\Job\gluwa\sawtooth-sdk-cxx-master\src\global_state.cpp#36
+	replace:
+    message_stream(message_stream), context_id(context_id) {}
+	with
+    message_stream(message_stream), context_id(context_id), tip(newTip) {}
+
+D:\Job\gluwa\sawtooth-sdk-cxx-master\src\global_state.cpp#27
+	add:
+#undef ERROR
+
+D:\Job\gluwa\sawtooth-sdk-cxx-master\src\global_state.cpp#162
+	add:
+::google::protobuf::uint64 GlobalStateImpl::GetTip() const
+{
+    return tip;
+}
+
+D:\Job\gluwa\sawtooth-sdk-cxx-master\src\transaction_processor.cpp#150
+	replace:
+                        request.context_id()));
+	with
+                        request.context_id(), request.tip()));
+
+D:\Job\gluwa\sawtooth-sdk-cxx-master\src\transaction_processor.cpp#25
+	add:
+#undef ERROR
+
+D:\Job\gluwa\sawtooth-sdk-cxx-master\src\transaction_processor.cpp#31
+	add:
+#include <signal.h>
+
+D:\Job\gluwa\sawtooth-sdk-cxx-master\src\transaction_processor.cpp#48-53
+	comment out
+
+D:\Job\gluwa\sawtooth-sdk-cxx-master\src\transaction_processor.cpp#54
+	add:
         signal(SIGINT, &s_signal_handler);
         signal(SIGTERM, &s_signal_handler);
-replace ERROR in D:\Job\gluwa\Creditcoin\Sawtooth\sawtooth-core\protos\processor.proto and D:\Job\gluwa\Creditcoin\Sawtooth\sawtooth-core\protos\network.proto with ERR
-#define ZMQ_STATIC;ZMQPP_STATIC_DEFINE;LOG4CXX_STATIC
-add dependencies:
-	D:\sawtooth\zeromq-3.2.5\bin\x64\libzmq_d.lib
-	D:\sawtooth\zmqpp-master\build\Debug\zmqpp-static.lib
-	D:\sawtooth\libexpat-R_2_2_5\expat\win32\bin\Debug\libexpatMT.lib
-	D:\sawtooth\apr\x64\LibD\apr-1.lib
-	D:\sawtooth\apr-util\x64\LibD\aprutil-1.lib
-	D:\sawtooth\apache-log4cxx-0.10.0\projects\x64\Debug\log4cxx.lib
-	D:\sawtooth\protobuf-3.5.1\cmake\build\Debug\libprotobufd.lib
-	D:\Job\gluwa\Creditcoin\Sawtooth\sawtooth-core\sdk\cxx\lib\Debug\proto.lib
 
 the client will need to refer these additional libraries:
 	sawtooth.lib;Rpcrt4.lib;Mswsock.lib;Ws2_32.lib;
