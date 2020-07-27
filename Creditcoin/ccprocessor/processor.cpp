@@ -26,13 +26,17 @@
 #include <sstream>
 #include <iomanip>
 #include <mutex>
+#include <atomic>
+#include <fstream>
+#include <thread>
+#include <chrono>
+using namespace std::chrono_literals;
 
 #include <cryptopp/sha.h>
 #include <cryptopp/filters.h>
 #include <cryptopp/hex.h>
 #include <cryptopp/hrtimer.h>
 
-#include <sawtooth_sdk.h>
 #include <exceptions.h>
 #include <setting.pb.h>
 
@@ -45,6 +49,8 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/network/protocol/http/client.hpp>
+#include <boost/network/protocol/http/client/connection/normal_delegate.ipp>
+#include <boost/network/uri/uri.ipp>
 #include <boost/multiprecision/cpp_int.hpp>
 
 #include "Address.pb.h"
@@ -56,6 +62,8 @@
 #include "Transfer.pb.h"
 #include "Wallet.pb.h"
 #include "Fee.pb.h"
+
+#include <sawtooth_sdk.h>
 
 const int URL_PREFIX_LEN = 6;
 const size_t MERKLE_ADDRESS_LENGTH = 70;
@@ -126,20 +134,87 @@ static const boost::multiprecision::cpp_int BLOCKS_IN_PERIOD_UPDATE1 = 2500000;
 static const int REMAINDER_OF_LAST_PERIOD = 2646631;
 
 static char const* TX_FEE_STRING = "10000000000000000";
-boost::multiprecision::cpp_int TX_FEE(TX_FEE_STRING);
+static boost::multiprecision::cpp_int TX_FEE(TX_FEE_STRING);
 
 static char const* REWARD_AMOUNT_STRING = "222000000000000000000";
 static const boost::multiprecision::cpp_int REWARD_AMOUNT(REWARD_AMOUNT_STRING);
 
-static std::map<std::string, std::string> settings;
-std::mutex settingsLock;
-static std::string externalGatewayAddress = "";
+static std::atomic<std::map<std::string, std::string>*> settings(new std::map<std::string, std::string>());
+static std::atomic<std::string*> externalGatewayAddress(new std::string());
 static zmqpp::socket* localGateway;
-std::mutex localGatewayLock;
+static std::mutex localGatewayLock;
 static zmqpp::socket* externalGateway;
 static zmqpp::context* socketContext;
 
+static std::mutex killerLock;
+static bool killerStarted = false;
+static std::chrono::system_clock::time_point lastTime;
+
 static log4cxx::LoggerPtr logger(log4cxx::Logger::getLogger("sawtooth.TransactionProcessor"));
+
+static bool transitioning;
+
+struct Tx
+{
+    std::string sighash;
+    std::string guid;
+    std::vector<std::uint8_t> payload;
+};
+
+struct Block
+{
+    std::string signer;
+    std::vector<Tx> txs;
+};
+
+struct Ctx
+{
+    std::string sighash;
+    std::string guid;
+    int tip;
+    bool replaying;
+    bool transitioning;
+    std::map<std::string, std::string> currentState;
+
+    Ctx(): tip(0), replaying(false), transitioning(::transitioning)
+    {
+    }
+};
+
+struct TxPos
+{
+    int block;
+    int txIdx;
+
+    TxPos(): block(0), txIdx(0)
+    {
+    }
+
+    TxPos(int b, int i): block(b), txIdx(i)
+    {
+    }
+};
+
+static std::map<std::string, TxPos> txguid2prevblockidx;
+static std::vector<Block> blocks;
+
+static std::mutex stateUpdateLock;
+static std::map<std::string, std::string> transitioningState;
+static std::map<std::string, std::string> tipCurrentState;
+static int updatedBlockIdx;
+static int updatedTxIdx;
+
+static std::unique_ptr<std::thread> updatingSettings;
+
+static boost::multiprecision::cpp_int v2block;
+
+static int dealExpFixBlock = 278890;
+
+#if IS_LINUX
+char const* const transitionFile = "/home/Creditcoin/cctt/data/transition.txt";
+#else
+char const* const transitionFile = "C:\\transition.txt";
+#endif
 
 static void usage(int exitCode = 1)
 {
@@ -228,6 +303,20 @@ static bool testConnectString(const char* str)
 
 static void parseArgs(int argc, char** argv)
 {
+    int shift = 0;
+    if (argc >= 2)
+    {
+        static char dealExpFixBlockPrefix[] = "-dealExpFixBlock:";
+        std::string dealExpFixBlockStr(argv[1]);
+        if (dealExpFixBlockStr.rfind(dealExpFixBlockPrefix, 0) == 0)
+        {
+            dealExpFixBlockStr = dealExpFixBlockStr.substr((sizeof(dealExpFixBlockPrefix) - sizeof(char)) / sizeof(char));
+            dealExpFixBlock = std::stoi(dealExpFixBlockStr);
+            shift++;
+            argc--;
+        }
+    }
+
     if (argc >= 2)
     {
         /* tmp hax, remove url test to support docker endpoints
@@ -237,19 +326,19 @@ static void parseArgs(int argc, char** argv)
             usage();
         }
         */
-        URL_VALIDATOR = argv[1];
+        URL_VALIDATOR = argv[shift + 1];
     }
     std::cout << "Connecting to " << URL_VALIDATOR << std::endl;
 
     if (argc >= 3)
     {
-        URL_GATEWAY = argv[2];
+        URL_GATEWAY = argv[shift + 2];
     }
     std::cout << "Using gateway URL: " << URL_GATEWAY << std::endl;
 
     if (argc >= 4)
     {
-        URL_REST_API = argv[3];
+        URL_REST_API = argv[shift + 3];
     }
     std::cout << "Using rest api URL: " << URL_REST_API << std::endl;
 }
@@ -294,8 +383,36 @@ static std::vector<std::uint8_t> decodeBase64(std::string const& in)
     return ret;
 }
 
-static void filter(std::string* url, std::string const& prefix, std::function<void(std::string const&, std::vector<std::uint8_t> const&)> const& lister)
+static std::vector<std::uint8_t> toVector(std::string const& in)
 {
+    std::vector<std::uint8_t> out(in.begin(), in.end());
+    return out;
+}
+
+static void filter(Ctx const& ctx, std::string* url, std::string const& prefix, std::function<void(std::string const&, std::vector<std::uint8_t> const&)> const& lister)
+{
+    if (ctx.transitioning)
+    {
+        auto currentState = ctx.currentState;
+        currentState.insert(tipCurrentState.begin(), tipCurrentState.end());
+        for (auto& e: transitioningState)
+        {
+            auto updated = currentState.find(e.first);
+            if (updated == currentState.end())
+            {
+                if (e.first.rfind(prefix, 0) == 0 && e.second.size() > 0)
+                    lister(e.first, toVector(e.second));
+            }
+        }
+        for (auto& e: currentState)
+        {
+            if (e.first.rfind(prefix, 0) == 0 && e.second.size() > 0)
+                lister(e.first, toVector(e.second));
+        }
+
+        return;
+    }
+
     using namespace boost::network;
     http::client client;
 
@@ -312,13 +429,13 @@ static void filter(std::string* url, std::string const& prefix, std::function<vo
         {
             throw sawtooth::InvalidTransaction(RPC_FAILURE);
         }
-        auto data = response[DATA];
+        auto& data = response[DATA];
         if (!data.is_array())
         {
             throw sawtooth::InvalidTransaction(RPC_FAILURE);
         }
         auto statesArray = data.get<std::vector<nlohmann::json::value_type>>();
-        for (auto state : statesArray)
+        for (auto& state : statesArray)
         {
             if (state.count(ADDRESS) != 1 || state.count(DATA) != 1)
             {
@@ -333,7 +450,7 @@ static void filter(std::string* url, std::string const& prefix, std::function<vo
         {
             throw sawtooth::InvalidTransaction(RPC_FAILURE);
         }
-        auto paging = response[PAGING];
+        auto& paging = response[PAGING];
         if (!paging.is_object())
         {
             throw sawtooth::InvalidTransaction(RPC_FAILURE);
@@ -364,26 +481,138 @@ static void filter(std::string* url, std::string const& prefix, std::function<vo
     }
 }
 
-static void updateSettings()
+static boost::multiprecision::cpp_int getBigint(std::string const& bigint, bool allowNegative = false)
 {
-    std::map<std::string, std::string> newSettings;
-    std::string url;
+    boost::multiprecision::cpp_int ret;
+    try
+    {
+        ret = boost::multiprecision::cpp_int(bigint);
+    }
+    catch (std::runtime_error const&)
+    {
+        throw sawtooth::InvalidTransaction("Invalid number format");
+    }
+    if (!allowNegative && ret < 0)
+    {
+        throw sawtooth::InvalidTransaction("Expecting a positive value");
+    }
+    return ret;
+}
+
+static std::string trimQuotes(std::string const& quotedStr)
+{
+    auto quotedStrLen = quotedStr.length();
+    assert(quotedStr[0] == '"' && quotedStr[quotedStrLen - 1] == '"');
+    return quotedStr.substr(1, quotedStrLen - 2);
+}
+
+static std::string getParam(nlohmann::json const& query, std::string const& id, std::string const& name)
+{
+    auto param = query.find(id);
+    if (param == query.end())
+    {
+        throw sawtooth::InvalidTransaction("Expecting " + name);
+    }
+    return param->dump();
+}
+
+static std::string getString(nlohmann::json const& query, std::string const& id, std::string const& name)
+{
+    return trimQuotes(getParam(query, id, name));
+}
+
+static std::string getBigint(nlohmann::json const& query, std::string const& id, std::string const& name, boost::multiprecision::cpp_int* value = 0)
+{
+    std::string bigint = getString(query, id, name);
+    boost::multiprecision::cpp_int result = getBigint(bigint);
+    if (value)
+    {
+        *value = result;
+    }
+    return bigint;
+}
+
+static void doUpdateSettings()
+{
+    try
+    {
+        assert(!transitioning);
+
+        std::unique_ptr<std::map<std::string, std::string>> newSettings(new std::map<std::string, std::string>());
+        std::string url;
+        for (;;)
+        {
+            filter(Ctx(), &url, SETTINGS_NAMESPACE, [&newSettings](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
+                Setting setting;
+                setting.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
+                for (auto& entry : setting.entries())
+                {
+                    (*newSettings)[entry.key()] = entry.value();
+                }
+            });
+            if (url.empty())
+                break;
+        }
+        {
+            //nothrow segment:
+            auto updatedSettings = newSettings.release();
+            auto oldSettings = settings.exchange(updatedSettings);
+            delete oldSettings; //dtor of the map shouldn't throw as it only uses std::strings
+        }
+
+        auto actualSettings = settings.load();
+        auto i = actualSettings->find("sawtooth.validator.gateway");
+        if (i != actualSettings->end())
+        {
+           std::unique_ptr<std::string> address(new std::string(i->second));
+            if (address->find("tcp://") != 0)
+            {
+                *address = "tcp://" + *address;
+            }
+            delete externalGatewayAddress.exchange(address.release());
+        }
+        i = actualSettings->find("creditcoin.v2block");
+        if (i != actualSettings->end())
+        {
+            v2block = getBigint(i->second);
+        }
+    }
+    catch (...)
+    {
+    }
+}
+
+static void cleanupTransitioning()
+{
+    std::this_thread::sleep_for(60s);
+    std::remove(transitionFile);
+    exit(0);
+}
+
+static void killer()
+{
     for (;;)
     {
-        filter(&url, SETTINGS_NAMESPACE, [&newSettings](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
-            Setting setting;
-            setting.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
-            for (auto entry : setting.entries())
-            {
-                newSettings[entry.key()] = entry.value();
-            }
-        });
-        if (url.empty())
-            break;
+        std::this_thread::sleep_for(60s);
+        auto now = std::chrono::system_clock::now();
+        bool idle;
+        {
+            std::lock_guard<std::mutex> guard(killerLock);
+            idle = lastTime + 300s < now;
+        }
+        if (idle)
+            cleanupTransitioning();
     }
-    settingsLock.lock();
-    settings.swap(newSettings);
-    settingsLock.unlock();
+}
+
+static void updateSettings()
+{
+    // this is a thread routine, we don't join the thread and don't care if it's in progress when the process termitates, just terminating it is ok
+    for (;;)
+    {
+        std::this_thread::sleep_for(6000s);
+        doUpdateSettings();
+    }
 }
 
 static std::string sha512(const std::string& message)
@@ -465,19 +694,6 @@ static std::string toString(std::vector<std::uint8_t> const& v)
     return out;
 }
 
-static std::vector<std::uint8_t> toVector(std::string const& in)
-{
-    std::vector<std::uint8_t> out(in.begin(), in.end());
-    return out;
-}
-
-static std::string trimQuotes(std::string const& quotedStr)
-{
-    auto quotedStrLen = quotedStr.length();
-    assert(quotedStr[0] == '"' && quotedStr[quotedStrLen - 1] == '"');
-    return quotedStr.substr(1, quotedStrLen - 2);
-}
-
 static ::google::protobuf::uint64 parseUint64(std::string const& numberString) {
     ::google::protobuf::uint64 number;
     std::istringstream iss(numberString);
@@ -487,21 +703,6 @@ static ::google::protobuf::uint64 parseUint64(std::string const& numberString) {
         throw sawtooth::InvalidTransaction("Invalid number");
     }
     return number;
-}
-
-static std::string getParam(nlohmann::json const& query, std::string const& id, std::string const& name)
-{
-    auto param = query.find(id);
-    if (param == query.end())
-    {
-        throw sawtooth::InvalidTransaction("Expecting " + name);
-    }
-    return param->dump();
-}
-
-static std::string getString(nlohmann::json const& query, std::string const& id, std::string const& name)
-{
-    return trimQuotes(getParam(query, id, name));
 }
 
 static std::string getStringLower(nlohmann::json const& query, std::string const& id, std::string const& name)
@@ -514,35 +715,6 @@ static std::string getStringLower(nlohmann::json const& query, std::string const
 static ::google::protobuf::uint64 getUint64(nlohmann::json const& query, std::string const& id, std::string const& name)
 {
     return parseUint64(getString(query, id, name));
-}
-
-static boost::multiprecision::cpp_int getBigint(std::string const& bigint, bool allowNegative = false)
-{
-    boost::multiprecision::cpp_int ret;
-    try 
-    {
-        ret = boost::multiprecision::cpp_int(bigint);
-        if (!allowNegative && ret < 0)
-        {
-            throw sawtooth::InvalidTransaction("Expecting a positive value");
-        }
-    }
-    catch (std::runtime_error const&)
-    {
-        throw sawtooth::InvalidTransaction("Invalid number format");
-    }
-    return ret;
-}
-
-static std::string getBigint(nlohmann::json const& query, std::string const& id, std::string const& name, boost::multiprecision::cpp_int* value = 0)
-{
-    std::string bigint = getString(query, id, name);
-    boost::multiprecision::cpp_int result = getBigint(bigint);
-    if (value)
-    {
-        *value = result;
-    }
-    return bigint;
 }
 
 static std::string toString(boost::multiprecision::cpp_int const& bigint)
@@ -594,7 +766,7 @@ static std::string getFromHeader(nlohmann::json const& block, char const* fieldN
     {
         throw sawtooth::InvalidTransaction(RPC_FAILURE);
     }
-    auto header = block[HEADER];
+    auto& header = block[HEADER];
     if (!header.is_object())
     {
         throw sawtooth::InvalidTransaction(RPC_FAILURE);
@@ -612,62 +784,6 @@ static boost::multiprecision::cpp_int blockNumInt(nlohmann::json const& block)
 {
     std::string num = blockNum(block);
     return getBigint(num);
-}
-
-static std::string lastBlock()
-{
-    using namespace boost::network;
-    http::client client;
-
-    try
-    {
-        http::client::request request(URL_REST_API + "/blocks?limit=1");
-        request << header("Connection", "close");
-        std::string json = body(client.get(request));
-        nlohmann::json response = nlohmann::json::parse(json);
-        if (response.count(ERR) || response.count(DATA) != 1)
-        {
-            throw sawtooth::InvalidTransaction(RPC_FAILURE);
-        }
-        auto data = response[DATA];
-        if (!data.is_array())
-        {
-            throw sawtooth::InvalidTransaction(RPC_FAILURE);
-        }
-        auto blocksArray = data.get<std::vector<nlohmann::json::value_type>>();
-        if (blocksArray.size())
-        {
-            return blockNum(blocksArray[0]);
-        }
-    }
-    catch (sawtooth::InvalidTransaction const&)
-    {
-        throw;
-    }
-    //TODO: catch requast exceptions
-    //catch (boost::exception_detail::clone_impl<std::exception_ptr> const& x)
-    //{
-    //    try
-    //    {
-    //        std::rethrow_exception(x);
-    //    }
-    //    catch (std::exception const& e)
-    //    {
-    //        std::string msg = e.what();
-    //        throw sawtooth::InvalidTransaction(RPC_FAILURE);
-    //    }
-    //}
-    catch (...)
-    {
-        throw sawtooth::InvalidTransaction(RPC_FAILURE);
-    }
-
-    return "0";
-}
-
-static boost::multiprecision::cpp_int lastBlockInt()
-{
-    return getBigint(lastBlock());
 }
 
 boost::multiprecision::cpp_int calcInterest(boost::multiprecision::cpp_int const& amount, boost::multiprecision::cpp_int const& ticks, boost::multiprecision::cpp_int const& interest)
@@ -689,13 +805,34 @@ public:
     {
     };
 
-    void Apply()
+    void Apply(std::string const& cmd, nlohmann::json const& query)
     {
-        std::cout << "Applicator::Apply" << std::endl;
-
-        std::string cmd;
-        auto query = cborToParams(&cmd);
-
+        if (v2block != 0 && lastBlockInt(ctx) > v2block)
+        {
+            std::string const& version = txn->header()->GetValue(sawtooth::TransactionHeaderField::TransactionHeaderFamilyVersion);
+            if (version[0] == '1')
+                throw sawtooth::InvalidTransaction("Version 1 transactions are not accepted after 2.0");
+        }
+#ifndef NDEBUG
+        {
+            //std::ofstream log("B:\\Job\\gluwa\\prod\\transition.log", std::ios::app);
+            //std::stringstream l;
+            //l << ctx.tip << ": " << ctx.guid << " - " << cmd << "\n";
+            //for (int i = 1; ; ++i)
+            //{
+            //    std::stringstream p;
+            //    p << "p" << i;
+            //    auto pp = p.str();
+            //    auto param = query.find(pp);
+            //    if (param == query.end())
+            //        break;
+            //    l << " " << param->dump();
+            //}
+            //auto ll = l.str();
+            //log << ll;
+            //OutputDebugStringA((ll.c_str());
+        }
+#endif
         if (boost::iequals(cmd, "SendFunds"))
         {
             SendFunds(query);
@@ -768,12 +905,141 @@ public:
         }
     }
 
-private:
-    nlohmann::json cborToParams(std::string* cmd)
+    void doApply(std::string const& cmd, nlohmann::json const& query, std::string const& guid, std::string const& sighash)
     {
-        const std::string& rawData = txn->payload();
-        std::vector<uint8_t> dataVector = toVector(rawData);
-        nlohmann::json query = nlohmann::json::from_cbor(dataVector);
+        ctx.guid = guid;
+        ctx.sighash = sighash;
+
+        Apply(cmd, query);
+
+        ctx.currentState.insert(tipCurrentState.begin(), tipCurrentState.end());
+        tipCurrentState.swap(ctx.currentState);
+        ctx.currentState.clear();
+    }
+
+    void execute(std::vector<std::uint8_t>& payload, std::string const& guid, std::string const& sighash)
+    {
+        if (payload.size() > 0 && guid.size() > 0)
+        {
+            std::string cmd;
+            auto query = cborToParams(payload, &cmd);
+            ctx.replaying = true;
+            doApply(cmd, query, guid, sighash);
+            ctx.replaying = false;
+        }
+    }
+
+    void Apply(std::string const& cmd, nlohmann::json const& query, std::string const& guid, std::string const& sighash)
+    {
+        if (ctx.transitioning)
+        {
+            auto found = txguid2prevblockidx.find(guid);
+            if (found == txguid2prevblockidx.end())
+            {
+                cleanupTransitioning();
+            }
+            else
+            {
+                int tip = found->second.block;
+                int currentBlockIdx = tip + 1;
+                int txIdx = found->second.txIdx;
+
+                std::lock_guard<std::mutex> guard(stateUpdateLock);
+
+                if (currentBlockIdx > updatedBlockIdx)
+                {
+                    ctx.tip = updatedBlockIdx - 1;
+                    for (int i = updatedTxIdx + 1; i < blocks[updatedBlockIdx].txs.size(); ++i)
+                    {
+                        auto& tx = blocks[updatedBlockIdx].txs[i];
+                        if (tx.sighash.size() > 0)
+                            execute(tx.payload, tx.guid, tx.sighash);
+                    }
+                    for (auto& e : tipCurrentState)
+                        transitioningState[e.first] = e.second;
+                    tipCurrentState.clear();
+                    for (int i = updatedBlockIdx + 1; i < currentBlockIdx; ++i)
+                    {
+                        ctx.tip = i - 1;
+                        for (auto& tx : blocks[i].txs)
+                            if (tx.sighash.size() > 0)
+                                execute(tx.payload, tx.guid, tx.sighash);
+
+                        for (auto& e : tipCurrentState)
+                            transitioningState[e.first] = e.second;
+                        tipCurrentState.clear();
+                    }
+
+                    ctx.tip = tip;
+                    for (int i = 0; i < txIdx; ++i)
+                    {
+                        auto& tx = blocks[updatedBlockIdx].txs[i];
+                        if (tx.sighash.size() > 0)
+                            execute(tx.payload, tx.guid, tx.sighash);
+                    }
+                }
+                else if (currentBlockIdx == updatedBlockIdx)
+                {
+                    ctx.tip = tip;
+                    if (txIdx <= updatedTxIdx)
+                    {
+                        tipCurrentState.clear();
+                        for (int i = 0; i < txIdx; ++i)
+                        {
+                            auto& tx = blocks[updatedBlockIdx].txs[i];
+                            if (tx.sighash.size() > 0)
+                                execute(tx.payload, tx.guid, tx.sighash);
+                        }
+                    }
+                    else
+                    {
+                        for (int i = updatedTxIdx + 1; i < txIdx; ++i)
+                        {
+                            auto& tx = blocks[updatedBlockIdx].txs[i];
+                            if (tx.sighash.size() > 0)
+                                execute(tx.payload, tx.guid, tx.sighash);
+                        }
+                    }
+                }
+
+                doApply(cmd, query, guid, sighash);
+
+                updatedBlockIdx = currentBlockIdx;
+                updatedTxIdx = txIdx;
+
+                if (updatedBlockIdx == blocks.size() - 1 && updatedTxIdx == blocks[updatedBlockIdx].txs.size() - 1)
+                {
+                    std::cout << "Revalidated last block, terminating in a minute" << std::endl;
+                    new std::thread(cleanupTransitioning);
+                }
+            }
+            std::lock_guard<std::mutex> guard(killerLock);
+            lastTime = std::chrono::system_clock::now();
+            if (!killerStarted)
+            {
+                new std::thread(killer);
+                killerStarted = true;
+            }
+        }
+        else
+        {
+            Apply(cmd, query);
+        }
+    }
+
+    void Apply()
+    {
+        std::cout << "Applicator::Apply" << std::endl;
+
+        std::string cmd;
+        auto query = cborToParams(&cmd);
+        auto nounce = txn->header()->GetValue(sawtooth::TransactionHeaderField::TransactionHeaderNonce);
+        Apply(cmd, query, nounce, sha512id(compress(txn->header()->GetValue(sawtooth::TransactionHeaderField::TransactionHeaderSignerPublicKey))));
+    }
+
+    static nlohmann::json cborToParams(std::vector<uint8_t> const& payload, std::string* cmd)
+    {
+        nlohmann::json query = nlohmann::json::from_cbor(payload);
 
         if (!query.is_object())
         {
@@ -788,17 +1054,125 @@ private:
         *cmd = trimQuotes(verb->dump());
 
         return query;
+    }
+
+    nlohmann::json cborToParams(std::string* cmd)
+    {
+        const std::string& rawData = txn->payload();
+        std::vector<uint8_t> dataVector = toVector(rawData);
+
+        return cborToParams(dataVector, cmd);
     };
+
+    boost::multiprecision::cpp_int lastBlockInt(Ctx const& ctx)
+    {
+        if (ctx.transitioning)
+            return ctx.tip;
+        else
+            return boost::multiprecision::cpp_int(state->GetTip() - 1);
+    }
+
+    std::string lastBlock(Ctx const& ctx)
+    {
+        return toString(lastBlockInt(ctx));
+    }
+
+    bool getState(sawtooth::GlobalState* state, std::string* stateData, std::string const& id)
+    {
+        if (ctx.transitioning)
+        {
+            auto s = ctx.currentState.find(id);
+            if (s != ctx.currentState.end())
+            {
+                *stateData = s->second;
+                return true;
+            }
+            s = tipCurrentState.find(id);
+            if (s != tipCurrentState.end())
+            {
+                *stateData = s->second;
+                return true;
+            }
+            s = transitioningState.find(id);
+            if (s != transitioningState.end())
+            {
+                *stateData = s->second;
+                return true;
+            }
+            return true;
+        }
+        else
+        {
+            return state->GetState(stateData, id);
+        }
+    }
+
+    void setState(sawtooth::GlobalState* state, std::vector<sawtooth::GlobalState::KeyValue> const& states)
+    {
+        if (ctx.transitioning)
+        {
+            for (auto i : states)
+            {
+                ctx.currentState[i.first] = i.second;
+#ifndef NDEBUG
+                //std::stringstream s;
+                //s << i.first << ": " << i.second << "\n";
+                //OutputDebugStringA(s.str().c_str());
+#endif
+            }
+        }
+        if (!ctx.replaying)
+            state->SetState(states);
+    }
+
+    void setState(sawtooth::GlobalState* state, std::string const& stateData, std::string const& id)
+    {
+        if (ctx.transitioning)
+        {
+            ctx.currentState[id] = stateData;
+#ifndef NDEBUG
+            //std::stringstream s;
+            //s << id << ": " << stateData << "\n";
+            //OutputDebugStringA(s.str().c_str());
+#endif
+        }
+        if (!ctx.replaying)
+            state->SetState(id, stateData);
+    }
+
+    void deleteState(sawtooth::GlobalState* state, std::string const& id)
+    {
+        if (ctx.transitioning)
+            ctx.currentState[id] = std::string();
+
+        if (!ctx.replaying)
+            state->DeleteState(id);
+    }
+
+    void setState(sawtooth::GlobalStateUPtr const& state, std::string const& stateData, std::string const& id)
+    {
+        setState(state.get(), id, stateData);
+    }
+
+    void setState(sawtooth::GlobalStateUPtr const& state, std::vector<sawtooth::GlobalState::KeyValue> const& states)
+    {
+        setState(state.get(), states);
+    }
+
+    void deleteState(sawtooth::GlobalStateUPtr const& state, std::string const& id)
+    {
+        deleteState(state.get(), id);
+    }
 
     std::string getStateData(std::string const& id, bool existing = false)
     {
         return getStateData(state.get(), id, existing);
     }
 
-    static std::string getStateData(sawtooth::GlobalState* state, std::string const& id, bool existing = false)
+    std::string getStateData(sawtooth::GlobalState* state, std::string const& id, bool existing = false)
     {
         std::string stateData;
-        if (!state->GetState(&stateData, id))
+        if (!getState(state , &stateData, id))
         {
             throw sawtooth::InvalidTransaction("Failed to retrieve the state " + id);
         }
@@ -809,11 +1183,22 @@ private:
         return stateData;
     }
 
+    static void addState(std::vector<sawtooth::GlobalState::KeyValue>* states, std::string const& id, google::protobuf::Message const& message)
+    {
+        std::string data;
+        message.SerializeToString(&data);
+        states->push_back(sawtooth::GlobalState::KeyValue(id, data));
+    }
+
+private:
     void verifyGatewaySigner()
     {
+        if (transitioning)
+            return;
         const std::string mySighash = getSighash();
-        auto setting = settings.find("sawtooth.gateway.sighash");
-        if (setting == settings.end())
+        auto actualSettings = settings.load();
+        auto setting = actualSettings->find("sawtooth.gateway.sighash");
+        if (setting == actualSettings->end())
         {
             throw sawtooth::InvalidTransaction("Gateway sighash is not configured");
         }
@@ -823,19 +1208,15 @@ private:
         }
     }
 
-    static void addState(std::vector<sawtooth::GlobalState::KeyValue>* states, std::string const& id, google::protobuf::Message const& message)
-    {
-        std::string data;
-        message.SerializeToString(&data);
-        states->push_back(sawtooth::GlobalState::KeyValue(id, data));
-    }
-
     void verify(std::stringstream const& gatewayCommand)
     {
+        if (transitioning)
+            return;
+
         std::string response = "";
-        localGatewayLock.lock();
         try
         {
+            std::lock_guard<std::mutex> guard(localGatewayLock);
             if (localGateway->send(gatewayCommand.str()))
             {
                 localGateway->receive(response);
@@ -850,26 +1231,90 @@ private:
                 localGateway->connect(URL_GATEWAY);
                 localGateway->set(zmqpp::socket_option::receive_timeout, LOCAL_SOCKET_TIMEOUT_MILLISECONDS);
 
-                if (!externalGatewayAddress.empty())
+                auto address = externalGatewayAddress.load();
+                if (!address->empty())
                 {
-                    externalGateway->connect(externalGatewayAddress);
-                    if (externalGateway->send(gatewayCommand.str()))
+                    externalGateway->connect(*address);
+                    try
                     {
-                        externalGateway->receive(response);
+                        if (externalGateway->send(gatewayCommand.str()))
+                        {
+                            externalGateway->receive(response);
+                        }
                     }
-                    externalGateway->disconnect(externalGatewayAddress);
+                    catch (...)
+                    {
+                        externalGateway->disconnect(*address);
+                        throw;
+                    }
+                    externalGateway->disconnect(*address);
                 }
             }
         }
         catch (...)
         {
-            localGatewayLock.unlock();
             throw;
         }
-        localGatewayLock.unlock();
         if (response != "good")
         {
             throw sawtooth::InvalidTransaction("Couldn't validate the transaction");
+        }
+    }
+
+    void award(bool newFormula, boost::multiprecision::cpp_int const& blockIdx, std::string const& signer)
+    {
+        boost::multiprecision::cpp_int reward;
+        std::string rewardString;
+        if (newFormula)
+        {
+            int period = (blockIdx / BLOCKS_IN_PERIOD_UPDATE1).convert_to<int>();
+            double fraction = pow(19.0 / 20.0, period);
+            std::ostringstream fractionStringBuilder;
+            fractionStringBuilder << std::fixed << fraction;
+            std::string fractionString = fractionStringBuilder.str();
+            size_t pos = fractionString.find('.');
+            assert(pos > 0);
+            std::ostringstream fractionInWeiStringBuilder;
+            if (fractionString[0] != '0')
+            {
+                fractionInWeiStringBuilder << fractionString.substr(0, pos) << std::left << std::setfill('0') << std::setw(18) << fractionString.substr(pos + 1);
+            }
+            else
+            {
+                int pos = 2;
+                for (; fractionString[pos] == '0'; ++pos);
+                fractionInWeiStringBuilder << std::left << std::setfill('0') << std::setw(20 - pos) << fractionString.substr(pos);
+            }
+            std::string fractionInWeiString = fractionInWeiStringBuilder.str();
+            reward = boost::multiprecision::cpp_int(28) * boost::multiprecision::cpp_int(fractionInWeiString);
+            rewardString = toString(reward);
+        }
+        else
+        {
+            reward = REWARD_AMOUNT;
+            rewardString = REWARD_AMOUNT_STRING;
+        }
+
+        if (reward > 0)
+        {
+            const std::string signerSighash = sha512id(signer);
+            const std::string walletId = namespacePrefix + WALLET + signerSighash;
+            std::string stateData = getStateData(walletId);
+            Wallet wallet;
+            if (stateData.empty())
+            {
+                wallet.set_amount(rewardString);
+            }
+            else
+            {
+                wallet.ParseFromString(stateData);
+                boost::multiprecision::cpp_int balance = getBigint(wallet.amount());
+                balance += reward;
+                wallet.set_amount(toString(balance));
+            }
+            std::vector<sawtooth::GlobalState::KeyValue> states;
+            addState(&states, walletId, wallet);
+            setState(state, states);
         }
     }
 
@@ -883,10 +1328,27 @@ private:
         try
         {
             bool newFormula = false;
-            if (processedBlockIdx % 100 == 0)
-                updateSettings();
-            auto i = settings.find("sawtooth.validator.update1");
-            if (i != settings.end())
+
+            if (ctx.transitioning)
+            {
+                int setBlock = (ctx.tip >= 278890 && ctx.tip <= 278904) ? 277800 : 278910;
+                boost::multiprecision::cpp_int updateBlock(setBlock);
+                if (updateBlock + 500 < processedBlockIdx)
+                    newFormula = true;
+
+                for (boost::multiprecision::cpp_int i = startBlockIdx; i > processedBlockIdx; --i)
+                {
+                    int idx = i.convert_to<int>();
+                    Block const& block = blocks[idx];
+
+                    award(newFormula, i, block.signer);
+                }
+                return;
+            }
+
+            auto actualSettings = settings.load();
+            auto i = actualSettings->find("sawtooth.validator.update1");
+            if (i != actualSettings->end())
             {
                 std::string updateBlockStr = i->second;
                 boost::multiprecision::cpp_int updateBlock = getBigint(updateBlockStr);
@@ -927,60 +1389,8 @@ private:
                         return;
                     }
 
-                    boost::multiprecision::cpp_int reward;
-                    std::string rewardString;
-                    if (newFormula)
-                    {
-                        int period = (blockIdx / BLOCKS_IN_PERIOD_UPDATE1).convert_to<int>();
-                        double fraction = pow(19.0 / 20.0, period);
-                        std::ostringstream fractionStringBuilder;
-                        fractionStringBuilder << std::fixed << fraction;
-                        std::string fractionString = fractionStringBuilder.str();
-                        size_t pos = fractionString.find('.');
-                        assert(pos > 0);
-                        std::ostringstream fractionInWeiStringBuilder;
-                        if (fractionString[0] != '0')
-                        {
-                            fractionInWeiStringBuilder << fractionString.substr(0, pos) << std::left << std::setfill('0') << std::setw(18) << fractionString.substr(pos + 1);
-                        }
-                        else
-                        {
-                            int pos = 2;
-                            for (; fractionString[pos] == '0'; ++pos);
-                            fractionInWeiStringBuilder << std::left << std::setfill('0') << std::setw(20 - pos) << fractionString.substr(pos);
-                        }
-                        std::string fractionInWeiString = fractionInWeiStringBuilder.str();
-                        reward = boost::multiprecision::cpp_int(28) * boost::multiprecision::cpp_int(fractionInWeiString);
-                        rewardString = toString(reward);
-                    }
-                    else
-                    {
-                        reward = REWARD_AMOUNT;
-                        rewardString = REWARD_AMOUNT_STRING;
-                    }
-
-                    if (reward > 0)
-                    {
-                        std::string signer = getFromHeader(block, SIGNER_PUBLIC_KEY);
-                        const std::string signerSighash = sha512id(signer);
-                        const std::string walletId = namespacePrefix + WALLET + signerSighash;
-                        std::string stateData = getStateData(walletId);
-                        Wallet wallet;
-                        if (stateData.empty())
-                        {
-                            wallet.set_amount(rewardString);
-                        }
-                        else
-                        {
-                            wallet.ParseFromString(stateData);
-                            boost::multiprecision::cpp_int balance = getBigint(wallet.amount());
-                            balance += reward;
-                            wallet.set_amount(toString(balance));
-                        }
-                        std::vector<sawtooth::GlobalState::KeyValue> states;
-                        addState(&states, walletId, wallet);
-                        state->SetState(states);
-                    }
+                    std::string signer = getFromHeader(block, SIGNER_PUBLIC_KEY);
+                    award(newFormula, blockIdx, signer);
                 }
                 if (response.count(PAGING) != 1)
                 {
@@ -1014,11 +1424,11 @@ private:
 
     void addFee(std::string const& sighash, std::vector<sawtooth::GlobalState::KeyValue>* states)
     {
-        const std::string guid = txn->header()->GetValue(sawtooth::TransactionHeaderField::TransactionHeaderNonce);
+        std::string const& guid = getGuid();
         const std::string feeId = makeAddress(FEE, guid);
         Fee fee;
         fee.set_sighash(sighash);
-        fee.set_block(lastBlock());
+        fee.set_block(lastBlock(ctx));
         addState(states, feeId, fee);
     }
 
@@ -1046,8 +1456,18 @@ private:
 
     std::string getSighash()
     {
-        const std::string signer = compress(txn->header()->GetValue(sawtooth::TransactionHeaderField::TransactionHeaderSignerPublicKey));
-        return sha512id(signer);
+        if (ctx.transitioning)
+            return ctx.sighash;
+        else
+            return sha512id(compress(txn->header()->GetValue(sawtooth::TransactionHeaderField::TransactionHeaderSignerPublicKey)));
+    }
+
+    std::string const& getGuid()
+    {
+        if (ctx.transitioning)
+            return ctx.guid;
+        else
+            return txn->header()->GetValue(sawtooth::TransactionHeaderField::TransactionHeaderNonce);
     }
 
 private:
@@ -1057,6 +1477,9 @@ private:
     std::string dealOrderUrl;
     std::string repaymentOrderUrl;
     std::string feeUrl;
+
+public: //TODO: tmp, remove 'public', ctx should be private
+    Ctx ctx;
 
 private:
     void SendFunds(nlohmann::json const& query)
@@ -1105,7 +1528,7 @@ private:
         std::vector<sawtooth::GlobalState::KeyValue> states;
         addState(&states, dstWalletId, dstWallet);
         addFee(mySighash, &states, srcWalletId, srcWallet);
-        state->SetState(states);
+        setState(state, states);
     }
 
     void RegisterAddress(nlohmann::json const& query)
@@ -1139,7 +1562,7 @@ private:
         addState(&states, id, address);
         addState(&states, walletId, wallet);
         addFee(mySighash, &states);
-        state->SetState(states);
+        setState(state, states);
     }
 
     void RegisterTransfer(nlohmann::json const& query)
@@ -1243,14 +1666,14 @@ private:
         transfer.set_order(orderId);
         transfer.set_amount(amountString);
         transfer.set_tx(blockchainTxId);
-        transfer.set_block(lastBlock());
+        transfer.set_block(lastBlock(ctx));
         transfer.set_processed(false);
         transfer.set_sighash(mySighash);
 
         std::vector<sawtooth::GlobalState::KeyValue> states;
         addState(&states, transferId, transfer);
         addFee(mySighash, &states, walletId, wallet);
-        state->SetState(states);
+        setState(state, states);
     }
 
     void AddAskOrder(nlohmann::json const& query)
@@ -1266,7 +1689,7 @@ private:
         const std::string fee = getBigint(query, "p5", "fee");
         const ::google::protobuf::uint64 expiration = getUint64(query, "p6", "expiration");
 
-        const std::string guid = txn->header()->GetValue(sawtooth::TransactionHeaderField::TransactionHeaderNonce);
+        std::string const& guid = getGuid();
         const std::string id = makeAddress(ASK_ORDER, guid);
         std::string stateData = getStateData(id);
         if (!stateData.empty())
@@ -1290,13 +1713,13 @@ private:
         askOrder.set_maturity(maturity);
         askOrder.set_fee(fee);
         askOrder.set_expiration(expiration);
-        askOrder.set_block(lastBlock());
+        askOrder.set_block(lastBlock(ctx));
         askOrder.set_sighash(mySighash);
 
         std::vector<sawtooth::GlobalState::KeyValue> states;
         addState(&states, id, askOrder);
         addFee(mySighash, &states, walletId, wallet);
-        state->SetState(states);
+        setState(state, states);
     }
 
     void AddBidOrder(nlohmann::json const& query)
@@ -1312,7 +1735,7 @@ private:
         const std::string fee = getBigint(query, "p5", "fee");
         const ::google::protobuf::uint64 expiration = getUint64(query, "p6", "expiration");
 
-        const std::string guid = txn->header()->GetValue(sawtooth::TransactionHeaderField::TransactionHeaderNonce);
+        std::string const& guid = getGuid();
         const std::string id = makeAddress(BID_ORDER, guid);
         std::string stateData = getStateData(id);
         if (!stateData.empty())
@@ -1336,13 +1759,13 @@ private:
         bidOrder.set_maturity(maturity);
         bidOrder.set_fee(fee);
         bidOrder.set_expiration(expiration);
-        bidOrder.set_block(lastBlock());
+        bidOrder.set_block(lastBlock(ctx));
         bidOrder.set_sighash(mySighash);
 
         std::vector<sawtooth::GlobalState::KeyValue> states;
         addState(&states, id, bidOrder);
         addFee(mySighash, &states, walletId, wallet);
-        state->SetState(states);
+        setState(state, states);
     }
 
     void AddOffer(nlohmann::json const& query)
@@ -1369,7 +1792,7 @@ private:
         {
             throw sawtooth::InvalidTransaction("Only an investor can add an offer");
         }
-        boost::multiprecision::cpp_int head = lastBlockInt();
+        boost::multiprecision::cpp_int head = lastBlockInt(ctx);
         boost::multiprecision::cpp_int start = getBigint(askOrder.block());
         boost::multiprecision::cpp_int elapsed = head - start;
         if (askOrder.expiration() < elapsed)
@@ -1414,14 +1837,14 @@ private:
         offer.set_ask_order(askOrderId);
         offer.set_bid_order(bidOrderId);
         offer.set_expiration(expiration);
-        offer.set_block(lastBlock());
+        offer.set_block(lastBlock(ctx));
         offer.set_sighash(mySighash);
 
         std::vector<sawtooth::GlobalState::KeyValue> states;
         states.push_back(sawtooth::GlobalState::KeyValue(id, stateData));
         addState(&states, id, offer);
         addFee(mySighash, &states, walletId, wallet);
-        state->SetState(states);
+        setState(state, states);
     }
 
     void AddDealOrder(nlohmann::json const& query)
@@ -1441,7 +1864,7 @@ private:
         stateData = getStateData(offerId, true);
         Offer offer;
         offer.ParseFromString(stateData);
-        boost::multiprecision::cpp_int head = lastBlockInt();
+        boost::multiprecision::cpp_int head = lastBlockInt(ctx);
         boost::multiprecision::cpp_int start = getBigint(offer.block());
         boost::multiprecision::cpp_int elapsed = head - start;
         if (offer.expiration() < elapsed)
@@ -1483,16 +1906,16 @@ private:
         dealOrder.set_maturity(bidOrder.maturity());
         dealOrder.set_fee(bidOrder.fee());
         dealOrder.set_expiration(expiration);
-        dealOrder.set_block(lastBlock());
+        dealOrder.set_block(lastBlock(ctx));
         dealOrder.set_sighash(mySighash);
 
         std::vector<sawtooth::GlobalState::KeyValue> states;
         addState(&states, id, dealOrder);
         addFee(mySighash, &states, walletId, wallet);
-        state->SetState(states);
-        state->DeleteState(offer.ask_order());
-        state->DeleteState(offer.bid_order());
-        state->DeleteState(offerId);
+        setState(state, states);
+        deleteState(state, offer.ask_order());
+        deleteState(state, offer.bid_order());
+        deleteState(state, offerId);
     }
 
     void CompleteDealOrder(nlohmann::json const& query)
@@ -1517,7 +1940,7 @@ private:
         {
             throw sawtooth::InvalidTransaction("Only an investor can complete a deal");
         }
-        boost::multiprecision::cpp_int head = lastBlockInt();
+        boost::multiprecision::cpp_int head = lastBlockInt(ctx);
         boost::multiprecision::cpp_int start = getBigint(dealOrder.block());
         boost::multiprecision::cpp_int elapsed = head - start;
         if (dealOrder.expiration() < elapsed)
@@ -1570,13 +1993,13 @@ private:
         }
 
         dealOrder.set_loan_transfer(transferId);
-        dealOrder.set_block(lastBlock());
+        dealOrder.set_block(lastBlock(ctx));
 
         std::vector<sawtooth::GlobalState::KeyValue> states;
         addState(&states, dealOrderId, dealOrder);
         addState(&states, transferId, transfer);
         addFee(mySighash, &states, walletId, wallet);
-        state->SetState(states);
+        setState(state, states);
     }
 
     void LockDealOrder(nlohmann::json const& query)
@@ -1611,7 +2034,7 @@ private:
         std::vector<sawtooth::GlobalState::KeyValue> states;
         addState(&states, dealOrderId, dealOrder);
         addFee(mySighash, &states, walletId, wallet);
-        state->SetState(states);
+        setState(state, states);
     }
 
     void CloseDealOrder(nlohmann::json const& query)
@@ -1663,7 +2086,7 @@ private:
         Transfer loanTransfer;
         loanTransfer.ParseFromString(stateData);
 
-        boost::multiprecision::cpp_int head = lastBlockInt();
+        boost::multiprecision::cpp_int head = lastBlockInt(ctx);
         boost::multiprecision::cpp_int start = getBigint(loanTransfer.block());
         boost::multiprecision::cpp_int maturity = getBigint(dealOrder.maturity());
 
@@ -1680,7 +2103,7 @@ private:
         addState(&states, dealOrderId, dealOrder);
         addState(&states, transferId, repaymentTransfer);
         addFee(mySighash, &states, walletId, wallet);
-        state->SetState(states);
+        setState(state, states);
     }
 
     void Exempt(nlohmann::json const& query)
@@ -1729,7 +2152,7 @@ private:
         addState(&states, dealOrderId, dealOrder);
         addState(&states, transferId, transfer);
         addFee(mySighash, &states, walletId, wallet);
-        state->SetState(states);
+        setState(state, states);
     }
 
     void AddRepaymentOrder(nlohmann::json const& query)
@@ -1743,7 +2166,7 @@ private:
         const std::string amount = getBigint(query, "p3", "amount");
         const ::google::protobuf::uint64 expiration = getUint64(query, "p4", "expiration");
 
-        const std::string guid = txn->header()->GetValue(sawtooth::TransactionHeaderField::TransactionHeaderNonce);
+        std::string const& guid = getGuid();
 
         const std::string id = makeAddress(REPAYMENT_ORDER, guid);
         std::string stateData = getStateData(id);
@@ -1757,7 +2180,7 @@ private:
         dealOrder.ParseFromString(stateData);
         if (dealOrder.sighash() == mySighash)
         {
-            throw sawtooth::InvalidTransaction("Investors cannot create repayment orders");
+            throw sawtooth::InvalidTransaction("Fundraisers cannot create repayment orders");
         }
         if (dealOrder.loan_transfer().empty() || !dealOrder.repayment_transfer().empty())
         {
@@ -1767,13 +2190,9 @@ private:
         stateData = getStateData(dealOrder.src_address());
         Address srcAddress;
         srcAddress.ParseFromString(stateData);
-
-        stateData = getStateData(dealOrder.dst_address());
-        Address dstAddress;
-        dstAddress.ParseFromString(stateData);
-        if (dstAddress.sighash() == mySighash)
+        if (srcAddress.sighash() == mySighash)
         {
-            throw sawtooth::InvalidTransaction("Fundraisers cannot create repayment orders");
+            throw sawtooth::InvalidTransaction("Investors cannot create repayment orders");
         }
 
         stateData = getStateData(addressId);
@@ -1791,14 +2210,14 @@ private:
         repaymentOrder.set_dst_address(dealOrder.src_address());
         repaymentOrder.set_amount(amount);
         repaymentOrder.set_expiration(expiration);
-        repaymentOrder.set_block(lastBlock());
+        repaymentOrder.set_block(lastBlock(ctx));
         repaymentOrder.set_deal(dealOrderId);
         repaymentOrder.set_sighash(mySighash);
 
         std::vector<sawtooth::GlobalState::KeyValue> states;
         addState(&states, id, repaymentOrder);
         addFee(mySighash, &states, walletId, wallet);
-        state->SetState(states);
+        setState(state, states);
     }
 
     void CompleteRepaymentOrder(nlohmann::json const& query)
@@ -1836,7 +2255,7 @@ private:
         addState(&states, repaymentOrderId, repaymentOrder);
         addState(&states, repaymentOrder.deal(), dealOrder);
         addFee(mySighash, &states, walletId, wallet);
-        state->SetState(states);
+        setState(state, states);
     }
 
     void CloseRepaymentOrder(nlohmann::json const& query)
@@ -1894,7 +2313,7 @@ private:
         addState(&states, repaymentOrder.deal(), dealOrder);
         addState(&states, transferId, transfer);
         addFee(mySighash, &states, walletId, wallet);
-        state->SetState(states);
+        setState(state, states);
     }
 
     void CollectCoins(nlohmann::json const& query)
@@ -1936,7 +2355,7 @@ private:
         std::vector<sawtooth::GlobalState::KeyValue> states;
         addState(&states, walletId, wallet);
         states.push_back(sawtooth::GlobalState::KeyValue(id, amountString));
-        state->SetState(states);
+        setState(state, states);
     }
 
     void Housekeeping(nlohmann::json const& query)
@@ -1959,76 +2378,80 @@ private:
             return;
         }
 
-        boost::multiprecision::cpp_int tip = lastBlockInt();
+        boost::multiprecision::cpp_int tip = lastBlockInt(ctx);
         if (blockIdx >= tip - CONFIRMATION_COUNT)
         {
             LOG4CXX_INFO(logger, "Premature processing");
             return;
         }
 
+        Applicator* applicator = this;
         sawtooth::GlobalState* s = state.get();
-        filter(&askOrderUrl, namespacePrefix + ASK_ORDER, [blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
+        filter(ctx, &askOrderUrl, namespacePrefix + ASK_ORDER, [applicator, blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
             AskOrder askOrder;
             askOrder.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
             boost::multiprecision::cpp_int start = getBigint(askOrder.block());
             boost::multiprecision::cpp_int elapsed = blockIdx - start;
             if (askOrder.expiration() < elapsed)
             {
-                s->DeleteState(address);
+                applicator->deleteState(s, address);
             }
         });
-        filter(&bidOrderUrl, namespacePrefix + BID_ORDER, [blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
+        filter(ctx, &bidOrderUrl, namespacePrefix + BID_ORDER, [applicator, blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
             BidOrder bidOrder;
             bidOrder.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
             boost::multiprecision::cpp_int start = getBigint(bidOrder.block());
             boost::multiprecision::cpp_int elapsed = blockIdx - start;
             if (bidOrder.expiration() < elapsed)
             {
-                s->DeleteState(address);
+                applicator->deleteState(s, address);
             }
         });
-        filter(&offerUrl ,namespacePrefix + OFFER, [blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
+        filter(ctx, &offerUrl ,namespacePrefix + OFFER, [applicator, blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
             Offer offer;
             offer.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
             boost::multiprecision::cpp_int start = getBigint(offer.block());
             boost::multiprecision::cpp_int elapsed = blockIdx - start;
             if (offer.expiration() < elapsed)
             {
-                s->DeleteState(address);
+                applicator->deleteState(s, address);
             }
         });
-        filter(&dealOrderUrl, namespacePrefix + DEAL_ORDER, [blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
+        filter(ctx, &dealOrderUrl, namespacePrefix + DEAL_ORDER, [applicator, blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
             DealOrder dealOrder;
             dealOrder.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
             boost::multiprecision::cpp_int start = getBigint(dealOrder.block());
             boost::multiprecision::cpp_int elapsed = blockIdx - start;
             if (dealOrder.expiration() < elapsed && dealOrder.loan_transfer().empty())
             {
-                const std::string walletId = namespacePrefix + WALLET + dealOrder.sighash();
-                std::string stateData = getStateData(s, walletId, true);
-                Wallet wallet;
-                wallet.ParseFromString(stateData);
-                boost::multiprecision::cpp_int balance = getBigint(wallet.amount());
-                balance += getBigint(dealOrder.fee());
-                wallet.set_amount(toString(balance));
+                if (!applicator->ctx.tip || applicator->ctx.tip && applicator->ctx.tip > dealExpFixBlock)
+                {
+                    const std::string walletId = namespacePrefix + WALLET + dealOrder.sighash();
+                    std::string stateData = applicator->getStateData(s, walletId, true);
+                    Wallet wallet;
+                    wallet.ParseFromString(stateData);
+                    boost::multiprecision::cpp_int balance = getBigint(wallet.amount());
+                    balance += getBigint(dealOrder.fee());
+                    wallet.set_amount(toString(balance));
 
-                std::vector<sawtooth::GlobalState::KeyValue> states;
-                addState(&states, walletId, wallet);
-                s->SetState(states);
-                s->DeleteState(address);
+                    std::vector<sawtooth::GlobalState::KeyValue> states;
+                    addState(&states, walletId, wallet);
+                    applicator->setState(s, states);
+                }
+                applicator->deleteState(s, address);
             }
         });
-        filter(&repaymentOrderUrl, namespacePrefix + REPAYMENT_ORDER, [blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
+        filter(ctx, &repaymentOrderUrl, namespacePrefix + REPAYMENT_ORDER, [applicator, blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
             RepaymentOrder repaymentOrder;
             repaymentOrder.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
             boost::multiprecision::cpp_int start = getBigint(repaymentOrder.block());
             boost::multiprecision::cpp_int elapsed = blockIdx - start;
             if (repaymentOrder.expiration() < elapsed && repaymentOrder.previous_owner().empty())
             {
-                s->DeleteState(address);
+                applicator->deleteState(s, address);
             }
         });
-        filter(&feeUrl, namespacePrefix + FEE, [blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
+        filter(ctx, &feeUrl, namespacePrefix + FEE, [applicator, blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
             Fee fee;
             fee.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
             boost::multiprecision::cpp_int start(fee.block());
@@ -2037,7 +2460,7 @@ private:
             {
                 const std::string walletId = namespacePrefix + WALLET + fee.sighash();
                 std::string stateData;
-                if (!s->GetState(&stateData, walletId) || stateData.empty())
+                if (!applicator->getState(s, &stateData, walletId) || stateData.empty())
                 {
                     throw sawtooth::InvalidTransaction("Existing state expected " + walletId);
                 }
@@ -2046,13 +2469,13 @@ private:
                 wallet.set_amount(toString(getBigint(wallet.amount()) + TX_FEE));
 
                 wallet.SerializeToString(&stateData);
-                s->SetState(address, stateData);
-                s->DeleteState(address);
+                applicator->setState(s, address, stateData);
+                applicator->deleteState(s, address);
             }
         });
 
         reward(lastProcessedBlockIdx, blockIdx);
-        state->SetState(processedBlockIdx, toString(blockIdx));
+        setState(state, processedBlockIdx, toString(blockIdx));
     }
 };
 
@@ -2070,7 +2493,7 @@ public:
 
     std::list<std::string> versions() const
     {
-        return { "1.0", "1.1", "1.2", "1.3", "1.4" };
+        return { "1.0", "1.1", "1.2", "1.3", "1.4", "2.0" };
     }
 
     std::list<std::string> namespaces() const
@@ -2086,26 +2509,50 @@ public:
 
 static void setupSettingsAndExternalGatewayAddress()
 {
-    try
+    std::ifstream migrationData(transitionFile);
+    if (!static_cast<bool>(migrationData.good()))
     {
-        updateSettings();
-        auto i = settings.find("sawtooth.validator.gateway");
-        if (i != settings.end())
+        doUpdateSettings();
+        assert(updatingSettings.get() == nullptr);
+        updatingSettings.reset(new std::thread(updateSettings));
+    }
+    else
+    {
+        transitioning = true;
+        for (;;)
         {
-            std::string address = i->second;
-            if (address.find("tcp://") != 0)
+            std::string line;
+            std::getline(migrationData, line);
+            if (line.length() == 0)
+                break;
+            int blockIdx = getBigint(line).convert_to<int>();
+            std::getline(migrationData, line);
+            if (blocks.size() <= blockIdx)
             {
-                address = "tcp://" + address;
+                int size = blockIdx + 1;
+                blocks.resize(size);
             }
-            externalGatewayAddress = address;
+            Block b;
+            b.signer = line;
+            int txCount = 0;
+            for (; ; ++txCount)
+            {
+                std::getline(migrationData, line);
+                if (line == ".")
+                    break;
+                txguid2prevblockidx[line] = TxPos(blockIdx - 1, txCount);
+                Tx tx;
+                tx.guid = line;
+                std::getline(migrationData, line);
+                tx.sighash = line;
+                std::getline(migrationData, line);
+                tx.payload = decodeBase64(line);
+                b.txs.push_back(std::move(tx));
+            }
+            blocks[blockIdx] = std::move(b);
         }
-    }
-    catch (...)
-    {
-    }
-    if (externalGatewayAddress.empty())
-    {
-        std::cerr << "sawtooth.validator.gateway not found" << std::endl;
+        updatedBlockIdx = 0;
+        updatedTxIdx = blocks[updatedBlockIdx].txs.size() - 1;
     }
 }
 

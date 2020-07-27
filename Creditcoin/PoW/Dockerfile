@@ -27,3 +27,13 @@ RUN apt-get update
 RUN apt-get -y install python3-pip python3
 RUN cd /home/Creditcoin/PoW/ && python3 setup.py sdist bdist_wheel
 RUN cd /home/Creditcoin/PoW/dist && python3 -m pip install ./PoW-0.0.1.tar.gz
+
+# Copy sawtooth hotfix files to docker image
+COPY block_validator.py     /usr/lib/python3/dist-packages/sawtooth_validator/journal/block_validator.py
+COPY genesis.py             /usr/lib/python3/dist-packages/sawtooth_validator/journal/genesis.py
+COPY publisher.py           /usr/lib/python3/dist-packages/sawtooth_validator/journal/publisher.py
+COPY scheduler_parallel.py  /usr/lib/python3/dist-packages/sawtooth_validator/execution/scheduler_parallel.py
+COPY scheduler_serial.py	/usr/lib/python3/dist-packages/sawtooth_validator/execution/scheduler_serial.py
+COPY scheduler.py           /usr/lib/python3/dist-packages/sawtooth_validator/execution/scheduler.py
+COPY executor.py            /usr/lib/python3/dist-packages/sawtooth_validator/execution/executor.py
+COPY processor_pb2.py       /usr/lib/python3/dist-packages/sawtooth_validator/protobuf/processor_pb2.py

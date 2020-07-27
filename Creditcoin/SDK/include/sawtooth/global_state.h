@@ -65,6 +65,10 @@ class GlobalStateImpl: public GlobalState {
     // Delete multiple entries from global state.
     void DeleteState(const std::vector<std::string>& address) const;
 
+    // Add Events for every transaction
+    void AddEvent(const std::string& event_type ,
+       const std::vector<KeyValue>& kv_pairs, const std::string& event_data) const;
+
  private:
     std::string context_id;
     MessageStreamPtr message_stream;
