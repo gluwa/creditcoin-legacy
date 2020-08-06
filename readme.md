@@ -140,8 +140,8 @@ https://blogs.msdn.microsoft.com/vcblog/2017/04/11/linux-development-with-c-in-v
     `Boost 1.67.0`  
 `Cpp-netlib 0.13.rc1`  
 `protobuf 3.5.1`  
-`zeromq 3.2.5`  
-`zeromqpp 4.2.0`  
+`libzmq5 4.1.4-7`  
+`libzmqpp3 3.2.0-0`
 `log4cxx - master`  
 `Cryptopp 7.0.0`  
 
