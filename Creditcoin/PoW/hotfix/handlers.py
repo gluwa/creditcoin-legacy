@@ -124,8 +124,8 @@ class ConnectHandler(Handler):
 
         LOGGER.debug("Endpoint of connecting node is %s", message.endpoint)
 
-        connection_info = self._network._connections[connection_id]
-        if connection_info.uri and connection_info.uri != message.endpoint:
+        connection_info = self._network._connections.get(connection_id)
+        if connection_info and connection_info.uri and connection_info.uri != message.endpoint:
             connection_response = ConnectionResponse(
                 status=ConnectionResponse.ERROR)
             return HandlerResult(
