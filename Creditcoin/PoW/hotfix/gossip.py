@@ -364,16 +364,19 @@ class Gossip(object):
             exclude: A list of connection_ids that should be excluded from this
                 broadcast.
         """
+        sendto = []
         with self._lock:
             if exclude is None:
                 exclude = []
             for connection_id in self._peers:
                 if connection_id not in exclude:
-                    self.send(
-                        message_type,
-                        gossip_message.SerializeToString(),
-                        connection_id,
-                        one_way=True)
+                    sendto.append(connection_id)
+            for connection_id in sendto:
+                self.send(
+                    message_type,
+                    gossip_message.SerializeToString(),
+                    connection_id,
+                    one_way=True)
 
     def connect_success(self, connection_id):
         """
