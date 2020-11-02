@@ -7,6 +7,7 @@ namespace ccaas.Models
 {
     public class MatchingOrders
     {
-        public OrderResponse askOrder, bidOrder;
-    }
+        public OrderResponse askOrder { get; set; }
+        public OrderResponse bidOrder { get; set; }
+}
 }

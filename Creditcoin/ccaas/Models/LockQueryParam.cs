@@ -7,7 +7,7 @@ namespace ccaas.Models
 {
     public class LockQueryParam
     {
-        public string key;
-        public LockQuery query;
+        public string key { get; set; }
+        public LockQuery query { get; set; }
     }
 }

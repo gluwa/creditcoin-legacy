@@ -18,7 +18,7 @@ namespace ccbe.Controllers
         // GET api/blocks
         /// <summary>A segment of blocks</summary>
         /// <param name="last">An ID of a block to skip up to, normally is not set manually</param>
-        /// <param name="limit">A maximal number of blocks to return - greater than 0 and less than 100</param>
+        /// <param name="limit">The maximum number of blocks to return - greater than 0 and less than 100</param>
         /// <returns>A new Pagination object</returns>
         /// <response code="200">If succeeds</response>
         /// <response code="400">If either parameter is invalid</response>
@@ -83,7 +83,7 @@ namespace ccbe.Controllers
         }
 
         // GET api/blocks/forTxid/<txid>
-        /// <summary>A block that contain the identified transcation</summary>
+        /// <summary>A block that contain the identified transaction</summary>
         /// <param name="txid">An transaction ID - 128 hexadecimal digits</param>
         /// <returns>A new mapping of the block ID to the corresponding block</returns>
         /// <response code="200">If succeeds</response>
@@ -114,7 +114,7 @@ namespace ccbe.Controllers
         }
 
         // GET api/blocks/forSighash/<sighash>
-        /// <summary>A segment of blocks that contain transcations originated from the address identified by the given sighash</summary>
+        /// <summary>A segment of blocks that contain transactions originated from the address identified by the given sighash</summary>
         /// <param name="sighash">An originator's sighash - 60 hexadecimal digits</param>
         /// <param name="last">An ID of a block to skip up to, normally is not set manually</param>
         /// <param name="limit">A maximal number of blocks to return - greater than 0 and less than 100</param>

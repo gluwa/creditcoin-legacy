@@ -7,9 +7,9 @@ namespace ccaas.Models
 {
     public class RegisterAddressQuery
     {
-        public string blockchain;
-        public string address;
-        public string erc20;
-        public string network;
+        public string blockchain { get; set; }
+        public string address { get; set; }
+        public string erc20 { get; set; }
+        public string network { get; set; }
     }
 }

@@ -7,8 +7,8 @@ namespace ccaas.Models
 {
     public class AddressResponse
     {
-        public string id;
-        public string value;
-        public string network;
+        public string id { get; set; }
+        public string value { get; set; }
+        public string network { get; set; }
     }
 }

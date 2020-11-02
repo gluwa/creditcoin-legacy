@@ -1200,7 +1200,11 @@ private:
         auto setting = actualSettings->find("sawtooth.gateway.sighash");
         if (setting == actualSettings->end())
         {
-            throw sawtooth::InvalidTransaction("Gateway sighash is not configured");
+            doUpdateSettings();
+            actualSettings = settings.load();
+            setting = actualSettings->find("sawtooth.gateway.sighash");
+            if (setting == actualSettings->end())
+                throw sawtooth::InvalidTransaction("Gateway sighash is not configured");
         }
         if (mySighash != setting->second)
         {
@@ -2493,7 +2497,7 @@ public:
 
     std::list<std::string> versions() const
     {
-        return { "1.0", "1.1", "1.2", "1.3", "1.4", "2.0" };
+        return { "1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6" };
     }
 
     std::list<std::string> namespaces() const

@@ -7,7 +7,7 @@ namespace ccaas.Models
 {
     public class RegisterAddressQueryParam
     {
-        public string key;
-        public RegisterAddressQuery query;
+        public string key { get; set; }
+        public RegisterAddressQuery query { get; set; }
     }
 }

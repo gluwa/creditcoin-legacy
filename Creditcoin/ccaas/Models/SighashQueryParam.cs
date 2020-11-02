@@ -7,6 +7,6 @@ namespace ccaas.Models
 {
     public class SighashQueryParam
     {
-        public string key;
+        public string key { get; set;}
     }
 }

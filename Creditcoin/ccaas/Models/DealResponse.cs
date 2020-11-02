@@ -7,11 +7,11 @@ namespace ccaas.Models
 {
     public class DealResponse
     {
-        public string id;
-        public string block;
-        public string srcAddressId;
-        public string dstAddressId;
-        public Term term;
-        public string expiration;
+        public string id { get; set; }
+        public string block { get; set; }
+        public string srcAddressId { get; set; }
+        public string dstAddressId { get; set; }
+        public Term term { get; set; }
+        public string expiration { get; set; }
     }
 }

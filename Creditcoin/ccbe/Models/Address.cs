@@ -9,6 +9,6 @@ namespace ccbe.Models
     public class Address
     {
         /// <summary>The amount of Creditcoins in the wallet in Credos</summary>
-        public string Amount;
+        public string Amount { get; set; }
     }
 }

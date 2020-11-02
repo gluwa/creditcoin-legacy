@@ -7,8 +7,8 @@ namespace ccaas.Models
 {
     public class ContinuationResponse
     {
-        public string reason;
-        public string waitingForeignBlockchain;
-        public string waitingCreditcoinCommit;
+        public string reason { get; set; }
+        public string waitingForeignBlockchain { get; set; }
+        public string waitingCreditcoinCommit { get; set; }
     }
 }

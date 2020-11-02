@@ -8,6 +8,7 @@ using System.Net.Http;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace ccbe
 {
@@ -54,6 +55,11 @@ namespace ccbe
         private static Dictionary<string, string> wallets = new Dictionary<string, string>();
         private static HttpClient httpClient = new HttpClient();
 
+        public static void setTimeout(int msec)
+        {
+            httpClient.Timeout = TimeSpan.FromMilliseconds(msec);
+        }
+
         private class Success
         {
             public bool value = false;
@@ -64,7 +70,26 @@ namespace ccbe
         public static bool IsSuccessful()
         {
             lock (success)
+            {
+                if (!success.value)
+                {
+                    lock (blocks)
+                    {
+                        if (blocks.Count != 0)
+                        {
+                            lock (wallets)
+                            {
+                                if (wallets.Count != 0)
+                                {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+
                 return success.value;
+            }
         }
 
         public static Models.Block GetBlock(string id)
@@ -196,7 +221,7 @@ namespace ccbe
             return ret;
         }
 
-        public static string calculateSupply()
+        public static BigInteger calculateSupply()
         {
             var ret = new BigInteger();
             lock (wallets)
@@ -207,12 +232,18 @@ namespace ccbe
                     ret += value;
                 }
             }
-            return ret.ToString();
+            return ret;
+        }
+
+        public static Dictionary<string, BigInteger> getWallets()
+        {
+            lock (wallets)
+                return wallets.ToDictionary(i => i.Key, i => BigInteger.Parse(i.Value));
         }
 
         public static string UpdateWallets()
         {
-            string url = $"{creditcoinUrl}/state?address=8a1a040000";
+            string url = $"{creditcoinUrl}/state?limit=25000&address=8a1a040000";
 
             var newWallets = new Dictionary<string, string>();
 
@@ -220,49 +251,61 @@ namespace ccbe
             {
                 for (; ; )
                 {
-                    using (HttpResponseMessage responseMessage = httpClient.GetAsync(url).Result)
+                    string responseJson;
+                    for (; ; )
                     {
-                        var json = responseMessage.Content.ReadAsStringAsync().Result;
-                        var response = JObject.Parse(json);
-                        if (response.ContainsKey(ERROR))
+                        try
                         {
-                            var error = (JObject)response[ERROR];
-                            if (!error.ContainsKey(MESSAGE))
-                                return $"Expecting message in error in {response}";
-                            return (string)error[MESSAGE];
+                            using (HttpResponseMessage responseMessage = httpClient.GetAsync(url).Result)
+                                responseJson = responseMessage.Content.ReadAsStringAsync().Result;
+                            break;
                         }
-                        else
+                        catch (AggregateException x)
                         {
-                            if (!response.ContainsKey(DATA))
+                            if (!(x.InnerException is TaskCanceledException))
+                                throw;
+                        }
+                    }
+
+                    var response = JObject.Parse(responseJson);
+                    if (response.ContainsKey(ERROR))
+                    {
+                        var error = (JObject)response[ERROR];
+                        if (!error.ContainsKey(MESSAGE))
+                            return $"Expecting message in error in {response}";
+                        return (string)error[MESSAGE];
+                    }
+                    else
+                    {
+                        if (!response.ContainsKey(DATA))
+                            return $"Expecting data in {response}";
+                        var data = response[DATA];
+                        foreach (var datum in data)
+                        {
+                            var obj = (JObject)datum;
+                            if (!obj.ContainsKey(ADDRESS))
+                                return $"Expecting address in {response}";
+                            var objid = ((string)obj[ADDRESS]).Substring(10);
+                            if (newWallets.ContainsKey(objid))
+                                return $"Duplicate wallet id in {response}";
+                            if (!obj.ContainsKey(DATA))
                                 return $"Expecting data in {response}";
-                            var data = response[DATA];
-                            foreach (var datum in data)
-                            {
-                                var obj = (JObject)datum;
-                                if (!obj.ContainsKey(ADDRESS))
-                                    return $"Expecting address in {response}";
-                                var objid = ((string)obj[ADDRESS]).Substring(10);
-                                if (newWallets.ContainsKey(objid))
-                                    return $"Duplicate wallet id in {response}";
-                                if (!obj.ContainsKey(DATA))
-                                    return $"Expecting data in {response}";
-                                var content = (string)obj[DATA];
-                                byte[] protobuf = Convert.FromBase64String(content);
-                                Wallet wallet = Wallet.Parser.ParseFrom(protobuf);
-                                BigInteger unused;
-                                if (!BigInteger.TryParse(wallet.Amount, out unused))
-                                    return $"Invalid numeric '{wallet.Amount}' for '{objid}' in {response}";
+                            var content = (string)obj[DATA];
+                            byte[] protobuf = Convert.FromBase64String(content);
+                            Wallet wallet = Wallet.Parser.ParseFrom(protobuf);
+                            BigInteger unused;
+                            if (!BigInteger.TryParse(wallet.Amount, out unused))
+                                return $"Invalid numeric '{wallet.Amount}' for '{objid}' in {response}";
 
-                                newWallets.Add(objid, wallet.Amount);
-                            }
-
-                            if (!response.ContainsKey(PAGING))
-                                return $"Expecting paging in {response}";
-                            var paging = (JObject)response[PAGING];
-                            if (!paging.ContainsKey(NEXT))
-                                break;
-                            url = (string)paging[NEXT];
+                            newWallets.Add(objid, wallet.Amount);
                         }
+
+                        if (!response.ContainsKey(PAGING))
+                            return $"Expecting paging in {response}";
+                        var paging = (JObject)response[PAGING];
+                        if (!paging.ContainsKey(NEXT))
+                            break;
+                        url = (string)paging[NEXT];
                     }
                 }
             }
@@ -296,8 +339,21 @@ namespace ccbe
                 bool done = false;
                 for (; ; )
                 {
-                    var responseMessage = httpClient.GetAsync(url).Result;
-                    var responseJson = responseMessage.Content.ReadAsStringAsync().Result;
+                    string responseJson;
+                    for (; ; )
+                    {
+                        try
+                        {
+                            using (HttpResponseMessage responseMessage = httpClient.GetAsync(url).Result)
+                                responseJson = responseMessage.Content.ReadAsStringAsync().Result;
+                            break;
+                        }
+                        catch (AggregateException x)
+                        {
+                            if (!(x.InnerException is TaskCanceledException))
+                                throw;
+                        }
+                    }
 
                     var response = JObject.Parse(responseJson);
                     if (response.ContainsKey(ERROR))
@@ -367,8 +423,7 @@ namespace ccbe
 
                                 var payloadBytes = Convert.FromBase64String((string)transactionObj[PAYLOAD]);
                                 string payload;
-                                string[] supportedVersions = { "1.0", "1.1", "1.2", "1.3", "1.4" };
-                                if (familyName.Equals("CREDITCOIN") && Array.Exists(supportedVersions, v => v == familyVersion))
+                                if (familyName.Equals("CREDITCOIN"))
                                 {
                                     var cbor = CBORObject.DecodeFromBytes(payloadBytes);
                                     var sb = new StringBuilder();

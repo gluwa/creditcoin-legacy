@@ -7,7 +7,7 @@ namespace ccaas.Models
 {
     public class CreateDealQueryParam
     {
-        public string key;
-        public DealQuery query;
+        public string key { get; set; }
+        public DealQuery query { get; set; }
     }
 }

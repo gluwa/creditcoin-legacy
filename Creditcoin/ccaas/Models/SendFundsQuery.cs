@@ -7,7 +7,7 @@ namespace ccaas.Models
 {
     public class SendFundsQuery
     {
-        public string amount;
-        public string destinationSighash;
+        public string amount { get; set; }
+        public string destinationSighash { get; set; }
     }
 }

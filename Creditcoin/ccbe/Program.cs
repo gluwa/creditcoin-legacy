@@ -17,7 +17,7 @@ namespace ccbe
             logger = host.Services.GetRequiredService<ILogger<Program>>();
             var config = host.Services.GetRequiredService<IConfiguration>();
             Cache.creditcoinUrl = config.GetValue<string>("CreditcoinUrl");
-            Caching();
+            Cache.setTimeout(300000);
 
             using (CancellationTokenSource cancellationTokenSource = new CancellationTokenSource())
             {
@@ -27,9 +27,9 @@ namespace ccbe
             }
         }
 
-        private static void Caching(object tokenbvject)
+        private static void Caching(object tokenObject)
         {
-            CancellationToken token = (CancellationToken)tokenbvject;
+            CancellationToken token = (CancellationToken)tokenObject;
             for (; ; )
             {
                 if (token.IsCancellationRequested)

@@ -7,7 +7,7 @@ namespace ccaas.Models
 {
     public class CreateOrderQueryParam
     {
-        public string key;
-        public OrderQuery query;
+        public string key { get; set; }
+        public OrderQuery query { get; set; }
     }
 }

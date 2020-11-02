@@ -21,7 +21,7 @@ namespace ccaas.Controllers
         public static string pluginFolder;
         public static string creditcoinUrl;
         public static BigInteger minimalFee;
-        private static HttpClient httpClient = new HttpClient();
+        public static HttpClient httpClient = new HttpClient();
 
         private const string keyIsMissing = "Key is missing";
         private const string missingParameters = "Missing required parameter(s)";
@@ -84,6 +84,8 @@ namespace ccaas.Controllers
             var msg = cccore.Core.Run(httpClient, creditcoinUrl, HttpUtility.UrlDecode(link), false);
             if (msg == null)
                 return Json(new Models.ContinuationResponse { reason = "waitingCreditcoinCommit", waitingCreditcoinCommit = link });
+            if (msg == "Unknown batch ID")
+                return StatusCode(404, msg);
             if (!msg.Equals("Success"))
                 return statusCodeByMsg(msg);
             return Ok();
@@ -201,6 +203,12 @@ namespace ccaas.Controllers
             List<string> output = cccore.Core.Run(httpClient, creditcoinUrl, args.ToArray(), config, false, pluginFolder, null, null, out bool _, null, out string link);
             Debug.Assert(output != null && link == null);
 
+            // core returns success but no addresses in output
+            if (output.Count == 1 && output[0].Equals("Success"))
+            {
+                return NotFound("Address with provided parameters not found.");
+            }
+
             if (output.Count != 2 || output[0].StartsWith("Error") || !output[output.Count - 1].Equals("Success"))
                 return statusCodeByMsg(output[0]);
 
@@ -306,7 +314,8 @@ namespace ccaas.Controllers
             args.Add("show");
             args.Add("MatchingOrders");
             args.Add(sighash);
-            List<string> output = cccore.Core.Run(httpClient, creditcoinUrl, args.ToArray(), config, false, pluginFolder, null, null, out bool _, null, out string link);
+            var askAndBidOrders = new cccore.Core.AskAndBidOrders();
+            List<string> output = cccore.Core.Run(httpClient, creditcoinUrl, args.ToArray(), config, false, pluginFolder, null, null, out bool _, null, out string link, askAndBidOrders);
             Debug.Assert(output != null && link == null);
             if (output.Count < 1 || output[0].StartsWith("Error") || !output[output.Count - 1].Equals("Success"))
                 return statusCodeByMsg(output[0]);
@@ -320,68 +329,31 @@ namespace ccaas.Controllers
                     if (ids.Length != 2)
                         return StatusCode(503, unexpectedError);
 
-                    //list AskOrders id
-                    var argsAskOrder = new List<string>();
-                    argsAskOrder.Add("list");
-                    argsAskOrder.Add("AskOrders");
-                    argsAskOrder.Add(ids[0]);
-                    List<string> outputAskOrders = cccore.Core.Run(httpClient, creditcoinUrl, argsAskOrder.ToArray(), config, false, pluginFolder, null, null, out bool _, null, out link);
-                    Debug.Assert(output != null && link == null);
-                    if (outputAskOrders.Count != 2 || outputAskOrders[0].StartsWith("Error") || !outputAskOrders[1].Equals("Success"))
-                        return statusCodeByMsg(outputAskOrders[0]);
-
-                    //ret.Add($"askOrder({objid}) blockchain:{askOrder.Blockchain} address:{askOrder.Address} amount:{askOrder.Amount} interest:{askOrder.Interest} maturity:{askOrder.Maturity} fee:{askOrder.Fee} expiration:{askOrder.Expiration} block:{askOrder.Block} sighash:{askOrder.Sighash}");
-                    var addressPrefix = "address";
-                    var idx = outputAskOrders[0].LastIndexOf(addressPrefix);
-                    if (idx == -1)
-                        return StatusCode(503, unexpectedError);
-                    // ignore askOrder and blockchain (in case blockchain contains a combination of characters that may interfere with parsing, like space or colon
-                    var askOrderComponents = outputAskOrders[0].Substring(idx).Split(' ');
-                    if (askOrderComponents.Length != 8)
-                        return StatusCode(503, unexpectedError);
-
                     var askOrderId = ids[0];
                     var askOrder = new Models.OrderResponse() { id = askOrderId, order = new Models.OrderQuery() { term = new Models.Term() } };
-
-                    var cur = 0;
-                    askOrder.order.addressId = getValue(askOrderComponents[cur++], "address");
-                    askOrder.order.term.amount = getValue(askOrderComponents[cur++], "amount");
-                    askOrder.order.term.interest = getValue(askOrderComponents[cur++], "interest");
-                    askOrder.order.term.maturity = getValue(askOrderComponents[cur++], "maturity");
-                    askOrder.order.term.fee = getValue(askOrderComponents[cur++], "fee");
-                    askOrder.order.expiration = getValue(askOrderComponents[cur++], "expiration");
-                    askOrder.block = getValue(askOrderComponents[cur], "block");
-
-                    //list bidOrders id
-                    var argsBidOrder = new List<string>();
-                    argsBidOrder.Add("list");
-                    argsBidOrder.Add("BidOrders");
-                    argsBidOrder.Add(ids[1]);
-                    List<string> outputBidOrders = cccore.Core.Run(httpClient, creditcoinUrl, argsBidOrder.ToArray(), config, false, pluginFolder, null, null, out bool _, null, out link);
-                    Debug.Assert(output != null && link == null);
-                    if (outputBidOrders.Count != 2 || outputBidOrders[0].StartsWith("Error") || !outputBidOrders[1].Equals("Success"))
-                        return statusCodeByMsg(outputBidOrders[0]);
-
-                    //ret.Add($"bidOrder({objid}) blockchain:{bidOrder.Blockchain} address:{bidOrder.Address} amount:{bidOrder.Amount} interest:{bidOrder.Interest} maturity:{bidOrder.Maturity} fee:{bidOrder.Fee} expiration:{bidOrder.Expiration} block:{bidOrder.Block} sighash:{bidOrder.Sighash}");
-                    idx = outputBidOrders[0].LastIndexOf(addressPrefix);
-                    if (idx == -1)
-                        return StatusCode(503, unexpectedError);
-                    // ignore bidOrder and blockchain (in case blockchain contains a combination of characters that may interfere with parsing, like space or colon
-                    var bidOrderComponents = outputBidOrders[0].Substring(idx).Split(' ');
-                    if (bidOrderComponents.Length != 8)
-                        return StatusCode(503, unexpectedError);
+                    {
+                        var value = askAndBidOrders.askOrders[askOrderId];
+                        askOrder.order.addressId = value.Address;
+                        askOrder.order.term.amount = value.Amount;
+                        askOrder.order.term.interest = value.Interest;
+                        askOrder.order.term.maturity = value.Maturity;
+                        askOrder.order.term.fee = value.Fee;
+                        askOrder.order.expiration = value.Expiration.ToString();
+                        askOrder.block = value.Block;
+                    }
 
                     var bidOrderId = ids[1];
                     var bidOrder = new Models.OrderResponse() { id = bidOrderId, order = new Models.OrderQuery() { term = new Models.Term() } };
-
-                    cur = 0;
-                    bidOrder.order.addressId = getValue(bidOrderComponents[cur++], "address");
-                    bidOrder.order.term.amount = getValue(bidOrderComponents[cur++], "amount");
-                    bidOrder.order.term.interest = getValue(bidOrderComponents[cur++], "interest");
-                    bidOrder.order.term.maturity = getValue(bidOrderComponents[cur++], "maturity");
-                    bidOrder.order.term.fee = getValue(bidOrderComponents[cur++], "fee");
-                    bidOrder.order.expiration = getValue(bidOrderComponents[cur++], "expiration");
-                    bidOrder.block = getValue(bidOrderComponents[cur], "block");
+                    {
+                        var value = askAndBidOrders.bidOrders[bidOrderId];
+                        bidOrder.order.addressId = value.Address;
+                        bidOrder.order.term.amount = value.Amount;
+                        bidOrder.order.term.interest = value.Interest;
+                        bidOrder.order.term.maturity = value.Maturity;
+                        bidOrder.order.term.fee = value.Fee;
+                        bidOrder.order.expiration = value.Expiration.ToString();
+                        bidOrder.block = value.Block;
+                    }
 
                     var matchingOrders = new ccaas.Models.MatchingOrders() { askOrder = askOrder, bidOrder = bidOrder };
                     ret.Add(matchingOrders);
@@ -441,7 +413,8 @@ namespace ccaas.Controllers
             args.Add("show");
             args.Add("CurrentOffers");
             args.Add(sighash);
-            List<string> output = cccore.Core.Run(httpClient, creditcoinUrl, args.ToArray(), config, false, pluginFolder, null, null, out bool _, null, out string link);
+            var offersAndAskAndBidOrders = new cccore.Core.OffersAndAskAndBidOrders();
+            List<string> output = cccore.Core.Run(httpClient, creditcoinUrl, args.ToArray(), config, false, pluginFolder, null, null, out bool _, null, out string link, offersAndAskAndBidOrders);
             Debug.Assert(output != null && link == null);
             if (output.Count < 1 || output[0].StartsWith("Error") || !output[output.Count - 1].Equals("Success"))
                 return statusCodeByMsg(output[0]);
@@ -451,94 +424,37 @@ namespace ccaas.Controllers
                 var ret = new List<ccaas.Models.OfferResponse>();
                 for (int i = 0; i < output.Count - 1; ++i)
                 {
-                    //list Offers id
-                    var argsOffer = new List<string>();
-                    argsOffer.Add("list");
-                    argsOffer.Add("Offers");
-                    argsOffer.Add(output[i]);
-                    List<string> outputOffers = cccore.Core.Run(httpClient, creditcoinUrl, argsOffer.ToArray(), config, false, pluginFolder, null, null, out bool _, null, out link);
-                    Debug.Assert(output != null && link == null);
-                    if (outputOffers.Count < 2 || outputOffers[0].StartsWith("Error") || !outputOffers[outputOffers.Count - 1].Equals("Success"))
-                        return statusCodeByMsg(outputOffers[1]);
-
-                    //ret.Add($"offer({objid}) blockchain:{offer.Blockchain} askOrder:{offer.AskOrder} bidOrder:{offer.BidOrder} expiration:{offer.Expiration} block:{offer.Block}");
-                    var askOrderPrefix = "askOrder";
-                    var idx = outputOffers[0].LastIndexOf(askOrderPrefix);
-                    if (idx == -1)
-                        return StatusCode(503, unexpectedError);
-                    // ignore offer and blockchain (in case blockchain contains a combination of characters that may interfere with parsing, like space or colon
-                    var offerComponents = outputOffers[0].Substring(idx).Split(' ');
-                    if (offerComponents.Length != 4)
-                        return StatusCode(503, unexpectedError);
+                    string askOrderId, bidOrderId;
                     var offer = new ccaas.Models.OfferResponse() { id = output[i] };
-
-                    var cur = 0;
-                    string askOrderId = getValue(offerComponents[cur++], "askOrder");
-                    string bidOrderId = getValue(offerComponents[cur++], "bidOrder");
-                    offer.expiration = getValue(offerComponents[cur++], "expiration");
-                    offer.block = getValue(offerComponents[cur], "block");
-
-                    //list AskOrders id
-                    var argsAskOrder = new List<string>();
-                    argsAskOrder.Add("list");
-                    argsAskOrder.Add("AskOrders");
-                    argsAskOrder.Add(askOrderId);
-                    List<string> outputAskOrders = cccore.Core.Run(httpClient, creditcoinUrl, argsAskOrder.ToArray(), config, false, pluginFolder, null, null, out bool _, null, out link);
-                    Debug.Assert(output != null && link == null);
-                    if (outputAskOrders.Count != 2 || outputAskOrders[0].StartsWith("Error") || !outputAskOrders[1].Equals("Success"))
-                        return statusCodeByMsg(outputAskOrders[0]);
-
-
-                    //ret.Add($"askOrder({objid}) blockchain:{askOrder.Blockchain} address:{askOrder.Address} amount:{askOrder.Amount} interest:{askOrder.Interest} maturity:{askOrder.Maturity} fee:{askOrder.Fee} expiration:{askOrder.Expiration} block:{askOrder.Block} sighash:{askOrder.Sighash}");
-                    var addressPrefix = "address";
-                    idx = outputAskOrders[0].LastIndexOf(addressPrefix);
-                    if (idx == -1)
-                        return StatusCode(503, unexpectedError);
-                    // ignore askOrder and blockchain (in case blockchain contains a combination of characters that may interfere with parsing, like space or colon
-                    var askOrderComponents = outputAskOrders[0].Substring(idx).Split(' ');
-                    if (askOrderComponents.Length != 8)
-                        return StatusCode(503, unexpectedError);
+                    {
+                        var value = offersAndAskAndBidOrders.offers[output[i]];
+                        askOrderId = value.AskOrder;
+                        bidOrderId = value.BidOrder;
+                        offer.expiration = value.Expiration.ToString();
+                        offer.block = value.Block;
+                    }
 
                     var askOrder = new Models.OrderResponse() { id = askOrderId, order = new Models.OrderQuery() { term = new Models.Term() } };
-
-                    cur = 0;
-                    askOrder.order.addressId = getValue(askOrderComponents[cur++], "address");
-                    askOrder.order.term.amount = getValue(askOrderComponents[cur++], "amount");
-                    askOrder.order.term.interest = getValue(askOrderComponents[cur++], "interest");
-                    cur++; //ignoring maturity
-                    askOrder.order.term.fee = getValue(askOrderComponents[cur++], "fee");
-                    askOrder.order.expiration = getValue(askOrderComponents[cur++], "expiration");
-                    askOrder.block = getValue(askOrderComponents[cur], "block");
-
-                    //list bidOrders id
-                    var argsBidOrder = new List<string>();
-                    argsBidOrder.Add("list");
-                    argsBidOrder.Add("BidOrders");
-                    argsBidOrder.Add(bidOrderId);
-                    List<string> outputBidOrders = cccore.Core.Run(httpClient, creditcoinUrl, argsBidOrder.ToArray(), config, false, pluginFolder, null, null, out bool _, null, out link);
-                    Debug.Assert(output != null && link == null);
-                    if (outputBidOrders.Count != 2 || outputBidOrders[0].StartsWith("Error") || !outputBidOrders[1].Equals("Success"))
-                        return statusCodeByMsg(outputBidOrders[0]);
-
-                    //ret.Add($"bidOrder({objid}) blockchain:{bidOrder.Blockchain} address:{bidOrder.Address} amount:{bidOrder.Amount} interest:{bidOrder.Interest} maturity:{bidOrder.Maturity} fee:{bidOrder.Fee} expiration:{bidOrder.Expiration} block:{bidOrder.Block} sighash:{bidOrder.Sighash}");
-                    idx = outputBidOrders[0].LastIndexOf(addressPrefix);
-                    if (idx == -1)
-                        return StatusCode(503, unexpectedError);
-                    // ignore bidOrder and blockchain (in case blockchain contains a combination of characters that may interfere with parsing, like space or colon
-                    var bidOrderComponents = outputBidOrders[0].Substring(idx).Split(' ');
-                    if (bidOrderComponents.Length != 8)
-                        return StatusCode(503, unexpectedError);
+                    {
+                        var value = offersAndAskAndBidOrders.askOrders[askOrderId];
+                        askOrder.order.addressId = value.Address;
+                        askOrder.order.term.amount = value.Amount;
+                        askOrder.order.term.interest = value.Interest;
+                        askOrder.order.term.fee = value.Fee;
+                        askOrder.order.expiration = value.Expiration.ToString();
+                        askOrder.block = value.Block;
+                    }
 
                     var bidOrder = new Models.OrderResponse() { id = bidOrderId, order = new Models.OrderQuery() { term = new Models.Term() } };
-
-                    cur = 0;
-                    bidOrder.order.addressId = getValue(bidOrderComponents[cur++], "address");
-                    bidOrder.order.term.amount = getValue(bidOrderComponents[cur++], "amount");
-                    bidOrder.order.term.interest = getValue(bidOrderComponents[cur++], "interest");
-                    cur++; //ignoring maturity
-                    bidOrder.order.term.fee = getValue(bidOrderComponents[cur++], "fee");
-                    bidOrder.order.expiration = getValue(bidOrderComponents[cur++], "expiration");
-                    bidOrder.block = getValue(bidOrderComponents[cur], "block");
+                    {
+                        var value = offersAndAskAndBidOrders.bidOrders[bidOrderId];
+                        bidOrder.order.addressId = value.Address;
+                        bidOrder.order.term.amount = value.Amount;
+                        bidOrder.order.term.interest = value.Interest;
+                        bidOrder.order.term.fee = value.Fee;
+                        bidOrder.order.expiration = value.Expiration.ToString();
+                        bidOrder.block = value.Block;
+                    }
 
                     offer.askOrder = askOrder;
                     offer.bidOrder = bidOrder;
@@ -617,7 +533,8 @@ namespace ccaas.Controllers
             args.Add("show");
             args.Add(filter);
             args.Add(sighash);
-            List<string> output = cccore.Core.Run(httpClient, creditcoinUrl, args.ToArray(), config, false, pluginFolder, null, null, out bool _, null, out string link);
+            var dealOrders = new cccore.Core.DealOrders();
+            List<string> output = cccore.Core.Run(httpClient, creditcoinUrl, args.ToArray(), config, false, pluginFolder, null, null, out bool _, null, out string link, dealOrders);
             Debug.Assert(output != null && link == null);
             if (output.Count < 1 || output[0].StartsWith("Error") || !output[output.Count - 1].Equals("Success"))
                 return statusCodeByMsg(output[0]);
@@ -627,36 +544,18 @@ namespace ccaas.Controllers
                 var ret = new List<ccaas.Models.DealResponse>();
                 for (int i = 0; i < output.Count - 1; ++i)
                 {
-                    //list Deals id
-                    var argsDeal = new List<string>();
-                    argsDeal.Add("list");
-                    argsDeal.Add("DealOrders");
-                    argsDeal.Add(output[i]);
-                    List<string> outputDeals = cccore.Core.Run(httpClient, creditcoinUrl, argsDeal.ToArray(), config, false, pluginFolder, null, null, out bool _, null, out link);
-                    Debug.Assert(output != null && link == null);
-                    if (outputDeals.Count < 1 || outputDeals[0].StartsWith("Error") || !outputDeals[outputDeals.Count - 1].Equals("Success"))
-                        return statusCodeByMsg(outputDeals[0]);
-
-                    //ret.Add($"dealOrder({objid}) blockchain:{dealOrder.Blockchain} srcAddress:{dealOrder.SrcAddress} dstAddress:{dealOrder.DstAddress} amount:{dealOrder.Amount} interest:{dealOrder.Interest} maturity:{dealOrder.Maturity} fee:{dealOrder.Fee} expiration:{dealOrder.Expiration} block:{dealOrder.Block} loanTransfer:{(dealOrder.LoanTransfer.Equals(string.Empty) ? "*" : dealOrder.LoanTransfer)} repaymentTransfer:{(dealOrder.RepaymentTransfer.Equals(string.Empty) ? "*" : dealOrder.RepaymentTransfer)} lock:{(dealOrder.Lock.Equals(string.Empty) ? "*" : dealOrder.Lock)} sighash:{dealOrder.Sighash}");
-                    var srcAddressPrefix = "srcAddress";
-                    var idx = outputDeals[0].LastIndexOf(srcAddressPrefix);
-                    if (idx == -1)
-                        return StatusCode(503, unexpectedError);
-                    // ignore dealOrder and blockchain (in case blockchain contains a combination of characters that may interfere with parsing, like space or colon
-                    var dealComponents = outputDeals[0].Substring(idx).Split(' ');
-                    if (dealComponents.Length != 12)
-                        return StatusCode(503, unexpectedError);
                     var deal = new ccaas.Models.DealResponse() { id = output[i], term = new Models.Term() };
-
-                    var cur = 0;
-                    deal.srcAddressId = getValue(dealComponents[cur++], "srcAddress");
-                    deal.dstAddressId = getValue(dealComponents[cur++], "dstAddress");
-                    deal.term.amount = getValue(dealComponents[cur++], "amount");
-                    deal.term.interest = getValue(dealComponents[cur++], "interest");
-                    deal.term.maturity = getValue(dealComponents[cur++], "maturity");
-                    deal.term.fee = getValue(dealComponents[cur++], "fee");
-                    deal.expiration = getValue(dealComponents[cur++], "expiration");
-                    deal.block = getValue(dealComponents[cur], "block");
+                    {
+                        var value = dealOrders.dealOrders[output[i]];
+                        deal.srcAddressId = value.SrcAddress;
+                        deal.dstAddressId = value.DstAddress;
+                        deal.term.amount = value.Amount;
+                        deal.term.interest = value.Interest;
+                        deal.term.maturity = value.Maturity;
+                        deal.term.fee = value.Fee;
+                        deal.expiration = value.Expiration.ToString();
+                        deal.block = value.Block;
+                    }
 
                     ret.Add(deal);
                 }
@@ -797,7 +696,7 @@ namespace ccaas.Controllers
             {
                 if (string.IsNullOrEmpty(queryParam.query.ethKey))
                     return missingParameters;
-                if (feeString != null) // ethless thansfer
+                if (feeString != null) // ethless transfer
                 {
                     BigInteger fee;
                     if (!BigInteger.TryParse(feeString, out fee))

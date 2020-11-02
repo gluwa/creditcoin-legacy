@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
@@ -23,7 +23,10 @@
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="copy $(TargetPath) $(ProjectDir)\.." />
+    <Copy SourceFiles="$(TargetPath)" 
+			  DestinationFolder="$(ProjectDir).." 
+			  OverwriteReadOnlyFiles="true" 
+			  SkipUnchangedFiles="false" />
   </Target>
 
 </Project>

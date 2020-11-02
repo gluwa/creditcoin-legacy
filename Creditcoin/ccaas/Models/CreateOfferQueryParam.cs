@@ -7,7 +7,7 @@ namespace ccaas.Models
 {
     public class CreateOfferQueryParam
     {
-        public string key;
-        public OfferQuery query;
+        public string key { get; set; }
+        public OfferQuery query { get; set; }
     }
 }

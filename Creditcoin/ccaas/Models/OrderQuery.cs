@@ -7,8 +7,8 @@ namespace ccaas.Models
 {
     public class OrderQuery
     {
-        public string addressId;
-        public Term term;
-        public string expiration;
+        public string addressId { get; set; }
+        public Term term { get; set; }
+        public string expiration { get; set; }
     }
 }
