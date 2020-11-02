@@ -28,6 +28,7 @@ namespace ccaas
                     pluginFolder = cd;
             }
             Controllers.CreditcoinController.pluginFolder = pluginFolder;
+            Controllers.CreditcoinController.httpClient.Timeout = TimeSpan.FromMilliseconds(1000 * 300);
 
             string creditcoinRestApiURL = Controllers.CreditcoinController.config.GetValue<string>("creditcoinRestApiURL");
             Controllers.CreditcoinController.creditcoinUrl = string.IsNullOrWhiteSpace(creditcoinRestApiURL) ? "http://localhost:8008" : creditcoinRestApiURL;

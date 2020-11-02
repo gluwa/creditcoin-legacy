@@ -206,6 +206,10 @@ namespace ccclient
                 File.Delete(progress);
                 File.Delete(pluginProgress);
             }
+            else if (progressToken != null)
+            {
+                File.WriteAllText(pluginProgress, progressToken);
+            }
         }
     }
 }

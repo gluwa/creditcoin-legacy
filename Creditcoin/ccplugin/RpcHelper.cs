@@ -115,6 +115,10 @@ namespace ccplugin
                     {
                         return "Error: request rejected";
                     }
+                    else if (status.Equals("UNKNOWN"))
+                    {
+                        return "Unknown batch ID";
+                    }
                     else if (status.Equals("COMMITTED"))
                     {
                         if (txid)

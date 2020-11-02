@@ -7,7 +7,7 @@ namespace ccaas.Models
 {
     public class UpdateQuery
     {
-        public string dealOrderId;
-        public string transferId;
+        public string dealOrderId { get; set; }
+        public string transferId { get; set; }
     }
 }

@@ -39,6 +39,24 @@ namespace cccore
         private const string PAGING = "paging";
         private const string NEXT = "next";
 
+        public class AskAndBidOrders
+        {
+            public Dictionary<string, AskOrder> askOrders;
+            public Dictionary<string, BidOrder> bidOrders;
+        }
+
+        public class OffersAndAskAndBidOrders
+        {
+            public Dictionary<string, Offer> offers;
+            public Dictionary<string, AskOrder> askOrders;
+            public Dictionary<string, BidOrder> bidOrders;
+        }
+
+        public class DealOrders
+        {
+            public Dictionary<string, DealOrder> dealOrders;
+        }
+
         public static string Run(HttpClient httpClient, string creditcoinUrl, string link, bool txid)
         {
             try
@@ -51,7 +69,7 @@ namespace cccore
             }
         }
 
-        public static List<string> Run(HttpClient httpClient, string creditcoinUrl, string[] args, IConfiguration config, bool txid, string pluginFolder, string progressToken, Signer signer, out bool inProgress, string secretOverride, out string link)
+        public static List<string> Run(HttpClient httpClient, string creditcoinUrl, string[] args, IConfiguration config, bool txid, string pluginFolder, string progressToken, Signer signer, out bool inProgress, string secretOverride, out string link, object extra = null)
         {
             link = null;
 
@@ -287,6 +305,12 @@ namespace cccore
                         });
 
                         match(sighash, askOrders, bidOrders, ret);
+                        if (extra != null)
+                        {
+                            var askAndBidOrders = (AskAndBidOrders)extra;
+                            askAndBidOrders.askOrders = askOrders;
+                            askAndBidOrders.bidOrders = bidOrders;
+                        }
                     }
                     else if (command[0].Equals("currentOffers", StringComparison.OrdinalIgnoreCase))
                     {
@@ -299,11 +323,11 @@ namespace cccore
                             bidOrders.Add(objid, bidOrder);
                         });
 
+                        var offers = new Dictionary<string, Offer>();
                         filter(httpClient, creditcoinUrl, ret, RpcHelper.creditCoinNamespace + RpcHelper.offerPrefix, (string objid, byte[] protobuf) =>
                         {
                             Offer offer = Offer.Parser.ParseFrom(protobuf);
-                            BidOrder bidOrder = bidOrders[offer.BidOrder];
-                            if (bidOrder.Sighash == sighash)
+                            if (bidOrders.TryGetValue(offer.BidOrder, out BidOrder bidOrder) && bidOrder.Sighash == sighash)
                             {
                                 BigInteger block;
                                 if (!BigInteger.TryParse(offer.Block, out block))
@@ -313,9 +337,26 @@ namespace cccore
                                 if (block + offer.Expiration > headIdx)
                                 {
                                     ret.Add(objid);
+                                    if (extra != null)
+                                        offers.Add(objid, offer);
                                 }
                             }
                         });
+
+                        if (extra != null)
+                        {
+                            var askOrders = new Dictionary<string, AskOrder>();
+                            filter(httpClient, creditcoinUrl, ret, RpcHelper.creditCoinNamespace + RpcHelper.askOrderPrefix, (string objid, byte[] protobuf) =>
+                            {
+                                AskOrder askOrder = AskOrder.Parser.ParseFrom(protobuf);
+                                askOrders.Add(objid, askOrder);
+                            });
+
+                            var offersAndAskAndBidOrders = (OffersAndAskAndBidOrders)extra;
+                            offersAndAskAndBidOrders.askOrders = askOrders;
+                            offersAndAskAndBidOrders.bidOrders = bidOrders;
+                            offersAndAskAndBidOrders.offers = offers;
+                        }
                     }
                     else if (command[0].Equals("creditHistory", StringComparison.OrdinalIgnoreCase))
                     {
@@ -335,6 +376,7 @@ namespace cccore
                     {
                         if (command.Length != 2) throw new Exception("2 parameters expected");
 
+                        var dealOrders = new Dictionary<string, DealOrder>();
                         filterDeals(httpClient, creditcoinUrl, ret, sighash, null, (string dealAddress, DealOrder dealOrder) =>
                         {
                             if (dealOrder.LoanTransfer.Equals(string.Empty))
@@ -347,9 +389,17 @@ namespace cccore
                                 if (block + dealOrder.Expiration > headIdx)
                                 {
                                     ret.Add(dealAddress);
+                                    if (extra != null)
+                                        dealOrders.Add(dealAddress, dealOrder);
                                 }
                             }
                         });
+
+                        if (extra != null)
+                        {
+                            var newDeals = (DealOrders)extra;
+                            newDeals.dealOrders = dealOrders;
+                        }
                     }
                     else if (command[0].Equals("transfer", StringComparison.OrdinalIgnoreCase))
                     {
@@ -367,25 +417,43 @@ namespace cccore
                     {
                         if (command.Length != 2) throw new Exception("2 parameters expected");
 
+                        var dealOrders = new Dictionary<string, DealOrder>();
                         filterDeals(httpClient, creditcoinUrl, ret, null, sighash, (string dealAddress, DealOrder dealOrder) =>
                         {
                             if (!dealOrder.LoanTransfer.Equals(string.Empty) && dealOrder.RepaymentTransfer.Equals(string.Empty))
                             {
                                 ret.Add(dealAddress);
+                                if (extra != null)
+                                    dealOrders.Add(dealAddress, dealOrder);
                             }
                         });
+
+                        if (extra != null)
+                        {
+                            var currentLoans = (DealOrders)extra;
+                            currentLoans.dealOrders = dealOrders;
+                        }
                     }
                     else if (command[0].Equals("lockedLoans", StringComparison.OrdinalIgnoreCase))
                     {
                         if (command.Length != 2) throw new Exception("2 parameters expected");
 
+                        var dealOrders = new Dictionary<string, DealOrder>();
                         filterDeals(httpClient, creditcoinUrl, ret, null, sighash, (string dealAddress, DealOrder dealOrder) =>
                         {
                             if (!dealOrder.Lock.Equals(string.Empty))
                             {
                                 ret.Add(dealAddress);
+                                if (extra != null)
+                                    dealOrders.Add(dealAddress, dealOrder);
                             }
                         });
+
+                        if (extra != null)
+                        {
+                            var lockedLoans = (DealOrders)extra;
+                            lockedLoans.dealOrders = dealOrders;
+                        }
                     }
                     else if (command[0].Equals("newRepaymentOrders", StringComparison.OrdinalIgnoreCase))
                     {
@@ -633,26 +701,24 @@ namespace cccore
         {
             foreach (var askOrderEntry in askOrders)
             {
-                foreach (var bidOrderEntry in bidOrders)
+                if (askOrderEntry.Value.Sighash.Equals(sighash))
                 {
-                    if (!askOrderEntry.Value.Sighash.Equals(sighash))
+                    foreach (var bidOrderEntry in bidOrders)
                     {
-                        break;
-                    }
+                        BigInteger askAmount, bidAmount, askInterest, bidInterest, askMaturity, bidMaturity, askFee, bidFee;
+                        if (!BigInteger.TryParse(askOrderEntry.Value.Amount, out askAmount) || !BigInteger.TryParse(bidOrderEntry.Value.Amount, out bidAmount) ||
+                            !BigInteger.TryParse(askOrderEntry.Value.Interest, out askInterest) || !BigInteger.TryParse(bidOrderEntry.Value.Interest, out bidInterest) ||
+                            !BigInteger.TryParse(askOrderEntry.Value.Maturity, out askMaturity) || !BigInteger.TryParse(bidOrderEntry.Value.Maturity, out bidMaturity) ||
+                            !BigInteger.TryParse(askOrderEntry.Value.Fee, out askFee) || !BigInteger.TryParse(bidOrderEntry.Value.Fee, out bidFee))
+                        {
+                            ret.Add("Error: Invalid numerics"); //TODO: consolidate error handling
+                            return;
+                        }
 
-                    BigInteger askAmount, bidAmount, askInterest, bidInterest, askMaturity, bidMaturity, askFee, bidFee;
-                    if (!BigInteger.TryParse(askOrderEntry.Value.Amount, out askAmount) || !BigInteger.TryParse(bidOrderEntry.Value.Amount, out bidAmount) ||
-                        !BigInteger.TryParse(askOrderEntry.Value.Interest, out askInterest) || !BigInteger.TryParse(bidOrderEntry.Value.Interest, out bidInterest) ||
-                        !BigInteger.TryParse(askOrderEntry.Value.Maturity, out askMaturity) || !BigInteger.TryParse(bidOrderEntry.Value.Maturity, out bidMaturity) ||
-                        !BigInteger.TryParse(askOrderEntry.Value.Fee, out askFee) || !BigInteger.TryParse(bidOrderEntry.Value.Fee, out bidFee))
-                    {
-                        ret.Add("Error: Invalid numerics"); //TODO: consolidate error handling
-                        return;
-                    }
-
-                    if (askAmount == bidAmount && askInterest / askMaturity <= bidInterest / bidMaturity && askFee <= bidFee)
-                    {
-                        ret.Add($"{askOrderEntry.Key} {bidOrderEntry.Key}");
+                        if (askAmount == bidAmount && askInterest / askMaturity <= bidInterest / bidMaturity && askFee <= bidFee)
+                        {
+                            ret.Add($"{askOrderEntry.Key} {bidOrderEntry.Key}");
+                        }
                     }
                 }
             }
@@ -660,7 +726,7 @@ namespace cccore
 
         public static void filter(HttpClient httpClient, string creditcoinUrl, List<string> ret, string prefix, Action<string, byte[]> lister)
         {
-            var url = $"{creditcoinUrl}/state?address={prefix}";
+            var url = $"{creditcoinUrl}/state?limit=25000&address={prefix}";
             for (; ; )
             {
                 using (HttpResponseMessage responseMessage = httpClient.GetAsync(url).Result)

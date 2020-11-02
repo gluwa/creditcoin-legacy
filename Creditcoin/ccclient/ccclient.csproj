@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -10,9 +10,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="3.1.2" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="3.1.2" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="3.1.2" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="3.1.4" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.FileExtensions" Version="3.1.4" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="3.1.4" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,10 +26,28 @@
     <None Update="appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Update="Dockerfile">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="copy $(ProjectDir)\..\*.pdb $(TargetDir)" />
+		<Copy SourceFiles="$(ProjectDir)\..\cbitcoin.pdb" 
+			  DestinationFolder="$(TargetDir)" 
+			  OverwriteReadOnlyFiles="true" 
+			  SkipUnchangedFiles="false" />
+		<Copy SourceFiles="$(ProjectDir)\..\cerc20.pdb" 
+			  DestinationFolder="$(TargetDir)" 
+			  OverwriteReadOnlyFiles="true" 
+			  SkipUnchangedFiles="false" />
+		<Copy SourceFiles="$(ProjectDir)\..\cethereum.pdb" 
+			  DestinationFolder="$(TargetDir)" 
+			  OverwriteReadOnlyFiles="true" 
+			  SkipUnchangedFiles="false" />
+		<Copy SourceFiles="$(ProjectDir)\..\cethless.pdb" 
+			  DestinationFolder="$(TargetDir)" 
+			  OverwriteReadOnlyFiles="true" 
+			  SkipUnchangedFiles="false" />
   </Target>
 
 </Project>

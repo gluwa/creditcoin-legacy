@@ -7,7 +7,7 @@ namespace ccaas.Models
 {
     public class TransferQueryParam
     {
-        public string key;
-        public TransferQuery query;
+        public string key { get; set; }
+        public TransferQuery query { get; set; }
     }
 }

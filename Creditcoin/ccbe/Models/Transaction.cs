@@ -9,14 +9,14 @@ namespace ccbe.Models
     public class Transaction
     {
         /// <summary>The ID of the transaction processor</summary>
-        public string FamilyName;
+        public string FamilyName { get; set; }
         /// <summary>The version of the transaction processor</summary>
-        public string FamilyVersion;
+        public string FamilyVersion { get; set; }
         /// <summary>The data passed to the transaction processor</summary>
-        public string Payload;
+        public string Payload { get; set; }
         /// <summary>The public key of the transaction originator</summary>
-        public string SignerPubKey;
+        public string SignerPubKey { get; set; }
         /// <summary>The sighash of the transaction originator</summary>
-        public string Sighash;
+        public string Sighash { get; set; }
     }
 }

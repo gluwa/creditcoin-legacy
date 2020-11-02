@@ -5,6 +5,7 @@ using ccbe.Models;
 using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace ccbe.Controllers
 {
@@ -20,7 +21,8 @@ namespace ccbe.Controllers
             { 183, BigInteger.Parse("118244648000000000000000000") },
             { 365, BigInteger.Parse("6263784000000000000000000") },
             { 730, BigInteger.Parse("5020233000000000000000000") },
-            { 1095, BigInteger.Parse("70471335000000000000000000") }
+            { 1095, BigInteger.Parse("70471335000000000000000000") },
+            { 2190, BigInteger.Parse("400000000000000000000000000") }
         };
 
         // GET api/blockchain
@@ -45,31 +47,80 @@ namespace ccbe.Controllers
                 BlockReward = calculateBlockReward(tip.BlockNum),
                 TrnsactionFee = "10000000000000000", //TODO: remove, use only TransactionFee
                 TransactionFee = "10000000000000000",
-                CirculationSupply = Cache.calculateSupply(),
+                CirculationSupply = Cache.calculateSupply().ToString(),
                 NetworkWeight = calculateNetworkWeight(tip.Difficulty),
-                CtcInCirculation = calculateCtcInCirculation()
+                CtcInCirculation = calculateCtcInCirculation().ToString()
             };
             return Json(blockchain);
         }
 
+        private static string fromCredo(string credos)
+        {
+            string result;
+            if (credos.Length > 18)
+            {
+                result = $"{credos.Substring(0, credos.Length - 18)}.{credos.Substring(credos.Length - 18)}";
+            }
+            else
+            {
+                result = $"0.{new String('0', 18 - credos.Length)}{credos}";
+            }
+            return result;
+        }
+
         // GET api/blockchain/ctcInCirculation
-        /// <summary>The amount of CTC currently available for exchange</summary>
+        /// <summary>The amount of CTC (aka G-CRE) currently available for exchange</summary>
         /// <returns>The amount in CTC</returns>
         /// <response code="200">If succeeds</response>
         [HttpGet("ctcInCirculation")]
         [ProducesResponseType(200)]
         public IActionResult GetCtcInCirculation()
         {
-            var amount = calculateCtcInCirculation();
-            if (amount.Length > 18)
-            {
-                amount = $"{amount.Substring(0, amount.Length - 18)}.{amount.Substring(amount.Length - 18)}";
-            }
-            else
-            {
-                amount = $"0.{new String('0', 18 - amount.Length)}{amount}";
-            }
+            var amount = fromCredo(calculateCtcInCirculation().ToString());
             return Ok(amount);
+        }
+
+        // GET api/blockchain/creditcoinsInCirculation
+        /// <summary>The amount of Creditcoins available on the network</summary>
+        /// <returns>The amount in Creditcoins</returns>
+        /// <response code="200">If succeeds</response>
+        [HttpGet("creditcoinsInCirculation")]
+        [ProducesResponseType(200)]
+        public IActionResult GetCreditcoinsInCirculation()
+        {
+            var amount = fromCredo(Cache.calculateSupply().ToString());
+            return Ok(amount);
+        }
+
+        // GET api/blockchain/circulatingSupply
+        /// <summary>The amount of Creditcoins available on the network + vested CTC (aka G-CRE)</summary>
+        /// <returns>The amount in Creditcoins</returns>
+        /// <response code="200">If succeeds</response>
+        [HttpGet("circulatingSupply")]
+        [ProducesResponseType(200)]
+        public IActionResult GetCreditcoinsReserve()
+        {
+            var amount = fromCredo((Cache.calculateSupply() + calculateCtcInCirculation()).ToString());
+            return Ok(amount);
+        }
+
+        // GET api/blockchain/richList
+        /// <summary>The amount of Creditcoins available on the network</summary>
+        /// <returns>The amount in Creditcoins</returns>
+        /// <response code="200">If succeeds</response>
+        /// <response code="503">If unable to access Creditcoin network</response>
+        [HttpGet("richList")]
+        [ProducesResponseType(200)]
+        [ProducesResponseType(503)]
+        public IActionResult GetRichList()
+        {
+            if (!Cache.IsSuccessful())
+                return new StatusCodeResult(503);
+
+            var wallets = Cache.getWallets().ToList();
+            wallets.Sort((pair1, pair2) => -pair1.Value.CompareTo(pair2.Value));
+            var ret = wallets.Take(20).Select(pair => $"{pair.Key}: {fromCredo(pair.Value.ToString())}");
+            return Json(ret);
         }
 
         private static BigInteger OLD_REWARD = BigInteger.Parse("222000000000000000000");
@@ -114,7 +165,7 @@ namespace ccbe.Controllers
             return Math.Pow(2, difficulty).ToString();
         }
 
-        private static string calculateCtcInCirculation()
+        private static BigInteger calculateCtcInCirculation()
         {
             var vestingStart = new DateTime(2019, 4, 22);
             var now = DateTime.Now;
@@ -127,7 +178,7 @@ namespace ccbe.Controllers
                 else
                     circulated += i.Value / i.Key * days;
             }
-            return circulated.ToString();
+            return circulated;
         }
     }
 }

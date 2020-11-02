@@ -1,4 +1,4 @@
-﻿################################################################################
+################################################################################
 # This .gitignore file was automatically created by Microsoft(R) Visual Studio.
 ################################################################################
 
@@ -22,8 +22,11 @@ bld/
 [Oo]bj/
 [Ll]og/
 [Pp]roperties/
-/Creditcoin/SDK/lib
-/Creditcoin/ccprocessorLinux/readme
-/Creditcoin/ccclient/plugins/progress.txt
-/Creditcoin/ccbe/Properties
-/Creditcoin/UbuntuDeployment
+
+Creditcoin/SDK/lib
+Creditcoin/ccprocessorLinux/readme
+Creditcoin/ccclient/plugins/progress.txt
+Creditcoin/cctestsuite/plugins
+Creditcoin/ccbe/Properties
+Creditcoin/UbuntuDeployment
+Creditcoin/WindowsDeployment/

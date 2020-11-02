@@ -5,6 +5,10 @@
       <Configuration>Debug</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Release-WSL|x64">
+      <Configuration>Release-WSL</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Release|x64">
       <Configuration>Release</Configuration>
       <Platform>x64</Platform>
@@ -23,15 +27,27 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>WSL_1_0</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>WSL_1_0</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-WSL|x64'" Label="Configuration">
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>WSL_1_0</PlatformToolset>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings" />
   <ImportGroup Label="Shared" />
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release-WSL|x64'">
+    <WSLPath>$(windir)\sysnative\wsl.exe</WSLPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <WSLPath>C:\Program Files\WindowsApps\CanonicalGroupLimited.Ubuntu16.04onWindows_2020.1604.14.0_x64__79rhkp1fndgsc\ubuntu1604.exe</WSLPath>
+  </PropertyGroup>
   <ItemGroup>
     <ClInclude Include="..\ccprocessor\Address.pb.h" />
     <ClInclude Include="..\ccprocessor\AskOrder.pb.h" />
@@ -87,6 +103,7 @@
     <ClCompile>
       <AdditionalIncludeDirectories>..\xtern;..\SDK\include;C:\local\boost_1_67_0</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_SCL_SECURE_NO_WARNINGS;ZMQ_STATIC;ZMQPP_STATIC_DEFINE;LOG4CXX_STATIC;_CONSOLE;IS_LINUX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <CppLanguageStandard>c++14</CppLanguageStandard>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>/user/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -98,6 +115,20 @@
     <ClCompile>
       <AdditionalIncludeDirectories>..\xtern;..\SDK\include;C:\local\boost_1_67_0</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>_SCL_SECURE_NO_WARNINGS;ZMQ_STATIC;ZMQPP_STATIC_DEFINE;LOG4CXX_STATIC;_CONSOLE;IS_LINUX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <CppLanguageStandard>c++14</CppLanguageStandard>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>/user/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>/usr/lib/x86_64-linux-gnu/libaprutil-1.so;/usr/lib/x86_64-linux-gnu/libapr-1.so;/usr/local/lib/libcryptopp.a;/usr/local/lib/libboost_system.so;/usr/local/lib/libboost_thread.so;/usr/local/lib/libboost_filesystem.so;/usr/local/lib/libcppnetlib-uri.a;/usr/local/lib/libcppnetlib-client-connections.a;/usr/local/lib/libcppnetlib-server-parsers.a;/usr/local/lib/libprotobuf.so;/usr/local/lib/libzmq.so;/usr/local/lib/libzmqpp.so;/usr/local/lib/liblog4cxx.so;/usr/local/lib/libsawtooth.a;/usr/local/lib/libproto.a</AdditionalDependencies>
+      <AdditionalOptions>'-Wl,-rpath,$ORIGIN/lib' -pthread %(AdditionalOptions)</AdditionalOptions>
+      <DebuggerSymbolInformation>OmitAllSymbolInformation</DebuggerSymbolInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-WSL|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\xtern;..\SDK\include;C:\local\boost_1_67_0</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_SCL_SECURE_NO_WARNINGS;ZMQ_STATIC;ZMQPP_STATIC_DEFINE;LOG4CXX_STATIC;_CONSOLE;IS_LINUX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <CppLanguageStandard>c++14</CppLanguageStandard>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>/user/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>

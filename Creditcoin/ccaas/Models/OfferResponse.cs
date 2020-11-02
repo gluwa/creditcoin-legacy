@@ -7,9 +7,10 @@ namespace ccaas.Models
 {
     public class OfferResponse
     {
-        public string id;
-        public string block;
-        public OrderResponse askOrder, bidOrder;
-        public string expiration;
+        public string id { get; set; }
+        public string block { get; set; }
+        public OrderResponse askOrder { get; set; }
+        public OrderResponse bidOrder { get; set; }
+        public string expiration { get; set; }
     }
 }

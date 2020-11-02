@@ -2,8 +2,12 @@
 
   <PropertyGroup>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <TargetFramework>netcoreapp2.2</TargetFramework>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -11,12 +15,19 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Google.Protobuf" Version="3.11.4" />
-    <PackageReference Include="NBitcoin" Version="5.0.20" />
+    <PackageReference Include="Google.Protobuf" Version="3.12.1" />
+    <PackageReference Include="NBitcoin" Version="5.0.39" />
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="copy $(TargetPath) $(ProjectDir)\..&#xD;&#xA;copy $(TargetDir)$(TargetName).pdb ..\..\.." />
+		<Copy SourceFiles="$(TargetPath)" 
+			  DestinationFolder="$(ProjectDir).." 
+			  OverwriteReadOnlyFiles="true" 
+			  SkipUnchangedFiles="false" />
+		<Copy SourceFiles="$(TargetDir)$(TargetName).pdb" 
+			  DestinationFolder="..\..\.." 
+			  OverwriteReadOnlyFiles="true" 
+			  SkipUnchangedFiles="false" />
   </Target>
 
 </Project>

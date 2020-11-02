@@ -7,6 +7,6 @@ namespace ccaas.Models
 {
     public class Account
     {
-        public string amount;
+        public string amount { get; set; }
     }
 }

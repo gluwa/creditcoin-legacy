@@ -7,7 +7,7 @@ namespace ccaas.Models
 {
     public class UpdateQueryParam
     {
-        public string key;
-        public UpdateQuery query;
+        public string key { get; set; }
+        public UpdateQuery query { get; set; }
     }
 }

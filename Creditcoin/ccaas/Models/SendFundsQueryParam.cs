@@ -7,7 +7,7 @@ namespace ccaas.Models
 {
     public class SendFundsQueryParam
     {
-        public string key;
-        public SendFundsQuery query;
+        public string key { get; set; }
+        public SendFundsQuery query { get; set; }
     }
 }

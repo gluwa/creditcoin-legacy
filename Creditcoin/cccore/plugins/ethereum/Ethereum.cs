@@ -304,10 +304,17 @@ namespace cethereum
                         msg = $"Failed transaction {progressToken}";
                         return false;
                     }
-                    var blockNumber = web3.Eth.Blocks.GetBlockNumber.SendRequestAsync().Result;
-                    if (blockNumber.Value - receipt.BlockNumber.Value >= mConfirmationsExpected)
+
+                    while (true)
                     {
-                        progressToken = null;
+                        var blockNumber = web3.Eth.Blocks.GetBlockNumber.SendRequestAsync().Result;
+                        if (blockNumber.Value - receipt.BlockNumber.Value >= mConfirmationsExpected)
+                        {
+                            progressToken = null;
+                            break;
+                        }
+
+                        System.Threading.Thread.Sleep(10_000);
                     }
                 }
 

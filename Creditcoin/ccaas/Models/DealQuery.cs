@@ -7,7 +7,7 @@ namespace ccaas.Models
 {
     public class DealQuery
     {
-        public string offerId;
-        public string expiration;
+        public string offerId { get; set; }
+        public string expiration { get; set; }
     }
 }

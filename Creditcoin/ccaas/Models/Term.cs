@@ -7,9 +7,9 @@ namespace ccaas.Models
 {
     public class Term
     {
-        public string amount;
-        public string interest;
-        public string maturity;
-        public string fee;
+        public string amount { get; set; }
+        public string interest { get; set; }
+        public string maturity { get; set; }
+        public string fee { get; set; }
     }
 }

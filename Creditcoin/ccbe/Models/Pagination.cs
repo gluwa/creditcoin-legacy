@@ -9,8 +9,8 @@ namespace ccbe.Models
     public class Pagination
     {
         /// <summary>A segment of an object sequence</summary>
-        public object Data;
+        public object Data { get; set; }
         /// <summary>A URL to retrieve a next segment of the sequence</summary>
-        public string Next;
+        public string Next { get; set; }
     }
 }

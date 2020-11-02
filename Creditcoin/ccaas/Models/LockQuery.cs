@@ -7,6 +7,6 @@ namespace ccaas.Models
 {
     public class LockQuery
     {
-        public string dealOrderId;
+        public string dealOrderId { get; set; }
     }
 }
