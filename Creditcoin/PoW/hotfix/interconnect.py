@@ -262,6 +262,7 @@ class _SendReceive(object):
                         self._last_message_time)
             connection_id = hashlib.sha512(
                 self.connection.encode()).hexdigest()
+            connection_info = None
             with self._connections_lock:
                 if connection_id in self._connections:
                     connection_info = self._connections[connection_id]
@@ -1204,6 +1205,7 @@ class Interconnect(object):
                                    None)
 
     def remove_connection(self, connection_id):
+        connection_info = None
         with self._connections_lock:
             LOGGER.debug("Removing connection: %s", connection_id)
             if connection_id in self._connections:
