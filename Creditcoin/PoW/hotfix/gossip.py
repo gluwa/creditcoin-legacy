@@ -790,7 +790,8 @@ class ConnectionManager(InstrumentedThread):
                     self._remove_temporary_connection(peer)
         with self._lock:
             for endpoint in nonresponsive:
-                del self._temp_endpoints[endpoint]
+                if endpoint in self._temp_endpoints:
+                    del self._temp_endpoints[endpoint]
 
     def _refresh_peer_list(self, peers):
         for conn_id in peers:
