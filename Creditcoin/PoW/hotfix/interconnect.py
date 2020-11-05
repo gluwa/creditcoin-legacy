@@ -210,14 +210,17 @@ class _SendReceive(object):
     @asyncio.coroutine
     def _do_router_heartbeat(self):
         check_time = time.time()
-        expired = \
-            [(ident, check_time - timestamp)
-             for ident, timestamp
-             in self._last_message_times.items()
-             if check_time - timestamp > self._heartbeat_interval]
+        with self._connections_lock:
+            expired = \
+                [(ident, check_time - timestamp)
+                for ident, timestamp
+                in self._last_message_times.items()
+                if check_time - timestamp > self._heartbeat_interval]
         for zmq_identity, elapsed in expired:
-            if self._is_connection_lost(
-                    self._last_message_times[zmq_identity]):
+            check_time = self._last_message_times.get(zmq_identity)
+            if check_time is None:
+                continue
+            if self._is_connection_lost(check_time):
                 LOGGER.info("No response from %s in %s seconds"
                             " - removing connection.",
                             self._identity_to_connection_id(
