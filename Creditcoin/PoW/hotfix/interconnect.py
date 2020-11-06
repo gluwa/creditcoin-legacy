@@ -162,7 +162,7 @@ class _SendReceive(object):
         self._metrics_registry = metrics_registry
         self._received_message_counters = {}
         self._dispatcher_queue = None
-        self._asyncio_lock = RLock()
+        self._stopping = False
 
     @property
     def connection(self):
@@ -401,9 +401,10 @@ class _SendReceive(object):
                               msg.SerializeToString()]
 
         try:
-            asyncio.run_coroutine_threadsafe(
-                self._send_message_frame(message_bundle),
-                self._event_loop)
+            if self._stopping == False:
+                asyncio.run_coroutine_threadsafe(
+                    self._send_message_frame(message_bundle),
+                    self._event_loop)
         except RuntimeError:
             # run_coroutine_threadsafe will throw a RuntimeError if
             # the eventloop is closed. This occurs on shutdown.
@@ -456,9 +457,10 @@ class _SendReceive(object):
         self._ready.wait()
 
         try:
-            asyncio.run_coroutine_threadsafe(
-                self._send_last_message(zmq_identity, msg),
-                self._event_loop)
+            if self._stopping == False:
+                asyncio.run_coroutine_threadsafe(
+                    self._send_last_message(zmq_identity, msg),
+                    self._event_loop)
         except RuntimeError:
             # run_coroutine_threadsafe will throw a RuntimeError if
             # the eventloop is closed. This occurs on shutdown.
@@ -530,12 +532,11 @@ class _SendReceive(object):
             self._dispatcher.add_send_last_message(self._connection,
                                                    self.send_last_message)
 
-            with self._asyncio_lock:
-                asyncio.ensure_future(self._receive_message(),
-                                    loop=self._event_loop)
+            asyncio.ensure_future(self._receive_message(),
+                                loop=self._event_loop)
 
-                asyncio.ensure_future(self._dispatch_message(),
-                                    loop=self._event_loop)
+            asyncio.ensure_future(self._dispatch_message(),
+                                loop=self._event_loop)
 
             self._dispatcher_queue = asyncio.Queue()
 
@@ -545,9 +546,8 @@ class _SendReceive(object):
                 self._monitor_sock = self._socket.get_monitor_socket(
                     zmq.EVENT_DISCONNECTED,
                     addr=self._monitor_fd)
-                with self._asyncio_lock:
-                    asyncio.ensure_future(self._monitor_disconnects(),
-                                      loop=self._event_loop)
+                asyncio.ensure_future(self._monitor_disconnects(),
+                                    loop=self._event_loop)
 
         except Exception as e:
             # Put the exception on the queue where in start we are waiting
@@ -556,14 +556,12 @@ class _SendReceive(object):
             raise
 
         if self._heartbeat:
-            with self._asyncio_lock:
-                asyncio.ensure_future(self._do_heartbeat(), loop=self._event_loop)
+            asyncio.ensure_future(self._do_heartbeat(), loop=self._event_loop)
 
         # Put a 'complete with the setup tasks' sentinel on the queue.
         complete_or_error_queue.put_nowait(_STARTUP_COMPLETE_SENTINEL)
 
-        with self._asyncio_lock:
-            asyncio.ensure_future(self._notify_started(), loop=self._event_loop)
+        asyncio.ensure_future(self._notify_started(), loop=self._event_loop)
 
         self._event_loop.run_forever()
         # event_loop.stop called elsewhere will cause the loop to break out
@@ -601,18 +599,26 @@ class _SendReceive(object):
     def _stop_event_loop(self):
         self._event_loop.stop()
 
+    def _get_tasks_for_cancelling(self):
+        self._stopping = True
+        while True:
+            try:
+                tasks = list(asyncio.Task.all_tasks(self._event_loop).copy())
+            except RuntimeError:
+                continue
+            break
+        return tasks
+
     @asyncio.coroutine
     def _stop(self):
         self._dispatcher.remove_send_message(self._connection)
         self._dispatcher.remove_send_last_message(self._connection)
         yield from self._stop_auth()
-        with self._asyncio_lock:
-            tasks = list(asyncio.Task.all_tasks(self._event_loop).copy())
+        tasks = self._get_tasks_for_cancelling()
         for task in tasks:
             task.cancel()
 
-        with self._asyncio_lock:
-            asyncio.ensure_future(self._stop_event_loop())
+        asyncio.ensure_future(self._stop_event_loop())
 
     @asyncio.coroutine
     def _notify_started(self):
@@ -634,8 +640,7 @@ class _SendReceive(object):
             # is the Auth Task.
             self._event_loop.run_until_complete(self._stop_auth())
         # Cancel all running tasks
-        with self._asyncio_lock:
-            tasks = list(asyncio.Task.all_tasks(self._event_loop).copy())
+        tasks = self._get_tasks_for_cancelling()
         for task in tasks:
             self._event_loop.call_soon_threadsafe(task.cancel)
         while tasks:
