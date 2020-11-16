@@ -22,8 +22,12 @@ bld/
 [Oo]bj/
 [Ll]og/
 [Pp]roperties/
+.[Cc]onfig/
 
-Creditcoin/SDK/lib
-Creditcoin/ccprocessorLinux/readme
+Creditcoin/ccaas/plugins
+Creditcoin/ccclient/plugins
 Creditcoin/ccclient/plugins/progress.txt
-Creditcoin/ccbe/Properties
+Creditcoin/cctestsuite/plugins
+Creditcoin/SDK/lib
+Creditcoin/UbuntuDeployment
+Creditcoin/WindowsDeployment
