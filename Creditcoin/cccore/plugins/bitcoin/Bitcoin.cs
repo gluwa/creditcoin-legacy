@@ -239,7 +239,7 @@ namespace cbitcoin
                         return false;
                     }
 
-                    var sourceAddress = bitcoinPrivateKey.GetAddress();
+                    var sourceAddress = bitcoinPrivateKey.GetAddress(ScriptPubKeyType.Legacy);
                     if (!sourceAddress.ToString().Equals(srcAddress.Value, StringComparison.OrdinalIgnoreCase))
                     {
                         msg = $"The deal is for a different client. Expected {sourceAddress.ToString()}, got {srcAddress.Value}";
@@ -263,7 +263,7 @@ namespace cbitcoin
                     TxOut outTxToSpend = null;
                     foreach (var coin in receivedCoins)
                     {
-                        if (coin.TxOut.ScriptPubKey == bitcoinPrivateKey.ScriptPubKey)
+                        if (coin.TxOut.ScriptPubKey == bitcoinPrivateKey.GetAddress(ScriptPubKeyType.Legacy).ScriptPubKey)
                         {
                             outPointToSpend = coin.Outpoint;
                             outTxToSpend = coin.TxOut;
