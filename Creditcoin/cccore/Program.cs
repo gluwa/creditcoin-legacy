@@ -227,7 +227,8 @@ namespace cccore
                 }
                 else if (action.Equals("show"))
                 {
-                    BigInteger headIdx = GetHeadIdx(httpClient, creditcoinUrl);
+                    bool isBalance = command[0].Equals("balance", StringComparison.OrdinalIgnoreCase);
+                    BigInteger headIdx = isBalance? 0: GetHeadIdx(httpClient, creditcoinUrl);
 
                     if (command.Length <= 1) throw new Exception("1 or more parameters expected");
                     string sighash;
@@ -240,13 +241,13 @@ namespace cccore
                         sighash = command[1];
                     }
 
-                    if (command[0].Equals("balance", StringComparison.OrdinalIgnoreCase))
+                    if (isBalance)
                     {
                         if (command.Length != 2) throw new Exception("2 parameters expected");
                         string prefix = RpcHelper.creditCoinNamespace + RpcHelper.walletPrefix;
                         string id = prefix + sighash;
                         string amount = "0";
-                        filter(httpClient, creditcoinUrl, ret, prefix, (string objid, byte[] protobuf) =>
+                        filter(httpClient, creditcoinUrl, ret, prefix + sighash.Substring(0, sighash.Length - 2), (string objid, byte[] protobuf) =>
                         {
                             Wallet wallet = Wallet.Parser.ParseFrom(protobuf);
                             if (objid.Equals(id))
