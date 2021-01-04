@@ -44,3 +44,5 @@ COPY hotfix/handlers.py            /usr/lib/python3/dist-packages/sawtooth_valid
 COPY hotfix/gossip_handlers.py     /usr/lib/python3/dist-packages/sawtooth_validator/gossip/gossip_handlers.py
 COPY hotfix/gossip.py              /usr/lib/python3/dist-packages/sawtooth_validator/gossip/gossip.py
 COPY hotfix/interconnect.py        /usr/lib/python3/dist-packages/sawtooth_validator/networking/interconnect.py
+COPY hotfix/consensus.py           /usr/lib/python3/dist-packages/sawtooth_validator/journal/consensus/consensus.py
+COPY hotfix/batch_injector.py      /usr/lib/python3/dist-packages/sawtooth_validator/journal/batch_injector.py

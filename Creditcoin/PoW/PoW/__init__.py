@@ -26,6 +26,7 @@ import logging
 import sys
 import atexit
 import multiprocessing as mp
+from threading import RLock
 
 from sawtooth_validator.journal.block_wrapper import BlockWrapper
 from sawtooth_validator.journal.consensus.consensus \
@@ -50,12 +51,23 @@ IDX_DIFFICULTY = 1
 IDX_NONCE = 2
 IDX_TIME = 3
 
-SOLVER = None
+SOLVER_START = 0
+SOLVER_STOP = 1
+
+SOLVER_HASH = 0
+SOLVER_WORKING = 1
+SOLVER_STOPPED = 2
+SOLVER_ERROR = 3
+
+SOLVER_PRIM = None
+SOLVER_PERF = None
 
 @atexit.register
 def _cleanup():
-    if SOLVER is not None and SOLVER._process.is_alive():
-        SOLVER._process.terminate()
+    if SOLVER_PRIM is not None and SOLVER_PRIM._process.is_alive():
+        SOLVER_PRIM._process.terminate()
+    if SOLVER_PERF is not None and SOLVER_PERF._process.is_alive():
+        SOLVER_PERF._process.terminate()
 
 class _Solver:
     def __init__(self):
@@ -70,30 +82,50 @@ class _Solver:
         try:
             while True:
                 command = responder.recv()
+                action = command[0]
+                if action == SOLVER_STOP:
+                    responder.send([SOLVER_STOPPED, 'Stopped'])
+                    continue
+
+                id = command[1]
+                difficulty = command[2]
+                encodedBlockID = command[3]
+                encodedPublicKey = command[4]
                 nonce = random.randrange(sys.maxsize)
 
                 while True:
-                    id = command[0]
-                    difficulty = command[1]
-                    encodedBlockID = command[2]
-                    encodedPublicKey = command[3]
-                    b_nonce = str(nonce).encode()
-                    digest = _Helper.build_digest_with_encoded_data(encodedBlockID, encodedPublicKey, b_nonce)
-                    if _Helper.valid_digest(digest, difficulty):
-                        break
                     if responder.poll():
                         command = responder.recv()
+                        action = command[0]
+                        if action != SOLVER_STOP:
+                            responder.send([SOLVER_ERROR, 'Expecting SOLVER_STOP'])
+                        responder.send([SOLVER_STOPPED, 'Stopped'])
+                        break
+                    b_nonce = str(nonce).encode()
+                    digest = _Helper.build_digest_with_encoded_data(encodedBlockID, encodedPublicKey, b_nonce)
+                    digest_difficulty = _Helper._count_leading_zeroes(digest)
+                    if digest_difficulty >= difficulty:
+                        responder.send([SOLVER_HASH, id, difficulty, b_nonce])
+                        difficulty = digest_difficulty + 1
                         nonce = random.randrange(sys.maxsize)
                     else:
                         nonce = nonce + 1
-                responder.send([id, difficulty, b_nonce])
         finally:
             return
 
 class _Helper:
     @staticmethod
     def valid_digest(digest, difficulty):
-        count = 0;
+        zeroes = _Helper._count_leading_zeroes(digest)
+        return zeroes >= difficulty
+
+    @staticmethod
+    def _count_leading_zeroes(digest):
+        """
+        counts leading zero bits in digest until matches or exceeds difficulty, if difficulty is given,
+        otherwise, counts all leading zero bits in digest
+        """
+        count = 0
         for b in digest:
             if b > 0:
                 if b >= 128:
@@ -115,9 +147,7 @@ class _Helper:
                 break
             else:
                 count = count + 8
-                if count >= difficulty:
-                    return True
-        return count >= difficulty
+        return count
 
     @staticmethod
     def build_digest(block_header, b_nonce):
@@ -155,7 +185,8 @@ class BlockPublisher(BlockPublisherInterface):
             config_dir,
             validator_id)
 
-        global SOLVER
+        global SOLVER_PRIM
+        global SOLVER_PERF
 
         self._block_cache = block_cache
         self._state_view_factory = state_view_factory
@@ -166,13 +197,18 @@ class BlockPublisher(BlockPublisherInterface):
         self._difficulty_tuning_block_count = DIFFICULTY_TUNING_BLOCK_COUNT
 
         self._valid_block_publishers = None
+        self._lock = RLock()
 
-        if SOLVER is None:
-            SOLVER = _Solver()
+        self._remaining_time = 0
+
+        if SOLVER_PRIM is None:
+            SOLVER_PRIM = _Solver()
+        if SOLVER_PERF is None:
+            SOLVER_PERF = _Solver()
 
     def _get_elapsed_time(self, prev_block, prev_consensus, cur_time, total_count):
         b_last_adjusted_block_time = prev_consensus[IDX_TIME]
-        count = 2
+        count = 1
 
         while True:
             prev_block = self._block_cache[prev_block.previous_block_id]
@@ -243,9 +279,10 @@ class BlockPublisher(BlockPublisherInterface):
         else:
             difficulty = self._get_adjusted_difficulty(prev_block, prev_consensus, self._start_time)
 
-        SOLVER._comm.send([self._start_time, difficulty, block_header.previous_block_id.encode(), block_header.signer_public_key.encode()])
-        LOGGER.info('New block using Gluwa PoW consensus')
+        global SOLVER_PRIM
 
+        SOLVER_PRIM._comm.send([SOLVER_START, self._start_time, difficulty, block_header.previous_block_id.encode(), block_header.signer_public_key.encode()])
+        LOGGER.info('New block using Gluwa PoW 1.1 consensus')
         return True
 
     def check_publish_block(self, block_header):
@@ -257,25 +294,70 @@ class BlockPublisher(BlockPublisherInterface):
             Boolean: True if the candidate block_header should be claimed.
         """
 
+        global SOLVER_PRIM
+        global SOLVER_PERF
+
         if self._valid_block_publishers and block_header.signer_public_key not in self._valid_block_publishers:
             return False
 
-        if not SOLVER._comm.poll():
+        if not SOLVER_PRIM._comm.poll():
             return False
 
-        pipe_result = SOLVER._comm.recv()
-        while True:
-            if self._start_time == pipe_result[0]:
-                break
-            if not SOLVER._comm.poll():
-                return False
-            pipe_result = SOLVER._comm.recv()
+        result = self._read_solver(SOLVER_PRIM, block_header)
+        if result == SOLVER_WORKING:
+            return False
+        elif result == SOLVER_STOPPED:
+            LOGGER.info('Primary solver stopped')
+            return False
+        elif result == SOLVER_ERROR:
+            LOGGER.error('Primary solver errored')
+            raise AssertionError
+        with self._lock:
+            SOLVER_PERF._comm.send([SOLVER_STOP])
+            while True:
+                pipe_result = SOLVER_PERF._comm.recv()
+                if pipe_result[0] == SOLVER_STOPPED:
+                    break
+            tmp = SOLVER_PERF
+            SOLVER_PERF = SOLVER_PRIM
+            SOLVER_PRIM = tmp
+            remaining_time = 60 - (time.time() - self._start_time)
+            if remaining_time < 0:
+                remaining_time = 0
 
-        difficulty = pipe_result[1]
-        b_nonce = pipe_result[2]
-        block_header.consensus = GLUE.join([POW, str(difficulty).encode(), b_nonce, str(self._start_time).encode()])
-
+        self._remaining_time = remaining_time
         return True
+
+    def get_remaining_time(self):
+        return self._remaining_time
+
+    def _read_solver(self, solver, block_header):
+        difficulty = None
+        b_nonce = None
+        pipe_result = solver._comm.recv()
+        while True:
+            result_type = pipe_result[0]
+            if result_type == SOLVER_ERROR:
+                LOGGER.error('Solver error: %s', pipe_result[1])
+                return SOLVER_ERROR
+            elif result_type == SOLVER_STOPPED:
+                return SOLVER_STOPPED
+            elif result_type != SOLVER_HASH:
+                LOGGER.error('Solver error: unexpected responce %s', str(result_type))
+                return SOLVER_ERROR
+            elif self._start_time == pipe_result[1]:
+                difficulty = pipe_result[2]
+                b_nonce = pipe_result[3]
+            else:
+                LOGGER.warning('Solver warning: unexpected id %s', str(pipe_result[1]))
+            if not solver._comm.poll():
+                if difficulty:
+                    break
+                return SOLVER_WORKING
+            pipe_result = solver._comm.recv()
+
+        block_header.consensus = GLUE.join([POW, str(difficulty).encode(), b_nonce, str(self._start_time).encode()])
+        return SOLVER_HASH
 
     def finalize_block(self, block_header):
         """Finalize a block to be claimed. Provide any signatures and
@@ -288,8 +370,28 @@ class BlockPublisher(BlockPublisherInterface):
         Returns:
             True
         """
-
         return True
+
+    def update_block(self, block_header):
+        global SOLVER_PERF
+        SOLVER_PERF._comm.send([SOLVER_STOP])
+        if SOLVER_PERF._comm.poll():
+            new_hash = self._read_solver(SOLVER_PERF, block_header)
+        return False
+
+    def on_cancel_publish_block(self, block_header):
+        global SOLVER_PRIM
+        global SOLVER_PERF
+        SOLVER_PRIM._comm.send([SOLVER_STOP])
+        while True:
+            pipe_result = SOLVER_PRIM._comm.recv()
+            if pipe_result[0] == SOLVER_STOPPED:
+                break
+        SOLVER_PERF._comm.send([SOLVER_STOP])
+        while True:
+            pipe_result = SOLVER_PERF._comm.recv()
+            if pipe_result[0] == SOLVER_STOPPED:
+                break
 
 class BlockVerifier(BlockVerifierInterface):
     """PoW BlockVerifier implementation
@@ -342,16 +444,30 @@ class ForkResolver(ForkResolverInterface):
             validator_id)
         self._block_cache = block_cache
 
-    def _get_difficulty(self, fork_size_diff, block, consensus):
-        difficulty = 0
+    def _get_block_at_cur_tip(self, fork_size_diff, block, consensus):
         while fork_size_diff > 0:
-            difficulty = difficulty + 2 ** int(consensus[IDX_DIFFICULTY].decode())
             block = self._block_cache[block.previous_block_id]
             consensus = block.header.consensus.split(GLUE)
             if consensus[IDX_POW] != POW:
                 break
             fork_size_diff = fork_size_diff - 1
-        return block, difficulty
+        return block
+
+    def _get_difficulties(self, block, id):
+        difficulties = []
+        while block.header_signature != id:
+            consensus = block.header.consensus.split(GLUE)
+            difficulties.append(int(consensus[IDX_DIFFICULTY].decode()))
+            block = self._block_cache[block.previous_block_id]
+        return difficulties
+
+    def _process_fork(self, block, id):
+        difficulty = 0
+        while block.header_signature != id:
+            consensus = block.header.consensus.split(GLUE)
+            difficulty = difficulty + 2 ** int(consensus[IDX_DIFFICULTY].decode())
+            block = self._block_cache[block.previous_block_id]
+        return difficulty
 
     def compare_forks(self, cur_fork_head, new_fork_head):
         """The longest chain is selected. If they are equal, then the hash
@@ -370,6 +486,11 @@ class ForkResolver(ForkResolverInterface):
         if new_consensus[IDX_POW] != POW:
             raise TypeError('New fork head {} is not a PoW block'.format(new_fork_head.identifier[:8]))
 
+        now = time.time()
+        new_time = float(new_consensus[IDX_TIME].decode())
+        if (new_time > now + 30):
+            return False
+
         # If the current fork head is not PoW consensus, check the new fork head to see if its immediate predecessor is the current fork head.
         # If so that means that consensus mode is changing.  If not, we are again in a situation that should never happen
         cur_consensus = cur_fork_head.consensus.split(GLUE)
@@ -379,20 +500,62 @@ class ForkResolver(ForkResolverInterface):
                 return True
             raise TypeError('Trying to compare a PoW block {} to a non-PoW block {} that is not the direct predecessor'.format(new_fork_head.identifier[:8], cur_fork_head.identifier[:8]))
 
-        new_block, new_difficulty = self._get_difficulty(new_fork_head.block_num - cur_fork_head.block_num, new_fork_head, new_consensus)
-        cur_block, cur_difficulty = self._get_difficulty(cur_fork_head.block_num - new_fork_head.block_num, cur_fork_head, cur_consensus)
+        cur_time = float(cur_consensus[IDX_TIME].decode())
 
+        new_block = self._get_block_at_cur_tip(new_fork_head.block_num - cur_fork_head.block_num, new_fork_head, new_consensus)
+        cur_block = self._get_block_at_cur_tip(cur_fork_head.block_num - new_fork_head.block_num, cur_fork_head, cur_consensus)
+
+        if (new_block.block_num != cur_block.block_num):
+            raise TypeError('New fork contains non PoW blocks')
+
+        common_ancestop_id = None
+        common_ancestop_height = None
+        common_ancestop_difficulty = None
+        common_ancestop_time = None
         while True:
             if new_block.header_signature == cur_block.header_signature:
+                common_ancestop_id = new_block.header_signature
+                common_ancestop_height = new_block.block_num
+                new_consensus = new_block.header.consensus.split(GLUE)
+                common_ancestop_difficulty = int(new_consensus[IDX_DIFFICULTY].decode())
+                common_ancestop_time = float(new_consensus[IDX_TIME].decode())
                 break
             new_consensus = new_block.header.consensus.split(GLUE)
             cur_consensus = cur_block.header.consensus.split(GLUE)
             if new_consensus[IDX_POW] == POW:
-                new_difficulty = new_difficulty + 2 ** int(new_consensus[IDX_DIFFICULTY].decode())
                 new_block = self._block_cache[new_block.previous_block_id]
             if cur_consensus[IDX_POW] == POW:
-                cur_difficulty = cur_difficulty + 2 ** int(cur_consensus[IDX_DIFFICULTY].decode())
                 cur_block = self._block_cache[cur_block.previous_block_id]
 
-        result = new_difficulty > cur_difficulty
-        return result
+        new_difficulties = self._get_difficulties(new_fork_head, common_ancestop_id)
+        new_fork_len = new_fork_head.block_num - common_ancestop_height
+        minimal_difficulty = common_ancestop_difficulty - new_fork_len % DIFFICULTY_ADJUSTMENT_BLOCK_COUNT - new_fork_len % DIFFICULTY_TUNING_BLOCK_COUNT - 3
+        if minimal_difficulty < 0:
+            minimal_difficulty = 0
+        for d in new_difficulties:
+            if d < minimal_difficulty:
+                return False
+
+        cur_fork_len = cur_fork_head.block_num - common_ancestop_height
+
+        new_difficulty = self._process_fork(new_fork_head, common_ancestop_id)
+        cur_difficulty = self._process_fork(cur_fork_head, common_ancestop_id)
+
+        if cur_fork_len > 0:
+            cur_av_time_dev = (cur_time - common_ancestop_time) / cur_fork_len
+        else:
+            cur_av_time_dev = 0
+        if new_fork_len > 0:
+            new_av_time_dev = (new_time - common_ancestop_time) / new_fork_len
+        else:
+            new_fork_len = 0
+
+        if new_difficulty > cur_difficulty:
+            return True
+        elif new_difficulty < cur_difficulty:
+            return False
+        elif new_difficulty == cur_difficulty:
+            if new_av_time_dev < cur_av_time_dev:
+                return True
+
+        return False

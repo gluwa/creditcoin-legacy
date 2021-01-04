@@ -508,6 +508,31 @@ class BlockValidator(object):
             current_block = chain_head
             new_block = block
 
+            # Ask consensus if the new chain should be committed
+            LOGGER.info(
+                "Comparing current chain head '%s' against new block '%s'",
+                chain_head, new_block)
+            for i in range(max(
+                len(result.new_chain), len(result.current_chain)
+            )):
+                cur = new = num = "-"
+                if i < len(result.current_chain):
+                    cur = result.current_chain[i].header_signature[:8]
+                    num = result.current_chain[i].block_num
+                if i < len(result.new_chain):
+                    new = result.new_chain[i].header_signature[:8]
+                    num = result.new_chain[i].block_num
+                LOGGER.info(
+                    "Fork comparison at height %s is between %s and %s",
+                    num, cur, new)
+
+            commit_new_chain = self._compare_forks_consensus(
+                consensus, chain_head, block)
+
+            if not commit_new_chain:
+                callback(False, result)
+                return
+
             # Get all the blocks since the greatest common height from the
             # longer chain.
             if self._compare_chain_height(current_block, new_block):
@@ -544,41 +569,19 @@ class BlockValidator(object):
                 callback(False, result)
                 return
 
-            # Ask consensus if the new chain should be committed
-            LOGGER.info(
-                "Comparing current chain head '%s' against new block '%s'",
-                chain_head, new_block)
-            for i in range(max(
-                len(result.new_chain), len(result.current_chain)
-            )):
-                cur = new = num = "-"
-                if i < len(result.current_chain):
-                    cur = result.current_chain[i].header_signature[:8]
-                    num = result.current_chain[i].block_num
-                if i < len(result.new_chain):
-                    new = result.new_chain[i].header_signature[:8]
-                    num = result.new_chain[i].block_num
-#                LOGGER.info(
-#                    "Fork comparison at height %s is between %s and %s",
-#                    num, cur, new)
-
-            commit_new_chain = self._compare_forks_consensus(
-                consensus, chain_head, block)
-
             # If committing the new chain, get the list of committed batches
             # from the current chain that need to be uncommitted and the list
             # of uncommitted batches from the new chain that need to be
             # committed.
-            if commit_new_chain:
-                commit, uncommit =\
-                    self._get_batch_commit_changes(
-                        result.new_chain, result.current_chain)
-                result.committed_batches = commit
-                result.uncommitted_batches = uncommit
+            commit, uncommit =\
+                self._get_batch_commit_changes(
+                    result.new_chain, result.current_chain)
+            result.committed_batches = commit
+            result.uncommitted_batches = uncommit
 
-                if result.new_chain[0].previous_block_id \
-                        != chain_head.identifier:
-                    self._moved_to_fork_count.inc()
+            if result.new_chain[0].previous_block_id \
+                    != chain_head.identifier:
+                self._moved_to_fork_count.inc()
 
             # Pass the results to the callback function
             callback(commit_new_chain, result)
