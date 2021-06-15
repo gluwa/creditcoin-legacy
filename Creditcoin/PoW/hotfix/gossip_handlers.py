@@ -85,24 +85,8 @@ class PeerRegisterHandler(Handler):
 
         ack = NetworkAcknowledgement()
         try:
-            direct_connection_id = self._gossip._get_outbound_connection(request.endpoint)
-            reverse_connection_id = self._gossip._get_inbound_connection(request.endpoint)
-
+            self._gossip.register_peer(connection_id, request.endpoint)
             ack.status = ack.OK
-            if direct_connection_id:
-                if reverse_connection_id:
-                    LOGGER.debug("Registering the peer %s", request.endpoint)
-                    self._gossip._topology._remove_temporary_connection(reverse_connection_id)
-                    self._gossip.register_peer(direct_connection_id, request.endpoint)
-                else:
-                    LOGGER.debug("Failed to register the peer %s", request.endpoint)
-                    self._gossip._topology._remove_temporary_connection(direct_connection_id)
-                    ack.status = ack.ERROR
-            else:
-                LOGGER.debug("Verifying the peer's endpoint %s", request.endpoint)
-                self._gossip._register_temp_peer(connection_id, request.endpoint)
-                self._gossip._topology._peer_with_endpoint(request.endpoint)
-
         except PeeringException:
             ack.status = ack.ERROR
 

@@ -69,12 +69,14 @@ class ConnectHandler(Handler):
         """
         result = urlparse(endpoint)
         hostname = result.hostname
-        port = None
         try:
             port = result.port
         except:
-            pass
+            LOGGER.warning("Unparsed port in '{}'".format(endpoint))
+            return False
+
         if hostname is None or port is None:
+            LOGGER.warning("Malformed endpoint hostname '{}' port '{}'".format(hostname, port))
             return False
         else:
             for interface in interfaces:
@@ -110,7 +112,7 @@ class ConnectHandler(Handler):
         # Medium security risk.
         interfaces = ["*", ".".join(["0", "0", "0", "0"])]
         interfaces += netifaces.interfaces()
-        if self.is_valid_endpoint_host(interfaces, message.endpoint) is False:
+        if not self.is_valid_endpoint_host(interfaces, message.endpoint):
             LOGGER.warning("Connecting peer provided an invalid endpoint: %s; "
                            "Ignoring connection request.",
                            message.endpoint)
@@ -536,5 +538,6 @@ class AuthorizationViolationHandler(Handler):
         # Close the connection
         endpoint = self._network.connection_id_to_endpoint(connection_id)
         self._network.remove_connection(connection_id)
+        self._gossip._topology.remove_connection_status(connection_id)
         self._gossip.remove_temp_endpoint(endpoint)
         return HandlerResult(HandlerStatus.DROP)

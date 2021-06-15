@@ -20,11 +20,13 @@ from collections import deque
 import logging
 import queue
 from threading import RLock
+from threading import Event
 import time
 
 from sawtooth_validator.concurrent.thread import InstrumentedThread
 from sawtooth_validator.execution.scheduler_exceptions import SchedulerError
 
+from sawtooth_validator.journal.batch_injector import GluwaBatchInjector
 from sawtooth_validator.journal.block_builder import BlockBuilder
 from sawtooth_validator.journal.block_wrapper import BlockWrapper
 from sawtooth_validator.journal.consensus.batch_publisher import \
@@ -67,6 +69,76 @@ class PendingBatchObserver(metaclass=abc.ABCMeta):
         """
         raise NotImplementedError('PendingBatchObservers must have a '
                                   '"notify_batch_pending" method')
+
+
+class _PublisherThreadAux(InstrumentedThread):
+    def __init__(self, block_publisher):
+        super().__init__(name='_PublisherThreadAux')
+        self._block_publisher = block_publisher
+        self._exit = False
+
+    def _try_update_block(self, candidate_block, consensus, block_header, publisher):
+        try:
+            # TODO: accessing _consensus and _block_builder, revisit
+            if consensus.update_block(block_header):
+                old_id = candidate_block._block_builder.identifier
+                candidate_block._sign_block(
+                    candidate_block._block_builder, publisher._identity_signer)
+                block = candidate_block._block_builder.build_block()
+                if block:
+                    blkw = BlockWrapper(block)
+                    LOGGER.debug("Updating Block: %s", blkw)
+                    # guard conc resources
+                    with publisher._lock:
+                        new_candidate = publisher._candidate_block
+                        # update previous block id in our ahead of time block before sending the block update, the send will trigger on_update pipeline which will check id's.
+                        if new_candidate and new_candidate._block_builder.previous_block_id == old_id:
+                            new_candidate._block_builder.previous_block_id = blkw.identifier
+                        publisher._blocks_published_count.inc()
+                        publisher._block_sender.send(blkw.block)
+                        publisher.on_chain_updated(None)
+        # TODO: update_block is defined only for Gluwa consensus, revisit
+        except AttributeError:
+            pass
+
+    def _event_handler(self):
+        publisher = self._block_publisher
+        start = publisher._publisher_thread_aux_start_event
+        if start.wait(1):
+            start.clear()
+            with publisher._lock:
+                candidate_block = publisher._candidate_block2
+                # No block to work on, return and wait for a new start_event.
+                if candidate_block is None:
+                    return
+                remaining_time = publisher._remaining_time
+            try:
+                consensus = candidate_block._consensus
+            # TODO: update_block is defined only for Gluwa consensus, revisit
+            except AttributeError:
+                return
+            if remaining_time <= 0:
+                return
+            while True:
+                LOGGER.debug("Waiting on threadaux update loop")
+                if not start.wait(remaining_time):
+                    self._try_update_block( candidate_block, consensus, candidate_block._block_builder.block_header, publisher)
+                else:
+                    break
+
+    def run(self):
+        try:
+            while True:
+                if self._exit:
+                    return
+                self._event_handler()
+        # pylint: disable=broad-except
+        except Exception as exc:
+            LOGGER.exception(exc)
+            LOGGER.critical("BlockPublisherAux thread exited with error.")
+
+    def stop(self):
+        self._exit = True
 
 
 class _PublisherThread(InstrumentedThread):
@@ -144,10 +216,23 @@ class _CandidateBlock(object):
         self._settings_view = settings_view
         self._signer_public_key = signer_public_key
 
-    def __del__(self):
-        self.cancel()
+        try:
+            # TODO: calling just to see if that's Gluwa consensus, revisit
+            # we need an is_gluwa_consensus method
+            self._consensus.get_remaining_time()
+            self.add_batch()
+        except AttributeError: 
+            pass
 
-    def cancel(self):
+    def __del__(self):
+        self.cancel(True)
+
+    def cancel(self, dtor=False):
+        if not dtor:
+            try:
+                self._consensus.on_cancel_publish_block()
+            except AttributeError:  # TODO: on_cancel_publish_block is defined only for Gluwa consensus, revisit
+                pass
         self._scheduler.cancel()
 
     @property
@@ -245,11 +330,11 @@ class _CandidateBlock(object):
                     self._injected_batch_ids.add(b.header_signature)
                     batch_list.append(b)
 
-    def add_batch(self, batch):
+    def add_batch(self, batch=None):
         """Add a batch to the _CandidateBlock
         :param batch: the batch to add to the block
         """
-        if batch.trace:
+        if batch and batch.trace:
             LOGGER.debug("TRACE %s: %s", batch.header_signature,
                          self.__class__.__name__)
 
@@ -259,38 +344,56 @@ class _CandidateBlock(object):
         # BlockPublisher prior to this Batch. So if there is a missing
         # dependency this is an error condition and the batch will be
         # dropped.
-        if self._is_batch_already_committed(batch):
-            # batch is already committed.
-            LOGGER.debug("Dropping previously committed batch: %s",
-                         batch.header_signature)
-            return
-        elif self._check_batch_dependencies(batch, self._committed_txn_cache):
-            batches_to_add = []
-
-            # Inject batches at the beginning of the block
-            if not self._pending_batches:
-                self._poll_injectors(lambda injector: injector.block_start(
-                    self._block_builder.previous_block_id), batches_to_add)
-
-            batches_to_add.append(batch)
-
-            if not enforce_validation_rules(
-                    self._settings_view,
-                    self._signer_public_key,
-                    self._pending_batches + batches_to_add):
+       
+        if batch:
+            if self._is_batch_already_committed(batch):
+                # batch is already committed.
+                LOGGER.debug("Dropping previously committed batch: %s",
+                            batch.header_signature)
                 return
+            elif self._check_batch_dependencies(batch, self._committed_txn_cache):
+                batches_to_add = [batch]
+                if not enforce_validation_rules(
+                        self._settings_view,
+                        self._signer_public_key,
+                        self._pending_batches + batches_to_add):
+                    return
 
-            for b in batches_to_add:
-                self._pending_batches.append(b)
-                self._pending_batch_ids.add(b.header_signature)
-                try:
-                    injected = b.header_signature in self._injected_batch_ids
-                    self._scheduler.add_batch(self._block_store.chain_head.block_num + 1, b, required=injected)
-                except SchedulerError as err:
-                    LOGGER.debug("Scheduler error processing batch: %s", err)
+                # ignore housekeeping batches that aren't from this candidate block.
+                # this is equivalent to on-chain rules, only 1 HK and at pos 0; when building a candidate block only.
+                has_housekeeping_tx = False
+                for tx in batch.transactions:
+                    if self._pending_batches and tx.payload == GluwaBatchInjector.housekeeping_payload:
+                        has_housekeeping_tx = True
+                        break
+
+                if has_housekeeping_tx:
+                    LOGGER.debug("Ignoring unneeded housekeeping batch: %s", batch)
+                    return
+                self._add_batches(batches_to_add)
+            else:
+                LOGGER.debug("Dropping batch due to missing dependencies: %s",
+                            batch.header_signature)
+        elif not self._pending_batches:
+            batches_to_add = []
+            self._poll_injectors(lambda injector: injector.block_start(
+                self._block_builder.previous_block_id), batches_to_add)
+            if batches_to_add:
+                self._add_batches(batches_to_add)
         else:
-            LOGGER.debug("Dropping batch due to missing dependencies: %s",
-                         batch.header_signature)
+            LOGGER.debug("Dead end. Don't call this method without a batch if there are pending_bathes already. Passing.")
+
+    def _add_batches(self, batches_to_add):
+        for b in batches_to_add:
+            self._pending_batches.append(b)
+            self._pending_batch_ids.add(b.header_signature)
+            try:
+                injected = b.header_signature in self._injected_batch_ids
+                #new parameter, is this lookup sync? TODO
+                self._scheduler.add_batch(
+                    self._block_store.chain_head.block_num + 1, b, required=injected)
+            except SchedulerError as err:
+                LOGGER.debug("Scheduler error processing batch: %s", err)
 
     def check_publish_block(self):
         """Check if it is okay to publish this candidate.
@@ -471,6 +574,8 @@ class BlockPublisher(object):
         """
         self._lock = RLock()
         self._candidate_block = None  # _CandidateBlock helper,
+        self._candidate_block2 = None
+        self._remaining_time = 0
         # the next block in potential chain
         self._block_cache = block_cache
         self._state_view_factory = state_view_factory
@@ -507,6 +612,8 @@ class BlockPublisher(object):
         self._batch_observers = batch_observers
         self._check_publish_block_frequency = check_publish_block_frequency
         self._publisher_thread = None
+        self._publisher_thread_aux = None
+        self._publisher_thread_aux_start_event = Event()
 
     def start(self):
         self._publisher_thread = _PublisherThread(
@@ -514,11 +621,16 @@ class BlockPublisher(object):
             batch_queue=self._batch_queue,
             check_publish_block_frequency=self._check_publish_block_frequency)
         self._publisher_thread.start()
+        self._publisher_thread_aux = _PublisherThreadAux(block_publisher=self)
+        self._publisher_thread_aux.start()
 
     def stop(self):
         if self._publisher_thread is not None:
             self._publisher_thread.stop()
             self._publisher_thread = None
+        if self._publisher_thread_aux is not None:
+            self._publisher_thread_aux.stop()
+            self._publisher_thread_aux = None
 
     def queue_batch(self, batch):
         """
@@ -612,11 +724,12 @@ class BlockPublisher(object):
             SettingsView(state_view),
             public_key)
 
-        for batch in self._pending_batches:
-            if self._candidate_block.can_add_batch:
-                self._candidate_block.add_batch(batch)
-            else:
-                break
+        with self._lock:
+            for batch in self._pending_batches:
+                if self._candidate_block.can_add_batch:
+                    self._candidate_block.add_batch(batch)
+                else:
+                    break
 
     def on_batch_received(self, batch):
         """
@@ -714,10 +827,21 @@ class BlockPublisher(object):
 
                 self._chain_head = chain_head
 
-                if self._candidate_block:
-                    self._candidate_block.cancel()
+                if chain_head is not None:
+                    if self._candidate_block2:
+                        if chain_head.identifier != self._candidate_block2._block_builder.identifier:
+                            self._cancel_perf_block_task()
+                        else:
+                            LOGGER.debug("new head is the perf block")
 
-                self._candidate_block = None  # we need to make a new
+                    if self._candidate_block:
+                        if chain_head.identifier != self._candidate_block._block_builder.previous_block_id:
+                            self._candidate_block.cancel()
+                            self._candidate_block = None
+                        else:
+                            LOGGER.debug("New chainhead is the updated block")
+                            return
+
                 # _CandidateBlock (if we can) since the block chain has updated
                 # under us.
                 if chain_head is not None:
@@ -734,6 +858,18 @@ class BlockPublisher(object):
             LOGGER.critical("on_chain_updated exception.")
             LOGGER.exception(exc)
 
+    def _cancel_perf_block_task(self):
+        with self._lock:
+            self._candidate_block2 = None
+        self._publisher_thread_aux_start_event.set()
+    
+    def _start_perf_block_task(self, remaining_time):
+        LOGGER.debug("Start new perf block task")
+        # guarded resources
+        self._remaining_time = remaining_time
+        self._candidate_block2 = self._candidate_block
+        self._publisher_thread_aux_start_event.set()
+
     def on_check_publish_block(self, force=False):
         """Ask the consensus module if it is time to claim the candidate block
         if it is then, claim it and tell the world about it.
@@ -742,46 +878,68 @@ class BlockPublisher(object):
         """
         try:
             with self._lock:
-                if (self._chain_head is not None
-                        and self._candidate_block is None
-                        and self._pending_batches):
+                if (self._chain_head is not None and self._candidate_block is None):
                     self._build_candidate_block(self._chain_head)
 
-                if (self._candidate_block
-                        and (
-                            force
-                            or self._candidate_block.has_pending_batches())
-                        and self._candidate_block.check_publish_block()):
+                if (self._candidate_block and (force or self._candidate_block.has_pending_batches())):
 
-                    pending_batches = []  # will receive the list of batches
-                    # that were not added to the block
-                    last_batch = self._candidate_block.last_batch
-                    block = self._candidate_block.finalize_block(
-                        self._identity_signer,
-                        pending_batches)
-                    self._candidate_block = None
-                    # Update the _pending_batches to reflect what we learned.
+                    ready = self._candidate_block.check_publish_block()
+                    if ready:
+                        remaining_time = None
+                        try:
+                            # TODO: accessing _consensus, revisit
+                            remaining_time = self._candidate_block._consensus.get_remaining_time()
+                        except AttributeError:  # TODO: get_remaining_time is defined only for Gluwa consensus, revisit
+                            pass
 
-                    last_batch_index = self._pending_batches.index(last_batch)
-                    unsent_batches = \
-                        self._pending_batches[last_batch_index + 1:]
-                    self._pending_batches = pending_batches + unsent_batches
+                        if remaining_time is not None:
+                            self._cancel_perf_block_task()
+                            # TODO: accessing _consensus, revisit
+                            self._candidate_block._consensus.on_accepted()
+                        else:
+                            remaining_time = 0
 
-                    self._pending_batch_gauge.set_value(
-                        len(self._pending_batches))
+                        # will receive the list of batches
+                        # that were not added to the block
+                        pending_batches = []
+                        #this is from the candidate block not the publisher
+                        last_batch = self._candidate_block.last_batch
+                        block = self._candidate_block.finalize_block(
+                            self._identity_signer,
+                            pending_batches)
 
-                    if block:
-                        blkw = BlockWrapper(block)
-                        LOGGER.info("Claimed Block: %s", blkw)
-                        self._block_sender.send(blkw.block)
-                        self._blocks_published_count.inc()
+                        if remaining_time > 5:
+                            self._start_perf_block_task(remaining_time)
+                        else:
+                            LOGGER.debug("Not enough remaining time to schedule aux solver")
+                            self._cancel_perf_block_task()
+                        self._candidate_block = None
+                        # Update the _pending_batches to reflect what we learned.
 
-                        # We built our candidate, disable processing until
-                        # the chain head is updated. Only set this if
-                        # we succeeded. Otherwise try again, this
-                        # can happen in cases where txn dependencies
-                        # did not validate when building the block.
-                        self.on_chain_updated(None)
+                        try:
+                            last_batch_index = self._pending_batches.index(last_batch)
+                            unsent_batches = self._pending_batches[last_batch_index + 1:]
+                        except ValueError:
+                            #last candidate block's batch was injected and it wont be on publisher's pending_batches
+                            unsent_batches = self._pending_batches
+
+                        self._pending_batches = pending_batches + unsent_batches
+
+                        self._pending_batch_gauge.set_value(
+                            len(self._pending_batches))
+
+                        if block:
+                            blkw = BlockWrapper(block)
+                            LOGGER.info("Claimed Block: %s", blkw)
+                            self._block_sender.send(blkw.block)
+                            self._blocks_published_count.inc()
+
+                            # We built our candidate, disable processing until
+                            # the chain head is updated. Only set this if
+                            # we succeeded. Otherwise try again, this
+                            # can happen in cases where txn dependencies
+                            # did not validate when building the block.
+                            self.on_chain_updated(None)
 
         # pylint: disable=broad-except
         except Exception as exc:

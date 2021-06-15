@@ -17,6 +17,7 @@ import logging
 
 from sawtooth_validator.concurrent.threadpool import \
     InstrumentedThreadPoolExecutor
+from sawtooth_validator.journal.batch_injector import GluwaBatchInjector
 from sawtooth_validator.journal.block_wrapper import BlockStatus
 from sawtooth_validator.journal.block_wrapper import NULL_BLOCK_IDENTIFIER
 from sawtooth_validator.journal.chain_commit_state import ChainCommitState
@@ -207,7 +208,7 @@ class BlockValidator(object):
     ):
         if blkw.block.batches:
             scheduler = self._transaction_executor.create_scheduler(
-                self._squash_handler, prev_state_root)
+                self._squash_handler, prev_state_root, block_signature=blkw.header_signature)
             self._transaction_executor.execute(scheduler)
             try:
                 for batch, has_more in look_ahead(blkw.block.batches):
@@ -227,6 +228,7 @@ class BlockValidator(object):
                         chain_commit_state.add_batch(
                             batch, add_transactions=True)
                     else:
+                        LOGGER.debug("Failed transaction dependencies or uniqueness.")
                         raise InvalidBatch()
 
                     if has_more:
@@ -259,6 +261,7 @@ class BlockValidator(object):
                     state_hash = batch_result.state_hash
                     blkw.num_transactions += len(batch.transactions)
                 else:
+                    LOGGER.debug("Batch {} marked invalid due to invalid execution result. Batch result {}".format(batch.header_signature,vars(batch_result)))
                     return False
             if blkw.state_root_hash != state_hash:
                 LOGGER.debug("Block(%s) rejected due to state root hash "
@@ -288,11 +291,21 @@ class BlockValidator(object):
         invalid.
         """
         if blkw.block_num != 0:
+            #first housekeeping txn is always valid from an on-chain perspective point
+            is_invalid_housekeeping = [True for batch in blkw.batches[1:]
+                for tx in batch.transactions if tx.payload == GluwaBatchInjector.housekeeping_payload]
+
+            if any(is_invalid_housekeeping):
+                LOGGER.debug("Block invalid due to unneeded housekeeping in batch: {}".format(blkw.header_signature))
+                return False
+            #End of Housekeeping validation
+
             return enforce_validation_rules(
                 self._settings_view_factory.create_settings_view(
                     prev_state_root),
                 blkw.header.signer_public_key,
                 blkw.batches)
+
         return True
 
     def validate_block(self, blkw, consensus, chain_head=None, chain=None):
@@ -318,10 +331,12 @@ class BlockValidator(object):
                 prev_state_root = self._get_previous_block_state_root(blkw)
             except KeyError:
                 LOGGER.debug(
-                    "Block rejected due to missing predecessor: %s", blkw)
+                    "Block failed validation due to missing predecessor: %s", blkw)
                 return False
 
             if not self._validate_permissions(blkw, prev_state_root):
+                LOGGER.debug(
+                    "Block failed validation due to invalid permissions. {}".format(blkw))
                 blkw.status = BlockStatus.Invalid
                 return False
 
@@ -335,16 +350,22 @@ class BlockValidator(object):
                 validator_id=public_key)
 
             if not consensus_block_verifier.verify_block(blkw):
+                LOGGER.debug(
+                    "Block failed validation due to consensus verifier. {}".format(blkw))
                 blkw.status = BlockStatus.Invalid
                 return False
 
             if not self._validate_on_chain_rules(blkw, prev_state_root):
+                LOGGER.debug(
+                    "Block failed validation due to onchain rules. {}".format(blkw))
                 blkw.status = BlockStatus.Invalid
                 return False
 
             if not self._validate_batches_in_block(
                 blkw, prev_state_root, chain_commit_state
             ):
+                LOGGER.debug(
+                    "Block failed validation due to invalid batches. {}".format(blkw))
                 blkw.status = BlockStatus.Invalid
                 return False
 
@@ -475,7 +496,15 @@ class BlockValidator(object):
 
         uncommitted_batches = []
         for blkw in cur_chain:
-            for batch in blkw.batches:
+            start_at = 0
+            #inspect the first batch looking for the housekeeping transaction.
+            #this is not the place to validate for malformed blocks.
+            first_tx_in_first_batch = blkw.batches[0].transactions[0]
+            if first_tx_in_first_batch.payload == GluwaBatchInjector.housekeeping_payload:
+                LOGGER.debug("Dropping housekeeping batch {} upon a new fork".format(batch.header_signature[:8]))
+                start_at = 1
+
+            for batch in blkw.batches[start_at:]:
                 uncommitted_batches.append(batch)
 
         return (committed_batches, uncommitted_batches)
@@ -545,6 +574,8 @@ class BlockValidator(object):
                 return
 
             # Ask consensus if the new chain should be committed
+            # inefficient linear lookup, consider direct index access,
+            # needs to build forks before traversing them.
             LOGGER.info(
                 "Comparing current chain head '%s' against new block '%s'",
                 chain_head, new_block)
@@ -558,10 +589,12 @@ class BlockValidator(object):
                 if i < len(result.new_chain):
                     new = result.new_chain[i].header_signature[:8]
                     num = result.new_chain[i].block_num
-#                LOGGER.info(
-#                    "Fork comparison at height %s is between %s and %s",
-#                    num, cur, new)
+            LOGGER.info(
+                "Fork comparison at height %s is between %s and %s",
+                num, cur, new)
 
+            # an early exit without validating blocks won't mark ascendant blocks as invalid if needed be,
+            # causing issues on the callback.
             commit_new_chain = self._compare_forks_consensus(
                 consensus, chain_head, block)
 
@@ -590,8 +623,8 @@ class BlockValidator(object):
         except ChainHeadUpdated:
             callback(False, result)
             return
-        except Exception:  # pylint: disable=broad-except
+        except Exception as e:  # pylint: disable=broad-except
             LOGGER.exception(
-                "Block validation failed with unexpected error: %s", block)
+                "Block validation failed with unexpected error: {} {}".format(block, e))
             # callback to clean up the block out of the processing list.
             callback(False, result)

@@ -213,8 +213,7 @@ class _SendReceive(object):
         with self._connections_lock:
             expired = \
                 [(ident, check_time - timestamp)
-                for ident, timestamp
-                in self._last_message_times.items()
+                for ident, timestamp in self._last_message_times.items()
                 if check_time - timestamp > self._heartbeat_interval]
         for zmq_identity, elapsed in expired:
             check_time = self._last_message_times.get(zmq_identity)
@@ -259,10 +258,10 @@ class _SendReceive(object):
     def _do_dealer_heartbeat(self):
         if self._last_message_time and \
                 self._is_connection_lost(self._last_message_time):
+            elapsed = time.time() - self._last_message_time
             LOGGER.info("No response from %s in %s seconds"
                         " - removing connection.",
-                        self._connection,
-                        self._last_message_time)
+                        self._connection, elapsed)
             connection_id = hashlib.sha512(
                 self.connection.encode()).hexdigest()
             connection_info = None
@@ -309,7 +308,11 @@ class _SendReceive(object):
                 zmq_identity, msg_bytes = \
                     yield from self._dispatcher_queue.get()
                 message = validator_pb2.Message()
-                message.ParseFromString(msg_bytes)
+                try:
+                    message.ParseFromString(msg_bytes)
+                except:
+                    LOGGER.critical("Incoming message couldn't be processed; dumping raw message\n{}".format(msg_bytes))
+                    raise
 
                 tag = get_enum_name(message.message_type)
                 self._get_received_message_counter(tag).inc()
@@ -795,7 +798,7 @@ class Interconnect(object):
 
     def connection_id_to_endpoint(self, connection_id):
         """
-        Get stored public key for a connection.
+        Get endpoint for a connection.
         """
         with self._connections_lock:
             if connection_id in self._connections:

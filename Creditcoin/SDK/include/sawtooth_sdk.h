@@ -27,6 +27,39 @@ namespace sawtooth {
 typedef std::unique_ptr<std::string> StringUPtr;
 typedef std::shared_ptr<std::string> StringPtr;
 
+class BlockInfo {
+public:
+    BlockInfo(::google::protobuf::uint64 block_num, const std::string& block_id, const std::string& previous_block_id, const std::string& signer):
+            block_num_(block_num)  {
+        this->block_id_ = std::make_shared<std::string>(block_id);
+        this->previous_block_id_ = std::make_shared<std::string>(previous_block_id);
+        this->signer_ = std::make_shared<std::string>(signer);
+    }
+
+    virtual ~BlockInfo(){};
+    
+    const ::google::protobuf::uint64 block_num() const {
+        return this->block_num_;
+    }
+
+    const std::string& block_id() const {
+        return *(this->block_id_);
+    }
+
+    const std::string& previous_block_id() const {
+        return *(this->previous_block_id_);
+    }
+
+    const std::string& signer() const {
+        return *(this->signer_);
+    }
+
+private:
+    ::google::protobuf::uint64 block_num_;
+    StringPtr block_id_;
+    StringPtr previous_block_id_;
+    StringPtr signer_;
+};
 
 enum TransactionHeaderField {
     TransactionHeaderBatcherPublicKey = 1,
@@ -54,8 +87,8 @@ typedef std::shared_ptr<TransactionHeader> TransactionHeaderPtr;
 // The transaction data for a Transaction Processing request.
 class Transaction final {
  public:
-    Transaction(TransactionHeaderPtr header, StringPtr payload, StringPtr signature):
-            header_(header), payload_(payload), signature_(signature) {
+    Transaction(TransactionHeaderPtr header, StringPtr payload, StringPtr signature, StringPtr block_signature):
+            header_(header), payload_(payload), signature_(signature), block_signature_(block_signature) {
     }
 
     Transaction (const Transaction&) = delete;
@@ -74,10 +107,15 @@ class Transaction final {
         return *(this->signature_);
     }
 
+    const std::string& block_signature() const {
+        return *(this->block_signature_);
+    }
+
  private:
     TransactionHeaderPtr header_;
     StringPtr payload_;
     StringPtr signature_;
+    StringPtr block_signature_;
 };
 typedef std::unique_ptr<Transaction> TransactionUPtr;
 
@@ -125,6 +163,11 @@ class GlobalState {
        const std::vector<KeyValue>& kv_pairs, const std::string& event_data) const = 0;
 
     virtual ::google::protobuf::uint64 GetTip() const = 0;
+
+    virtual void GetStatesByPrefix(const std::string& address, std::string* root, std::string* start, std::vector<KeyValue>* out_values) const = 0;
+    virtual void GetSigByNum(::google::protobuf::uint64 num, std::string* sig_out) const = 0;
+    virtual void GetBlockById(const std::string& block_id, BlockInfo* header_out) const = 0;
+    virtual void GetRewardBlockSignatures(const std::string& block_id, std::vector<std::string> &signatures, ::google::protobuf::uint64 first_pred, ::google::protobuf::uint64 last_pred) const = 0;
 };
 typedef std::shared_ptr<GlobalState> GlobalStatePtr;
 typedef std::unique_ptr<GlobalState> GlobalStateUPtr;
@@ -185,7 +228,6 @@ typedef std::unique_ptr<TransactionHandler> TransactionHandlerUPtr;
 typedef std::shared_ptr<TransactionHandler> TransactionHandlerPtr;
 
 
-
 class TransactionProcessor {
 public:
    virtual ~TransactionProcessor(){};
@@ -198,6 +240,8 @@ public:
     // The main entry point for the TransactionProcessor. It will not return
     // until the TransactionProcessor shuts down.
     virtual void Run() = 0;
+
+    virtual sawtooth::GlobalStateUPtr CreateContextlessGlobalState() = 0;
 
     static TransactionProcessor* Create(const std::string& connection_string);
 };

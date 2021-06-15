@@ -285,12 +285,14 @@ class TransactionExecutorThread(object):
                     is_valid=False,
                     context_id=None)
                 continue
+            block_sig = self._scheduler.block_signature if self._scheduler.block_signature else ""
             content = processor_pb2.TpProcessRequest(
                 tip=txn_info.tip,
                 header=header,
                 payload=txn.payload,
                 signature=txn.header_signature,
-                context_id=context_id).SerializeToString()
+                context_id=context_id,
+                block_signature=block_sig).SerializeToString()
 
             # Since we have already checked if the transaction should be failed
             # all other cases should either be executed or waited for.
@@ -412,17 +414,20 @@ class TransactionExecutor(object):
     def create_scheduler(self,
                          squash_handler,
                          first_state_root,
+                         block_signature=None,
                          always_persist=False):
         if self._scheduler_type == "serial":
             return SerialScheduler(
                 squash_handler=squash_handler,
                 first_state_hash=first_state_root,
-                always_persist=always_persist)
+                always_persist=always_persist,
+                block_signature = block_signature)
         elif self._scheduler_type == "parallel":
             return ParallelScheduler(
                 squash_handler=squash_handler,
                 first_state_hash=first_state_root,
-                always_persist=always_persist)
+                always_persist=always_persist,
+                block_signature = block_signature)
 
         else:
             raise AssertionError(

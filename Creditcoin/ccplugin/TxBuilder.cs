@@ -34,7 +34,7 @@ namespace ccplugin
     {
         private Signer mSigner;
         private const string CREDITCOIN = "CREDITCOIN";
-        private const string version = "1.6";
+        private const string version = "1.7";
         private const string pluginsFolderName = "plugins";
         private static string prefix = CREDITCOIN.ToByteArray().ToSha512().ToHexString().Substring(0, 6);
         private const int SKIP_TO_GET_60 = 512 / 8 * 2 - 60; // 512 - hash size, 8 - bits in byte, 2 - hex digits for byte, 60 - merkle address length (70) without namespace length (6) and prexix length (4)
