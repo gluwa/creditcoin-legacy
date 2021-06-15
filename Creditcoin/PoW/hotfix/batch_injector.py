@@ -102,6 +102,8 @@ class DefaultBatchInjectorFactory:
         raise UnknownBatchInjectorError(injector)
 
 class GluwaBatchInjector(BatchInjector):
+    housekeeping_payload = b'\xa2avlHousekeepingbp1a0'
+
     def __init__(self, signer):
         self._signer = signer
 
@@ -109,7 +111,7 @@ class GluwaBatchInjector(BatchInjector):
         pub_key = self._signer.get_public_key().as_hex()
         version = '1.7'
         ns = '8a1a04'
-        payload = b'\xa2avlHousekeepingbp1a0'
+        payload = GluwaBatchInjector.housekeeping_payload
         tx_header = TransactionHeader(
             family_name='CREDITCOIN',
             family_version=version,

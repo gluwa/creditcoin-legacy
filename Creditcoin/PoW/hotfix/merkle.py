@@ -17,6 +17,7 @@ import copy
 import logging
 import hashlib
 import cbor
+from collections import OrderedDict
 
 LOGGER = logging.getLogger(__name__)
 
@@ -344,8 +345,37 @@ class MerkleDatabase(object):
             leaves[address] = value
         return leaves
 
-    def _leaves_impl_fixed(self, prefix):
-        leaves = {}
+    def _yield_iter_leaves(self, node, path, start, reverse):
+        if node['v'] is not None:
+            yield (path, _decode(node['v']))
+        else:
+            sub_paths = iter(sorted(node['c'], reverse=reverse))
+            if start:
+                # Skip nodes with addresses before the path.
+                for sub_path in sub_paths:
+                    child_path = path + sub_path
+                    cutoff_path = start[:len(child_path)]
+                    if child_path == cutoff_path:
+                        child_node = self._get_by_hash(node['c'][sub_path])
+                        # First leaf must match the start address. Stop if not found.
+                        leaves = self._yield_iter_leaves(child_node, child_path, start, reverse)
+                        try:
+                            yield next(leaves)
+                        except StopIteration:
+                            return
+                        yield from leaves
+                        break
+            # Visit all nodes after.
+            for sub_path in sub_paths:
+                child_path = path + sub_path
+                child_node = self._get_by_hash(node['c'][sub_path])
+                yield from self._yield_iter_leaves(child_node, child_path, None, reverse)
+
+    def _leaves_impl_fixed(self, prefix, start, limit, reverse):
+        leaves = OrderedDict()
+        if start:
+            if not start.startswith(prefix):
+                return leaves # Leaf is not in this address range.
         if prefix == INIT_ROOT_KEY:
             node = self._root_node
         else:
@@ -353,13 +383,15 @@ class MerkleDatabase(object):
                 node = self._get_by_addr(prefix)
             except KeyError:
                 return leaves
-        for child in node["c"]:
-            for address, value in self._yield_iter_fixed(node, prefix, child):
-                leaves[address] = value
+        for address, value in self._yield_iter_leaves(node, prefix, start, reverse):
+            leaves[address] = value
+            # Exit after obtaining limit+1 leaves.
+            if limit and len(leaves) > limit:
+                break
         return leaves
 
-    def leaves(self, prefix):
-        return self._leaves_impl_fixed(prefix)
+    def leaves(self, prefix, start=None, limit=None, reverse=False):
+        return self._leaves_impl_fixed(prefix, start, limit, reverse)
 
     def close(self):
         self._database.close()

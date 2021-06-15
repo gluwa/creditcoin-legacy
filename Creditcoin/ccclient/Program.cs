@@ -37,6 +37,10 @@ namespace ccclient
                 Console.WriteLine("plugins subfolder not found");
                 args = new string[0];
             }
+            if (!Directory.Exists(pluginFolder))
+            {
+                Console.Error.WriteLine("The plugin dir " + pluginFolder + " doesn't exist.");
+            }
 
             string progressId = "";
             bool ignoreOldProgress = false;
@@ -165,7 +169,7 @@ namespace ccclient
             IConfiguration config = builder.Build();
 
             string creditcoinRestApiURL = config["creditcoinRestApiURL"];
-            string creditcoinUrl = string.IsNullOrWhiteSpace(creditcoinRestApiURL)? "http://localhost:8008": creditcoinRestApiURL;
+            string creditcoinUrl = string.IsNullOrWhiteSpace(creditcoinRestApiURL) ? "http://localhost:8008" : creditcoinRestApiURL;
             HttpClient httpClient = new HttpClient();
 
             string progressToken = null;

@@ -19,7 +19,14 @@
 
 FROM hyperledger/sawtooth-rest-api:1.0
 
+RUN apt-get update
+RUN apt-get -y install python3-pip python3
+RUN python3 -m pip install --upgrade protobuf
+
 WORKDIR /
 
 # Copy sawtooth rest api hotfix files to docker image
 COPY hotfix/route_handlers.py      /usr/lib/python3/dist-packages/sawtooth_rest_api/route_handlers.py
+COPY hotfix/client_block_pb2.py /usr/lib/python3/dist-packages/sawtooth_rest_api/protobuf/client_block_pb2.py
+COPY hotfix/validator_pb2.py /usr/lib/python3/dist-packages/sawtooth_rest_api/protobuf/validator_pb2.py
+COPY hotfix/processor_pb2.py /usr/lib/python3/dist-packages/sawtooth_rest_api/protobuf/processor_pb2.py

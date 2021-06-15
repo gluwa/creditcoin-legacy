@@ -260,13 +260,15 @@ class PredecessorTree:
 
 
 class ParallelScheduler(Scheduler):
-    def __init__(self, squash_handler, first_state_hash, always_persist):
+    def __init__(self, squash_handler, first_state_hash, always_persist, block_signature=None):
         self._squash = squash_handler
         self._first_state_hash = first_state_hash
         self._last_state_hash = first_state_hash
         self._condition = Condition()
         self._predecessor_tree = PredecessorTree()
         self._txn_predecessors = {}
+
+        self._block_signature = block_signature
 
         self._always_persist = always_persist
 
@@ -307,6 +309,10 @@ class ParallelScheduler(Scheduler):
 
         self._cancelled = False
         self._final = False
+    
+    @property
+    def block_signature(self):
+        return self._block_signature
 
     def _find_input_dependencies(self, inputs):
         """Use the predecessor tree to find dependencies based on inputs.
@@ -412,10 +418,12 @@ class ParallelScheduler(Scheduler):
     def _is_valid_batch(self, batch):
         for txn in batch.transactions:
             if txn.header_signature not in self._txn_results:
+                LOGGER.debug("txn {} not in results during batch validation".format(txn.header_signature))
                 raise _UnscheduledTransactionError()
 
             result = self._txn_results[txn.header_signature]
             if not result.is_valid:
+                LOGGER.debug("invalid transaction in batch found. txn {}".format(txn.header_signature))
                 return False
         return True
 
@@ -479,6 +487,7 @@ class ParallelScheduler(Scheduler):
             batch = self._batches_by_id[batch_signature].batch
 
             if not self._is_valid_batch(batch):
+                #LOGGER.debug("@get_batch_execution_result batch invalid") #for TRACING
                 return BatchExecutionResult(is_valid=False, state_hash=None)
 
             state_hash = None
@@ -511,8 +520,10 @@ class ParallelScheduler(Scheduler):
                         persist=self._always_persist,
                         clean_up=True)
             except _UnscheduledTransactionError:
+                LOGGER.debug("Unscheduled Transaction error during batch execution")
                 return None
 
+            #LOGGER.debug("@batch_execution_result {} {}".format(batch, state_hash)) # for TRACING
             return BatchExecutionResult(is_valid=True, state_hash=state_hash)
 
     def get_transaction_execution_results(self, batch_signature):
@@ -796,6 +807,7 @@ class ParallelScheduler(Scheduler):
                         not self._is_outstanding(txn) and \
                         not self._dependency_not_processed(txn):
                     if self._txn_failed_by_dep(txn):
+                        LOGGER.debug("transaction failed by dep")
                         self._txns_available.remove(txn)
                         self._txn_results[txn.header_signature] = \
                             TxnExecutionResult(
@@ -809,7 +821,7 @@ class ParallelScheduler(Scheduler):
                             self._can_fail_fast(txn_id):
 
                         self._txn_results[txn.header_signature] = \
-                            TxnExecutionResult(False, None, None)
+                            TxnExecutionResult(txn.header_signature, is_valid=False)
                         self._txns_available.remove(txn)
                         continue
                     next_txn = txn

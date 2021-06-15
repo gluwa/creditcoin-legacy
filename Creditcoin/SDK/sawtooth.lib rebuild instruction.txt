@@ -122,8 +122,8 @@ zeromq 3.2.5:
 		https://github.com/zeromq/zeromq3-x/releases/download/v3.2.5/zeromq-3.2.5.zip
 
 zmqpp 4.2.0:
-	https://github.com/zeromq/zmqpp/tree/master
-		https://github.com/zeromq/zmqpp/archive/master.zip
+	https://github.com/zeromq/zmqpp/releases/tag/4.2.0
+		https://github.com/zeromq/zmqpp/archive/4.2.0.zip
 
 protobuf:
 	https://github.com/google/protobuf/releases/tag/v3.5.1
@@ -275,19 +275,26 @@ build libprotobufd.lib:
 make sure all libs refer the same Runtime Library (i.e. Multi-threaded Debug DLL)
 
 ------------------------------------------------------------------------------- Building sawtooth
-unzip sawtooth-sdk-cxx-master:
-	D:\Job\gluwa\sawtooth-sdk-cxx-master
+the fork of sawtooth c++ SDK with Gluwa specific changes is here: https://github.com/gluwa/sawtooth-sdk-cxx
 
 to configure cmake to use D:\dev\vcpkg:
 	Open the CMake GUI and select your source and build directories
 		source is the folder that contains src and CMakeLists.txt (D:\Job\gluwa\sawtooth-sdk-cxx-master)
 		build is where the generated project/make files will be stored (may be a new unexisting folder, then it will be created) (D:\Job\gluwa\sawtooth-sdk-cxx-master\build)
 	click Configure
-		confirm creation of build volder if asked
+		confirm creation of build folder if asked
 	When asked to specify the generator (default 'Visual Studio 16 2019' is fine), platform (default <empty - for x64> is fine), toolset (default <empty> is fine) and radio buttons:
 		select 'Specify toolchain file for cross-compiling' and click next;
 		enter D:/dev/vcpkg/scripts/buildsystems/vcpkg.cmake in 'Specify the Toolchain file') and click Finish
 	After Configuring done, click Generate
+if you have troubles building sawtooth/proto try the following:
+	with a fresh install of vcpkg (no tools or libraries installed) in D:/dev/vcpkg
+	with cmake 3.17.2
+	create vsprojects\x64\Debug in D:\sawtooth\protobuf-3.5.1
+		copy protoc.exe 3.5.1 there
+	run CMake GUI as above but additionally, before Configuring, do the following:
+		set Protobuf_SRC_ROOT_FOLDER to D:/sawtooth/protobuf-3.5.1
+		add Protobuf_LIBRARIES as path with the value D:/sawtooth/protobuf-3.5.1/cmake/build/Debug
 
 open:
 	D:\Job\gluwa\sawtooth-sdk-cxx-master\build\sawtooth.sln
@@ -312,98 +319,13 @@ open:
 			D:\sawtooth\protobuf-3.5.1\cmake\build\Debug\libprotobufd.lib (D:\sawtooth\protobuf-3.5.1\cmake\build\Release\libprotobufd.lib)
 			D:\Job\gluwa\sawtooth-sdk-cxx-master\build\lib\Debug\proto.lib (D:\Job\gluwa\sawtooth-sdk-cxx-master\build\lib\Release\proto.lib)
 
-D:\Job\gluwa\sawtooth-sdk-cxx-master\protos\processor.proto#86
-	add:
-    uint64 tip = 5; // The block number
-
-D:\Job\gluwa\sawtooth-sdk-cxx-master\src\message_dispatcher.cpp#177
-	replace:
-            message.add(msg_data.data(), msg_data.length());
-	with
-            message.add(msg_data.data());
-
-D:\Job\gluwa\sawtooth-sdk-cxx-master\src\message_dispatcher.cpp#232
-	replace:
-        zmsg.add(msg_data.data(), msg_data.length());
-	with
-        zmsg.add(msg_data.data());
-
-D:\Job\gluwa\sawtooth-sdk-cxx-master\src\message_dispatcher.cpp#32
-	add
-#undef ERROR
-
-D:\Job\gluwa\sawtooth-sdk-cxx-master\src\message_stream.cpp#61
-	replace:
-    message.add(msg_data.data(), msg_data.length());
-	with
-    message.add(msg_data.data());
-
-D:\Job\gluwa\sawtooth-core\sdk\cxx\include\sawtooth_sdk.h#123
-	add
-    virtual ::google::protobuf::uint64 GetTip() const = 0;
-
-D:\Job\gluwa\sawtooth-core\sdk\cxx\include\sawtooth\global_state.h#35
-	replace
-        const std::string& context_id);
-	with
-        const std::string& context_id, ::google::protobuf::uint64 tip);
-
-D:\Job\gluwa\sawtooth-core\sdk\cxx\include\sawtooth\global_state.h#72
-	add
-    virtual ::google::protobuf::uint64 GetTip() const;
-
-D:\Job\gluwa\sawtooth-core\sdk\cxx\include\sawtooth\global_state.h#75
-    ::google::protobuf::uint64 tip;
-
-D:\Job\gluwa\sawtooth-sdk-cxx-master\src\global_state.cpp#35
-	replace:
-    const MessageStreamPtr& message_stream, const std::string& context_id):
-	with
-    const MessageStreamPtr& message_stream, const std::string& context_id, ::google::protobuf::uint64 newTip):
-
-D:\Job\gluwa\sawtooth-sdk-cxx-master\src\global_state.cpp#36
-	replace:
-    message_stream(message_stream), context_id(context_id) {}
-	with
-    message_stream(message_stream), context_id(context_id), tip(newTip) {}
-
-D:\Job\gluwa\sawtooth-sdk-cxx-master\src\global_state.cpp#27
-	add:
-#undef ERROR
-
-D:\Job\gluwa\sawtooth-sdk-cxx-master\src\global_state.cpp#162
-	add:
-::google::protobuf::uint64 GlobalStateImpl::GetTip() const
-{
-    return tip;
-}
-
-D:\Job\gluwa\sawtooth-sdk-cxx-master\src\transaction_processor.cpp#150
-	replace:
-                        request.context_id()));
-	with
-                        request.context_id(), request.tip()));
-
-D:\Job\gluwa\sawtooth-sdk-cxx-master\src\transaction_processor.cpp#25
-	add:
-#undef ERROR
-
-D:\Job\gluwa\sawtooth-sdk-cxx-master\src\transaction_processor.cpp#31
-	add:
-#include <signal.h>
-
-D:\Job\gluwa\sawtooth-sdk-cxx-master\src\transaction_processor.cpp#48-53
-	comment out
-
-D:\Job\gluwa\sawtooth-sdk-cxx-master\src\transaction_processor.cpp#54
-	add:
-        signal(SIGINT, &s_signal_handler);
-        signal(SIGTERM, &s_signal_handler);
-
 the client will need to refer these additional libraries:
 	sawtooth.lib;Rpcrt4.lib;Mswsock.lib;Ws2_32.lib;
 
 SDK files:
 	D:\Job\gluwa\Creditcoin\Sawtooth\sawtooth-core\sdk\cxx\include
 	D:\Job\gluwa\Creditcoin.bak\Sawtooth\sawtooth-core\sdk\cxx\lib\Debug\sawtooth.lib
+
+if changes are made to sawtooth-sdk-cxx/include/sawtooth_sdk.h the file has to be copied to Creditcoin/SDK/include
+
 ==================================================================================================== building static dependencies (end)
