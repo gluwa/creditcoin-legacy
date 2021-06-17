@@ -17,6 +17,7 @@ import copy
 import logging
 import hashlib
 import cbor
+from io import BytesIO
 from collections import OrderedDict
 
 LOGGER = logging.getLogger(__name__)
@@ -66,10 +67,10 @@ class MerkleDatabase(object):
     def _iter_impl_fixed(self):
         node = self._root_node
         for child in node["c"]:
-            yield self._yield_iter_fixed(node, '', child)
+            yield from self._yield_iter_fixed(node, '', child)
 
     def __iter__(self):
-        yield self._iter_impl_fixed()
+        yield from self._iter_impl_fixed()
 
     def _yield_iter(self, path, hash_key):
         try:
@@ -140,6 +141,25 @@ class MerkleDatabase(object):
         try:
             return _decode(self._database.get(key_hash))
         except ValueError:   # value returned from database was None
+            raise KeyError("hash {} not found in database".format(key_hash))
+    
+    def _get_skip_by_hash(self, key_hash):
+        try:
+            node_bytes = self._database.get(key_hash)
+            sub_addr = ''
+            with BytesIO(node_bytes) as byte_stream:
+                node = cbor.load(byte_stream)
+                # If the entry has more than one cbor blob, try to skip to the next leaf or multi-child branch.
+                if byte_stream.tell() < len(node_bytes):
+                    try:
+                        sub_addr, skip_hash = cbor.load(byte_stream)
+                        node = self._get_by_hash(skip_hash)
+                    except:
+                        # Ignore if not a valid (address, hash) pair.
+                        sub_addr = ''
+                        pass
+            return sub_addr, node
+        except ValueError:
             raise KeyError("hash {} not found in database".format(key_hash))
 
     def __getitem__(self, address):
@@ -226,6 +246,7 @@ class MerkleDatabase(object):
                 if path != '':
                     del path_map[parent_address]['c'][path_branch]
 
+        self._create_shortcuts(path_map, batch)
         self._database.put_multi(batch)
 
         return hash_key
@@ -287,6 +308,7 @@ class MerkleDatabase(object):
 
         if not virtual:
             # Apply all new hash, value pairs to the database
+            self._create_shortcuts(path_map, update_batch)
             self._database.put_multi(update_batch)
         return key_hash
 
@@ -321,6 +343,7 @@ class MerkleDatabase(object):
 
         batch.append((root_hash, packed))
 
+        self._create_shortcuts(path_map, batch)
         self._database.put_multi(batch)
 
         return root_hash
@@ -331,6 +354,32 @@ class MerkleDatabase(object):
             NODE_PROTO_PACKED)
 
         return NODE_PROTO_HASHED
+
+    def _create_shortcuts(self, path_map, batch):
+        found_shortcuts = {}
+        converted = {}
+        for path in sorted(path_map, key=len, reverse=True):
+            # Convert only nodes with single children.
+            if len(path_map[path]['c']) == 1:
+                child_path, child_hash = next(iter(path_map[path]['c'].items()))
+                next_path = path + child_path
+                # Get nodes missing from the batch (for deletions).
+                if next_path not in path_map:
+                    new_addr, new_node = self._get_skip_by_hash(child_hash)
+                    new_node_hash, _ = _encode_and_hash(new_node)
+                else:
+                    # Otherwise, get the shortcut path from its child.
+                    new_addr, new_node_hash = found_shortcuts.pop(next_path, ['', child_hash])
+                # Prepend the child path to extend the subpath leading to the bottom node.
+                found_shortcuts[path] = (child_path + new_addr, new_node_hash)
+                # Append the new shortcut to the CBOR blob.
+                node_hash, node_bytes = _encode_and_hash(path_map[path])
+                converted[node_hash] = node_bytes + _encode(found_shortcuts[path])
+        # Replace converted data in batches.
+        for i in range(len(batch)):
+            h = batch[i][0]
+            if h in converted:
+                batch[i] = (h, converted[h])
 
     def addresses(self):
         addresses = []
@@ -356,7 +405,10 @@ class MerkleDatabase(object):
                     child_path = path + sub_path
                     cutoff_path = start[:len(child_path)]
                     if child_path == cutoff_path:
-                        child_node = self._get_by_hash(node['c'][sub_path])
+                        next_path, child_node = self._get_skip_by_hash(node['c'][sub_path])
+                        child_path += next_path
+                        if not start.startswith(child_path):
+                            break
                         # First leaf must match the start address. Stop if not found.
                         leaves = self._yield_iter_leaves(child_node, child_path, start, reverse)
                         try:
@@ -368,7 +420,8 @@ class MerkleDatabase(object):
             # Visit all nodes after.
             for sub_path in sub_paths:
                 child_path = path + sub_path
-                child_node = self._get_by_hash(node['c'][sub_path])
+                next_path, child_node = self._get_skip_by_hash(node['c'][sub_path])
+                child_path += next_path
                 yield from self._yield_iter_leaves(child_node, child_path, None, reverse)
 
     def _leaves_impl_fixed(self, prefix, start, limit, reverse):
