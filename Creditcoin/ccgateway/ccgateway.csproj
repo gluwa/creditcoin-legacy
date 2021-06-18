@@ -26,10 +26,7 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="3.1.4" />
     <PackageReference Include="NetMQ" Version="4.0.0.207" />
     <PackageReference Include="System.Diagnostics.Debug" Version="4.3.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\ccplugin\ccplugin.csproj" />
+    <PackageReference Include="ccplugin" Version="*" />
   </ItemGroup>
 
   <ItemGroup>

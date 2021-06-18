@@ -11,18 +11,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="NBitcoin" Version="5.0.39" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\..\ccplugin\ccplugin.csproj" />
+    <PackageReference Include="NBitcoin" Version="5.0.77" />
+    <PackageReference Include="ccplugin" Version="*" />
   </ItemGroup>
 
   <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Copy SourceFiles="$(TargetPath)" 
-			  DestinationFolder="$(ProjectDir).." 
-			  OverwriteReadOnlyFiles="true" 
-			  SkipUnchangedFiles="false" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ProjectDir).." OverwriteReadOnlyFiles="true" SkipUnchangedFiles="false" />
   </Target>
 
 </Project>
