@@ -1,5 +1,3 @@
-https://creditcoin.org
-
 # Gluwa Creditcoin
 
 ## What is Creditcoin?
@@ -24,6 +22,13 @@ In order to facilitate modular updates, the Creditcoin components have been divi
 Creditcoin is licensed under the [GNU Lesser General Public License](COPYING.LESSER) software license.
 
 Licenses of dependencies distributed with this repository are provided under the Creditcoin\DependencyLicense directory.
+
+
+## Development Process
+----------------------
+
+The master branch is regularly built and tested, but it is not guaranteed to be completely stable.
+Tags are created regularly from release branches to indicate new official, stable release versions of Gluwa Creditcoin.
 
 
 ## Prerequisite for Windows
