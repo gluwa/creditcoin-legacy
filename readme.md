@@ -11,6 +11,15 @@ The Creditcoin protocol was created by Gluwa. Gluwa Creditcoin is the official i
 
 For more information, see https://creditcoin.org, or read the [original whitepaper](https://creditcoin.org/white-paper).
 
+## Other Creditcoin Components
+------------------------------
+
+In order to facilitate modular updates, the Creditcoin components have been divided into several repos.
+
+* This repo includes the Sawtooth 1.0.5 PoW consensus engine, Creditcoin Gateway, Creditcoin Processor, and Sawtooth REST API Hotfixes
+* [Sawtooth-Core](https://github.com/gluwa/Sawtooth-Core) contains the Creditcoin fork of Sawtooth 1.2.x and is where most future development will take place
+* [Creditcoin-Shared](https://github.com/gluwa/Creditcoin-Shared) has the CCCore, CCPlugin framework, and several plugins such as Bitcoin, ERC20, Ethereum and Ethless
+* [Creditcoin-Client](https://github.com/gluwa/Creditcoin-Client) houses the command-line client for communicating with the Creditcoin blockchain
 
 ## License
 -----------
