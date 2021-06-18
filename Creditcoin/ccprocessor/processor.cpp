@@ -48,9 +48,6 @@ using namespace std::chrono_literals;
 #include <zmqpp/socket_types.hpp>
 
 #include <boost/algorithm/string.hpp>
-#include <boost/network/protocol/http/client.hpp>
-#include <boost/network/protocol/http/client/connection/normal_delegate.ipp>
-#include <boost/network/uri/uri.ipp>
 #include <boost/multiprecision/cpp_int.hpp>
 
 #include "Address.pb.h"
@@ -72,9 +69,8 @@ const size_t PREFIX_LENGTH = 4;
 const int SKIP_TO_GET_60 = 512 / 8 * 2 - 60; // 512 - hash size in bits, 8 - bits in byte, 2 - hex digits for byte, 60 - merkle address length (70) without namespace length (6) and prexix length (4)
 
 const char* URL_PREFIX = "tcp://";
-static std::string URL_GATEWAY = "tcp://127.0.0.1:55555";
-static std::string URL_REST_API = "http://localhost:8008";
-static std::string URL_VALIDATOR = "tcp://127.0.0.1:4004";
+static std::string URL_GATEWAY = "tcp://localhost:55555";
+static std::string URL_VALIDATOR = "tcp://localhost:4004";
 static const std::string TRANSFERS_ROOT = "TRANSFERS_ROOT";
 static const std::string NAMESPACE = "CREDITCOIN";
 static const std::string SETTINGS_NAMESPACE = "000000";
@@ -132,6 +128,7 @@ static const int YEAR_OF_BLOCKS = 60 * 24 * 365;
 static const int BLOCKS_IN_PERIOD = YEAR_OF_BLOCKS * 6;
 static const boost::multiprecision::cpp_int BLOCKS_IN_PERIOD_UPDATE1 = 2500000;
 static const int REMAINDER_OF_LAST_PERIOD = 2646631;
+static const int BLOCK_REWARD_PROCESSING_COUNT = 10;
 
 static char const* TX_FEE_STRING = "10000000000000000";
 static boost::multiprecision::cpp_int TX_FEE(TX_FEE_STRING);
@@ -161,7 +158,7 @@ struct Tx
     std::vector<std::uint8_t> payload;
 };
 
-struct Block
+struct SimpleBlock
 {
     std::string signer;
     std::vector<Tx> txs;
@@ -196,7 +193,7 @@ struct TxPos
 };
 
 static std::map<std::string, TxPos> txguid2prevblockidx;
-static std::vector<Block> blocks;
+static std::vector<SimpleBlock> blocks;
 
 static std::mutex stateUpdateLock;
 static std::map<std::string, std::string> transitioningState;
@@ -207,6 +204,8 @@ static int updatedTxIdx;
 static std::unique_ptr<std::thread> updatingSettings;
 
 static boost::multiprecision::cpp_int v2block;
+
+sawtooth::GlobalStateUPtr contextlessState;
 
 static int dealExpFixBlock = 278890;
 
@@ -335,12 +334,6 @@ static void parseArgs(int argc, char** argv)
         URL_GATEWAY = argv[shift + 2];
     }
     std::cout << "Using gateway URL: " << URL_GATEWAY << std::endl;
-
-    if (argc >= 4)
-    {
-        URL_REST_API = argv[shift + 3];
-    }
-    std::cout << "Using rest api URL: " << URL_REST_API << std::endl;
 }
 
 static const char* base64lookupString = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -389,8 +382,10 @@ static std::vector<std::uint8_t> toVector(std::string const& in)
     return out;
 }
 
-static void filter(Ctx const& ctx, std::string* url, std::string const& prefix, std::function<void(std::string const&, std::vector<std::uint8_t> const&)> const& lister)
+// filter should paginate
+static void filter(Ctx const& ctx, std::string const& prefix, std::function<void(std::string const&, std::string const&)> const& lister)
 {
+    //no pagination needed!?
     if (ctx.transitioning)
     {
         auto currentState = ctx.currentState;
@@ -401,83 +396,47 @@ static void filter(Ctx const& ctx, std::string* url, std::string const& prefix, 
             if (updated == currentState.end())
             {
                 if (e.first.rfind(prefix, 0) == 0 && e.second.size() > 0)
-                    lister(e.first, toVector(e.second));
+                    lister(e.first, e.second);
             }
         }
         for (auto& e: currentState)
         {
             if (e.first.rfind(prefix, 0) == 0 && e.second.size() > 0)
-                lister(e.first, toVector(e.second));
+                lister(e.first, e.second);
         }
 
         return;
     }
 
-    using namespace boost::network;
-    http::client client;
 
+    std::string root;
+    std::string start;
     try
     {
-        if (url->empty())
-            *url = URL_REST_API + "/state?address=" + prefix;
+        do
+        {
+            std::vector<sawtooth::GlobalState::KeyValue> states_paginated_slice;
+            contextlessState->GetStatesByPrefix(prefix, &root, &start, &states_paginated_slice);
 
-        http::client::request request(*url);
-        request << header("Connection", "close");
-        std::string json = body(client.get(request));
-        nlohmann::json response = nlohmann::json::parse(json);
-        if (response.count(ERR) || response.count(DATA) != 1)
-        {
-            throw sawtooth::InvalidTransaction(RPC_FAILURE);
-        }
-        auto& data = response[DATA];
-        if (!data.is_array())
-        {
-            throw sawtooth::InvalidTransaction(RPC_FAILURE);
-        }
-        auto statesArray = data.get<std::vector<nlohmann::json::value_type>>();
-        for (auto& state : statesArray)
-        {
-            if (state.count(ADDRESS) != 1 || state.count(DATA) != 1)
+            // don't rely on vector length, the vector holds a paginated subset only.
+            for (auto& state : states_paginated_slice)
             {
-                throw sawtooth::InvalidTransaction(RPC_FAILURE);
+                std::string address = state.first;
+                std::string protobuf = state.second;
+                lister(address, protobuf);
             }
-            std::string address = state[ADDRESS];
-            std::string content = state[DATA];
-            auto protobuf = decodeBase64(content);
-            lister(address, protobuf);
-        }
-        if (response.count(PAGING) != 1)
-        {
-            throw sawtooth::InvalidTransaction(RPC_FAILURE);
-        }
-        auto& paging = response[PAGING];
-        if (!paging.is_object())
-        {
-            throw sawtooth::InvalidTransaction(RPC_FAILURE);
-        }
-        size_t pagingNext = paging.count(NEXT);
-        if (pagingNext == 0)
-        {
-            url->clear();
-        }
-        else
-        {
-            if (pagingNext != 1)
-            {
-                throw sawtooth::InvalidTransaction(RPC_FAILURE);
-            }
-            std::string next = paging[NEXT];
-            url->swap(next);
-        }
+
+        } while (!start.empty());
     }
     catch (sawtooth::InvalidTransaction const&)
     {
         throw;
     }
-    catch (...)
+    catch (std::exception const& e)
     {
-        url->clear();
-        throw sawtooth::InvalidTransaction(RPC_FAILURE);
+        //make it throw on purpose to test logs
+        LOG4CXX_DEBUG(logger, "filter op failed");
+        throw sawtooth::InvalidTransaction(e.what());
     }
 }
 
@@ -539,20 +498,14 @@ static void doUpdateSettings()
         assert(!transitioning);
 
         std::unique_ptr<std::map<std::string, std::string>> newSettings(new std::map<std::string, std::string>());
-        std::string url;
-        for (;;)
-        {
-            filter(Ctx(), &url, SETTINGS_NAMESPACE, [&newSettings](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
-                Setting setting;
-                setting.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
-                for (auto& entry : setting.entries())
-                {
-                    (*newSettings)[entry.key()] = entry.value();
-                }
-            });
-            if (url.empty())
-                break;
-        }
+        filter(Ctx(), SETTINGS_NAMESPACE, [&newSettings](std::string const& address, std::string const& protobuf) {
+            Setting setting;
+            setting.ParseFromString(protobuf);
+            for (auto& entry : setting.entries())
+            {
+                (*newSettings)[entry.key()] = entry.value();
+            }
+        });
         {
             //nothrow segment:
             auto updatedSettings = newSettings.release();
@@ -564,7 +517,7 @@ static void doUpdateSettings()
         auto i = actualSettings->find("sawtooth.validator.gateway");
         if (i != actualSettings->end())
         {
-           std::unique_ptr<std::string> address(new std::string(i->second));
+            std::unique_ptr<std::string> address(new std::string(i->second));
             if (address->find("tcp://") != 0)
             {
                 *address = "tcp://" + *address;
@@ -610,8 +563,9 @@ static void updateSettings()
     // this is a thread routine, we don't join the thread and don't care if it's in progress when the process termitates, just terminating it is ok
     for (;;)
     {
-        std::this_thread::sleep_for(6000s);
+        std::this_thread::sleep_for(6s);
         doUpdateSettings();
+        std::this_thread::sleep_for(6000s);
     }
 }
 
@@ -731,7 +685,8 @@ static std::string compress(std::string const& uncompressed)
 
     std::string ret;
 
-    if (uncompressed.length() == 2 * (1 + 2 * 32) && isHex(uncompressed) && uncompressed.substr(0, 2) == "04")
+    std::string marker = uncompressed.substr(0, 2);
+    if (uncompressed.length() == 2 * (1 + 2 * 32) && isHex(uncompressed) && marker == "04")
     {
         std::string x = uncompressed.substr(2 * 1, 2 * 32);
         std::string yLast = uncompressed.substr(2 * (1 + 32 + 31), 2 * 1);
@@ -750,6 +705,10 @@ static std::string compress(std::string const& uncompressed)
                 ret = "02" + x;
             }
         }
+    }
+    else if ((marker == "02" || marker == "03") && uncompressed.length() == 66)
+    {
+        return uncompressed;
     }
 
     if (!ret.length())
@@ -1010,14 +969,14 @@ public:
                 if (updatedBlockIdx == blocks.size() - 1 && updatedTxIdx == blocks[updatedBlockIdx].txs.size() - 1)
                 {
                     std::cout << "Revalidated last block, terminating in a minute" << std::endl;
-                    new std::thread(cleanupTransitioning);
+                    std::thread(cleanupTransitioning).detach();
                 }
             }
             std::lock_guard<std::mutex> guard(killerLock);
             lastTime = std::chrono::system_clock::now();
             if (!killerStarted)
             {
-                new std::thread(killer);
+                std::thread(killer).detach();
                 killerStarted = true;
             }
         }
@@ -1172,10 +1131,14 @@ public:
     std::string getStateData(sawtooth::GlobalState* state, std::string const& id, bool existing = false)
     {
         std::string stateData;
+
         if (!getState(state , &stateData, id))
         {
-            throw sawtooth::InvalidTransaction("Failed to retrieve the state " + id);
+            //The section below is commented out because sawtooth 1.0.5 inconsistently returns either key:None or empty list for the same state query
+            //      when porting to rust make sure that in sawtooth 1.2 that doesn't happen or doesn't have a special meaning
+            //    throw sawtooth::InvalidTransaction("Failed to retrieve the state " + id);
         }
+
         if (existing && stateData.empty())
         {
             throw sawtooth::InvalidTransaction("Existing state expected " + id);
@@ -1322,12 +1285,9 @@ private:
         }
     }
 
-    void reward(boost::multiprecision::cpp_int const& processedBlockIdx, boost::multiprecision::cpp_int const& startBlockIdx)
+    void reward(boost::multiprecision::cpp_int const& processedBlockIdx, boost::multiprecision::cpp_int const& uptoBlockIdx)
     {
-        assert(startBlockIdx > processedBlockIdx);
-
-        using namespace boost::network;
-        http::client client;
+        assert(uptoBlockIdx == 0 || uptoBlockIdx > processedBlockIdx);
 
         try
         {
@@ -1340,10 +1300,10 @@ private:
                 if (updateBlock + 500 < processedBlockIdx)
                     newFormula = true;
 
-                for (boost::multiprecision::cpp_int i = startBlockIdx; i > processedBlockIdx; --i)
+                for (boost::multiprecision::cpp_int i = uptoBlockIdx; i > processedBlockIdx; --i)
                 {
                     int idx = i.convert_to<int>();
-                    Block const& block = blocks[idx];
+                    SimpleBlock const& block = blocks[idx];
 
                     award(newFormula, i, block.signer);
                 }
@@ -1360,60 +1320,36 @@ private:
                     newFormula = true;
             }
 
-            std::string url = URL_REST_API + "/blocks";
-            for (;;)
-            {
-                http::client::request request(url);
-                request << header("Connection", "close");
-                std::string json = body(client.get(request));
-                nlohmann::json response = nlohmann::json::parse(json);
-                if (response.count(ERR) || response.count(DATA) != 1)
-                {
-                    throw sawtooth::InvalidTransaction(RPC_FAILURE);
-                }
-                auto data = response[DATA];
-                if (!data.is_array())
-                {
-                    throw sawtooth::InvalidTransaction(RPC_FAILURE);
-                }
+            //TODO: use ClientBlockList insted of ClientBlockGetById to retrieve multiple blocks
+            //TODO: combine awards for the same miner if possible
 
-                auto blocksArray = data.get<std::vector<nlohmann::json::value_type>>();
-                for (auto block : blocksArray)
-                {
-                    boost::multiprecision::cpp_int blockIdx = blockNumInt(block);
+            boost::multiprecision::cpp_int const& lastBlockIdx = (uptoBlockIdx == 0) ?
+                processedBlockIdx + BLOCK_REWARD_PROCESSING_COUNT :
+                uptoBlockIdx;
 
-                    // we are going in descending block index order
-                    if (blockIdx > startBlockIdx) // untill reaching the requested block
-                    {
-                        continue;
+            const std::string* sig = &txn->block_signature();
+            if (sig->empty()) {
+                for (boost::multiprecision::cpp_int i = processedBlockIdx + 1; i <= lastBlockIdx; ++i)
+                {
+                    ::google::protobuf::uint64 height = i.convert_to< ::google::protobuf::uint64>();
+                    std::string signer;
+                    contextlessState->GetSigByNum(height, &signer);
+                    award(newFormula, i, signer);
+                }
+            } else {
+
+                auto first = lastBlockIdx.convert_to< ::google::protobuf::uint64>();
+                auto last = (processedBlockIdx + 1).convert_to< ::google::protobuf::uint64>();
+                std::vector<std::string> signatures;
+                contextlessState->GetRewardBlockSignatures(*sig,signatures, first, last);
+
+                {
+                    boost::multiprecision::cpp_int i = processedBlockIdx;
+
+                    for(auto signature : signatures){
+                        award(newFormula, ++i, signature);
                     }
-
-                    if (blockIdx == processedBlockIdx) // blocks with lower indicies have been processed already
-                    {
-                        return;
-                    }
-
-                    std::string signer = getFromHeader(block, SIGNER_PUBLIC_KEY);
-                    award(newFormula, blockIdx, signer);
                 }
-                if (response.count(PAGING) != 1)
-                {
-                    throw sawtooth::InvalidTransaction(RPC_FAILURE);
-                }
-                auto paging = response[PAGING];
-                if (!paging.is_object())
-                {
-                    throw sawtooth::InvalidTransaction(RPC_FAILURE);
-                }
-                size_t pagingNext = paging.count(NEXT);
-                if (pagingNext == 0)
-                    break;
-                if (pagingNext != 1)
-                {
-                    throw sawtooth::InvalidTransaction(RPC_FAILURE);
-                }
-                std::string next = paging[NEXT];
-                url.swap(next);
             }
         }
         catch (sawtooth::InvalidTransaction const&)
@@ -1474,13 +1410,6 @@ private:
             return txn->header()->GetValue(sawtooth::TransactionHeaderField::TransactionHeaderNonce);
     }
 
-private:
-    std::string askOrderUrl;
-    std::string bidOrderUrl;
-    std::string offerUrl;
-    std::string dealOrderUrl;
-    std::string repaymentOrderUrl;
-    std::string feeUrl;
 
 public: //TODO: tmp, remove 'public', ctx should be private
     Ctx ctx;
@@ -2364,8 +2293,6 @@ private:
 
     void Housekeeping(nlohmann::json const& query)
     {
-        verifyGatewaySigner();
-
         boost::multiprecision::cpp_int blockIdx;
         std::string ignore = getBigint(query, "p1", "blockIdx", &blockIdx);
 
@@ -2376,6 +2303,19 @@ private:
         {
             lastProcessedBlockIdx = getBigint(stateData);
         }
+
+        if (blockIdx == 0)
+        {
+            boost::multiprecision::cpp_int head = lastBlockInt(ctx);
+            if (lastProcessedBlockIdx + CONFIRMATION_COUNT * 2 + BLOCK_REWARD_PROCESSING_COUNT < head)
+            {
+                reward(lastProcessedBlockIdx, 0);
+                setState(state, processedBlockIdx, toString(lastProcessedBlockIdx + BLOCK_REWARD_PROCESSING_COUNT));
+            }
+            return;
+        }
+
+        verifyGatewaySigner();
 
         if (blockIdx < CONFIRMATION_COUNT * 2 || blockIdx <= lastProcessedBlockIdx)
         {
@@ -2391,9 +2331,9 @@ private:
 
         Applicator* applicator = this;
         sawtooth::GlobalState* s = state.get();
-        filter(ctx, &askOrderUrl, namespacePrefix + ASK_ORDER, [applicator, blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
+        filter(ctx, namespacePrefix + ASK_ORDER, [applicator, blockIdx, s](std::string const& address, std::string const& protobuf) {
             AskOrder askOrder;
-            askOrder.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
+            askOrder.ParseFromString(protobuf);
             boost::multiprecision::cpp_int start = getBigint(askOrder.block());
             boost::multiprecision::cpp_int elapsed = blockIdx - start;
             if (askOrder.expiration() < elapsed)
@@ -2401,9 +2341,9 @@ private:
                 applicator->deleteState(s, address);
             }
         });
-        filter(ctx, &bidOrderUrl, namespacePrefix + BID_ORDER, [applicator, blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
+        filter(ctx, namespacePrefix + BID_ORDER, [applicator, blockIdx, s](std::string const& address, std::string const& protobuf) {
             BidOrder bidOrder;
-            bidOrder.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
+            bidOrder.ParseFromString(protobuf);
             boost::multiprecision::cpp_int start = getBigint(bidOrder.block());
             boost::multiprecision::cpp_int elapsed = blockIdx - start;
             if (bidOrder.expiration() < elapsed)
@@ -2411,9 +2351,9 @@ private:
                 applicator->deleteState(s, address);
             }
         });
-        filter(ctx, &offerUrl ,namespacePrefix + OFFER, [applicator, blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
+        filter(ctx, namespacePrefix + OFFER, [applicator, blockIdx, s](std::string const& address, std::string const& protobuf) {
             Offer offer;
-            offer.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
+            offer.ParseFromString(protobuf);
             boost::multiprecision::cpp_int start = getBigint(offer.block());
             boost::multiprecision::cpp_int elapsed = blockIdx - start;
             if (offer.expiration() < elapsed)
@@ -2421,9 +2361,9 @@ private:
                 applicator->deleteState(s, address);
             }
         });
-        filter(ctx, &dealOrderUrl, namespacePrefix + DEAL_ORDER, [applicator, blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
+        filter(ctx, namespacePrefix + DEAL_ORDER, [applicator, blockIdx, s](std::string const& address, std::string const& protobuf) {
             DealOrder dealOrder;
-            dealOrder.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
+            dealOrder.ParseFromString(protobuf);
             boost::multiprecision::cpp_int start = getBigint(dealOrder.block());
             boost::multiprecision::cpp_int elapsed = blockIdx - start;
             if (dealOrder.expiration() < elapsed && dealOrder.loan_transfer().empty())
@@ -2445,9 +2385,9 @@ private:
                 applicator->deleteState(s, address);
             }
         });
-        filter(ctx, &repaymentOrderUrl, namespacePrefix + REPAYMENT_ORDER, [applicator, blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
+        filter(ctx, namespacePrefix + REPAYMENT_ORDER, [applicator, blockIdx, s](std::string const& address, std::string const& protobuf) {
             RepaymentOrder repaymentOrder;
-            repaymentOrder.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
+            repaymentOrder.ParseFromString(protobuf);
             boost::multiprecision::cpp_int start = getBigint(repaymentOrder.block());
             boost::multiprecision::cpp_int elapsed = blockIdx - start;
             if (repaymentOrder.expiration() < elapsed && repaymentOrder.previous_owner().empty())
@@ -2455,9 +2395,9 @@ private:
                 applicator->deleteState(s, address);
             }
         });
-        filter(ctx, &feeUrl, namespacePrefix + FEE, [applicator, blockIdx, s](std::string const& address, std::vector<std::uint8_t> const& protobuf) {
+        filter(ctx, namespacePrefix + FEE, [applicator, blockIdx, s](std::string const& address, std::string const& protobuf) {
             Fee fee;
-            fee.ParseFromArray(protobuf.data(), static_cast<int>(protobuf.size()));
+            fee.ParseFromString(protobuf);
             boost::multiprecision::cpp_int start(fee.block());
             boost::multiprecision::cpp_int elapsed = blockIdx - start;
             if (YEAR_OF_BLOCKS < elapsed)
@@ -2473,7 +2413,7 @@ private:
                 wallet.set_amount(toString(getBigint(wallet.amount()) + TX_FEE));
 
                 wallet.SerializeToString(&stateData);
-                applicator->setState(s, address, stateData);
+                applicator->setState(s, walletId, stateData);
                 applicator->deleteState(s, address);
             }
         });
@@ -2497,7 +2437,7 @@ public:
 
     std::list<std::string> versions() const
     {
-        return { "1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6" };
+        return { "1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7" };
     }
 
     std::list<std::string> namespaces() const
@@ -2516,9 +2456,9 @@ static void setupSettingsAndExternalGatewayAddress()
     std::ifstream migrationData(transitionFile);
     if (!static_cast<bool>(migrationData.good()))
     {
-        doUpdateSettings();
         assert(updatingSettings.get() == nullptr);
         updatingSettings.reset(new std::thread(updateSettings));
+        updatingSettings->detach();
     }
     else
     {
@@ -2536,7 +2476,7 @@ static void setupSettingsAndExternalGatewayAddress()
                 int size = blockIdx + 1;
                 blocks.resize(size);
             }
-            Block b;
+            SimpleBlock b;
             b.signer = line;
             int txCount = 0;
             for (; ; ++txCount)
@@ -2583,14 +2523,13 @@ int main(int argc, char** argv)
     // console5> ccclient creditcoin tmpAddDeal bitcoin mvJr4KdZdx7NzJL87Xx5FNstP1tttbGvq2 10500 bitcoin mp3PRSq1ZKtSDxTqSwWSBLCm3EauHcVD7g 10000
     // console5> ccclient bitcoin registerTransfer 8a1a04aa595e25f63564472cebc9337366bcd4495aee0c50130e0b32975d78313ff35b
     parseArgs(argc, argv);
-    setupSettingsAndExternalGatewayAddress();
+
+    zmqpp::context context;
+    socketContext = &context;
 
     int ret = -1;
     try
     {
-        zmqpp::context context;
-        socketContext = &context;
-
         localGateway = new zmqpp::socket(context, zmqpp::socket_type::request);
         localGateway->connect(URL_GATEWAY);
         localGateway->set(zmqpp::socket_option::receive_timeout, LOCAL_SOCKET_TIMEOUT_MILLISECONDS);
@@ -2601,6 +2540,10 @@ int main(int argc, char** argv)
         log4cxx::BasicConfigurator::configure();
 
         sawtooth::TransactionProcessorUPtr processor(sawtooth::TransactionProcessor::Create(URL_VALIDATOR));
+
+        contextlessState = processor->CreateContextlessGlobalState();
+        setupSettingsAndExternalGatewayAddress();
+
         sawtooth::TransactionHandlerUPtr transactionHandler(new Handler());
         processor->RegisterHandler(std::move(transactionHandler));
 
