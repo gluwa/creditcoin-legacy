@@ -3,7 +3,6 @@ https://creditcoin.org
 # Gluwa Creditcoin
 
 ## What is Creditcoin?
----------------------
 
 Creditcoin is a network that enables cross-blockchain credit transaction and credit history building. Creditcoin uses blockchain technology to ensure the objectivity of its credit transaction history: each transaction on the network is distributed and verified by the network.
 
@@ -12,7 +11,6 @@ The Creditcoin protocol was created by Gluwa. Gluwa Creditcoin is the official i
 For more information, see https://creditcoin.org, or read the [original whitepaper](https://creditcoin.org/white-paper).
 
 ## Other Creditcoin Components
-------------------------------
 
 In order to facilitate modular updates, the Creditcoin components have been divided into several repos.
 
@@ -22,7 +20,6 @@ In order to facilitate modular updates, the Creditcoin components have been divi
 * [Creditcoin-Client](https://github.com/gluwa/Creditcoin-Client) houses the command-line client for communicating with the Creditcoin blockchain
 
 ## License
------------
 
 Creditcoin is licensed under the [GNU Lesser General Public License](COPYING.LESSER) software license.
 
@@ -30,7 +27,6 @@ Licenses of dependencies distributed with this repository are provided under the
 
 
 ## Prerequisite for Windows
-------------------------
 
 #### Boost 1.67.0 source
 
@@ -111,7 +107,6 @@ Follow the instructions in `\Creditcoin\SDK\sawtooth.lib rebuild instructions.tx
 
 
 ## Prerequisite for Ubuntu 16.04
------------------------------
 
 ### Visual Studio's Workload for Linux development with C++
 
