@@ -614,8 +614,9 @@ class ConnectionManager(InstrumentedThread):
             # removed
             to_remove = []
             self._refresh_connection_list()
-            peers = self._gossip.get_peers().values()
+            peers = self._gossip.get_peers()
             self._refresh_peer_list(peers)
+            peers = peers.values()
 
             for endpoint in peers:
                 self._static_peer_status[endpoint] = \
