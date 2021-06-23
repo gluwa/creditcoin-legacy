@@ -18,6 +18,7 @@ import time
 import random
 import os
 import binascii
+from threading import Lock
 from threading import RLock
 from functools import partial
 from collections import namedtuple
@@ -128,7 +129,7 @@ class Gossip:
                 topology update checks.
         """
         self._peering_mode = peering_mode
-        self._lock = RLock()
+        self._lock = Lock()
         self._network = network
         self._endpoint = endpoint
         self._initial_seed_endpoints = initial_seed_endpoints \
@@ -470,7 +471,7 @@ class ConnectionManager(InstrumentedThread):
         """
         super().__init__(name="ConnectionManager")
         # lock acquire order ; ConnectionManager -> Gossip
-        self._lock = RLock()
+        self._lock = Lock()
         self._stopped = False
         self._gossip = gossip
         self._network = network
@@ -565,8 +566,10 @@ class ConnectionManager(InstrumentedThread):
             self._gossip.send_block_request("HEAD", conn_id)
 
     def retry_dynamic_peering(self):
-        self._refresh_peer_list(self._gossip.get_peers())
-        peers = self._gossip.get_peers()
+        with self._lock:
+            with self._gossip._lock:
+                self._refresh_peer_list(self._gossip._peers)
+                peers = self._gossip._peers
         peer_count = len(peers)
         if peer_count < self._min_peers:
             LOGGER.debug(
@@ -576,12 +579,10 @@ class ConnectionManager(InstrumentedThread):
                 peer_count,
                 self._min_peers)
 
-            self._reset_candidate_peer_endpoints()
-            self._refresh_peer_list(peers)
-            self._refresh_connection_list()
-            self._check_temp_endpoints()
-
-            peers = self._gossip.get_peers()
+            with self._lock:
+                self._reset_candidate_peer_endpoints()
+                self._refresh_connection_states()
+                self._check_temp_endpoints()
 
             self._get_peers_of_peers(peers)
             candidates = set(self._initial_seed_endpoints) - \
@@ -611,13 +612,15 @@ class ConnectionManager(InstrumentedThread):
                     random.choice(unpeered_candidates))
 
     def retry_static_peering(self):
+        LOGGER.info("static CP start")
         with self._lock:
             # Endpoints that have reached their retry count and should be
             # removed
             to_remove = []
-            self._refresh_connection_list()
-            peers = self._gossip.get_peers()
-            self._refresh_peer_list(peers)
+            self._refresh_connection_states()
+            with self._gossip._lock:
+                peers = self._gossip._peers
+                self._refresh_peer_list(peers)
             peers = peers.values()
 
             for endpoint in peers:
@@ -629,6 +632,8 @@ class ConnectionManager(InstrumentedThread):
 
             candidates = set(self._initial_peer_endpoints) - set([self._endpoint])
             not_peered = candidates - set(peers)
+
+            LOGGER.warning("static CP")
             for endpoint in not_peered:
 
                 static_peer_info = self._static_peer_status[endpoint]
@@ -718,38 +723,39 @@ class ConnectionManager(InstrumentedThread):
 
     def _check_temp_endpoints(self):
         """For any temp_endpoint not authorized, remove it and add a new connection.
+        Note: Needs sync.
         """
-        with self._lock:
-            for endpoint in self._temp_endpoints:
-                endpoint_info = self._temp_endpoints[endpoint]
-                if (time.time() - endpoint_info.time) > \
-                        endpoint_info.retry_threshold:
-                    LOGGER.debug("Endpoint has not completed authorization in "
-                                 "%s seconds: %s",
-                                 endpoint_info.retry_threshold,
-                                 endpoint)
-                    try:
-                        # If the connection exists remove it before retrying to
-                        # authorize. If the connection does not exist, a
-                        # KeyError will be thrown.
-                        conn_id = \
-                            self._network.get_connection_id_by_endpoint(
+        for endpoint in self._temp_endpoints:
+            endpoint_info = self._temp_endpoints[endpoint]
+            if (time.time() - endpoint_info.time) > \
+                    endpoint_info.retry_threshold:
+                LOGGER.debug("Endpoint has not completed authorization in "
+                                "%s seconds: %s",
+                                endpoint_info.retry_threshold,
                                 endpoint)
-                        self._network.remove_connection(conn_id)
-                    except KeyError:
-                        pass
+                try:
+                    # If the connection exists remove it before retrying to
+                    # authorize. If the connection does not exist, a
+                    # KeyError will be thrown.
+                    conn_id = \
+                        self._network.get_connection_id_by_endpoint(
+                            endpoint)
+                    self._network.remove_connection(conn_id)
+                except KeyError:
+                    pass
 
-                    new_threshold = endpoint_info.retry_threshold if endpoint_info.retry_threshold != MAXIMUM_RETRY_FREQUENCY else INITIAL_RETRY_FREQUENCY / 2
-                    new_threshold = min(new_threshold * 2,
-                                        MAXIMUM_RETRY_FREQUENCY)
-                    self._network.add_outbound_connection(endpoint)
-                    self._temp_endpoints[endpoint] = EndpointInfo(
-                        endpoint_info.status,
-                        time.time(),
-                        new_threshold)
+                new_threshold = endpoint_info.retry_threshold if endpoint_info.retry_threshold != MAXIMUM_RETRY_FREQUENCY else INITIAL_RETRY_FREQUENCY / 2
+                new_threshold = min(new_threshold * 2,
+                                    MAXIMUM_RETRY_FREQUENCY)
+                self._network.add_outbound_connection(endpoint)
+                self._temp_endpoints[endpoint] = EndpointInfo(
+                    endpoint_info.status,
+                    time.time(),
+                    new_threshold)
 
     def _refresh_peer_list(self, peers):
         """Remove any peer without a connection and its connection status.
+            Note: Needs sync, CManager and Gossip locks
         """
 
         for conn_id, endpoint in peers.items():
@@ -760,23 +766,22 @@ class ConnectionManager(InstrumentedThread):
                              "connection went away",
                              endpoint)
 
-                with self._lock:
-                    self._gossip.unregister_peer(conn_id)
-                    if conn_id in self._connection_statuses:
-                        del self._connection_statuses[conn_id]
+                self._gossip._unregister_peer(conn_id)
+                if conn_id in self._connection_statuses:
+                    del self._connection_statuses[conn_id]
 
-    def _refresh_connection_list(self):
+    def _refresh_connection_states(self):
         """Cleans out any old connections that have disconnected.
             Remove any connection_status without a connection.
+            Note: needs sync.
         """
-        with self._lock:
-            closed_connections = []
-            for connection_id in self._connection_statuses:
-                if not self._network.has_connection(connection_id):
-                    closed_connections.append(connection_id)
+        closed_connections = []
+        for connection_id in self._connection_statuses:
+            if not self._network.has_connection(connection_id):
+                closed_connections.append(connection_id)
 
-            for connection_id in closed_connections:
-                del self._connection_statuses[connection_id]
+        for connection_id in closed_connections:
+            del self._connection_statuses[connection_id]
 
     def _get_peers_of_peers(self, peers):
         """Send get_peers request to peers.
@@ -871,8 +876,8 @@ class ConnectionManager(InstrumentedThread):
             self._network.add_outbound_connection(endpoint)
 
     def _reset_candidate_peer_endpoints(self):
-        with self._lock:
-            self._candidate_peer_endpoints = []
+        """Needs sync"""
+        self._candidate_peer_endpoints = []
 
     def _peer_callback(self, request, result, connection_id, endpoint=None):
         ack = NetworkAcknowledgement()
