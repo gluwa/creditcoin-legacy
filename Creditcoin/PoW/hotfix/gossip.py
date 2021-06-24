@@ -40,6 +40,19 @@ from sawtooth_validator.exceptions import PeeringException
 
 LOGGER = logging.getLogger(__name__)
 
+class ILock():
+    def __init__(self, name, lock):
+        self._name = name
+        self._lock = lock()
+
+    def __enter__(self):
+        LOGGER.warning("θ;%s;Wait", self._name)
+        self._lock.acquire()
+        LOGGER.warning("θ;%s;Acq", self._name)
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self._lock.release()
+        LOGGER.warning("θ;%s;Rel", self._name)
 
 class PeerStatus(Enum):
     CLOSED = 1
@@ -128,7 +141,7 @@ class Gossip:
                 topology update checks.
         """
         self._peering_mode = peering_mode
-        self._lock = Lock()
+        self._lock = ILock("Gossip", Lock)
         self._network = network
         self._endpoint = endpoint
         self._initial_seed_endpoints = initial_seed_endpoints \
@@ -227,6 +240,7 @@ class Gossip:
     def register_peer(self, connection_id, endpoint):
         """Register a peer with connection_id if there are no abandoned peers with the same endpoint and the max connected peer count is not reached.
 
+        Note: Needs sync [ConnectionManager lock]
         Args:
             connection_id (str): A unique identifier which identifies an
                 connection on the network server socket.
@@ -352,6 +366,7 @@ class Gossip:
     def send(self, message_type, message, connection_id, one_way=False):
         """Sends a message via the network.
 
+        Note: Needs Lock.
         Args:
             message_type (str): The type of the message.
             message (bytes): The message to be sent.
@@ -471,7 +486,7 @@ class ConnectionManager(InstrumentedThread):
         """
         super().__init__(name="ConnectionManager")
         # lock acquire order ; ConnectionManager -> Gossip
-        self._lock = Lock()
+        self._lock = ILock("CM", Lock)
         self._stopped = False
         self._gossip = gossip
         self._network = network
