@@ -31,6 +31,7 @@ RUN python3 -m pip install --upgrade protobuf
 
 # Copy sawtooth validator hotfix files to docker image
 COPY hotfix/batch_injector.py      /usr/lib/python3/dist-packages/sawtooth_validator/journal/batch_injector.py
+COPY hotfix/block_cache.py         /usr/lib/python3/dist-packages/sawtooth_validator/journal/block_cache.py
 COPY hotfix/block_validator.py     /usr/lib/python3/dist-packages/sawtooth_validator/journal/block_validator.py
 COPY hotfix/chain.py               /usr/lib/python3/dist-packages/sawtooth_validator/journal/chain.py
 COPY hotfix/cli.py                 /usr/lib/python3/dist-packages/sawtooth_validator/server/cli.py
