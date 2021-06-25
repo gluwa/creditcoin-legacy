@@ -37,6 +37,7 @@ COPY hotfix/chain.py               /usr/lib/python3/dist-packages/sawtooth_valid
 COPY hotfix/cli.py                 /usr/lib/python3/dist-packages/sawtooth_validator/server/cli.py
 COPY hotfix/client_block_pb2.py    /usr/lib/python3/dist-packages/sawtooth_validator/protobuf/client_block_pb2.py
 COPY hotfix/client_handlers.py     /usr/lib/python3/dist-packages/sawtooth_validator/state/client_handlers.py
+COPY hotfix/completer.py         /usr/lib/python3/dist-packages/sawtooth_validator/journal/completer.py
 COPY hotfix/component_handlers.py  /usr/lib/python3/dist-packages/sawtooth_validator/server/component_handlers.py
 COPY hotfix/consensus.py           /usr/lib/python3/dist-packages/sawtooth_validator/journal/consensus/consensus.py
 COPY hotfix/core.py                /usr/lib/python3/dist-packages/sawtooth_validator/server/core.py
