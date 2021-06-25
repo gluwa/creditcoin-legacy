@@ -17,7 +17,7 @@ import logging
 from threading import RLock
 from collections import deque
 
-from sawtooth_validator.journal.block_cache import BlockCache
+from sawtooth_validator.journal.block_cache import BlockCacheFlagged
 from sawtooth_validator.journal.block_wrapper import BlockWrapper
 from sawtooth_validator.journal.block_wrapper import NULL_BLOCK_IDENTIFIER
 from sawtooth_validator.journal.timed_cache import TimedCache
@@ -68,7 +68,7 @@ class Completer(object):
         """
         self.gossip = gossip
         self.batch_cache = TimedCache(cache_keep_time, cache_purge_frequency)
-        self.block_cache = BlockCache(block_store,
+        self.block_cache = BlockCacheFlagged(block_store,
                                       cache_keep_time,
                                       cache_purge_frequency)
         self._block_store = block_store

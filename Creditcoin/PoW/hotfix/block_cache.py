@@ -176,3 +176,22 @@ class BlockCache(MutableMapping):
         for block_id in dec_count_for:
             if block_id in self._cache:
                 self._cache[block_id].dec_count()
+
+class BlockCacheFlagged(BlockCache):
+
+    def __getitem__(self, block_id, stored=None):
+        with self._lock:
+            try:
+                value = self._cache[block_id]
+                value.touch()
+                if stored:
+                    stored.found_in_store = False
+                return value.value
+            except KeyError:
+                if block_id in self._block_store:
+                    block = self._block_store[block_id]
+                    self.__setitem__(block_id, block)
+                    if stored:
+                        stored.found_in_store = True
+                    return block
+                raise
