@@ -1,0 +1,24 @@
+[package]
+name = "ccconsensus"
+version = "0.1.0"
+authors = [
+  "Vladimir Kuznetsov <vladimir.kouznetsov@gluwa.com>",
+  "Devin Turner <devin.turner@gluwa.com>"
+]
+edition = "2018"
+
+[[bin]]
+name = "ccconsensus"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0.31"
+byteorder = "1.3.4"
+chrono = "0.4.11"
+clap = "2.33.1"
+crossbeam-channel = "0.4.2"
+fern = "0.6.0"
+log = "0.4.8"
+rand = "0.7.3"
+sawtooth-sdk = "0.4.4"
+sha2 = "0.9.0"

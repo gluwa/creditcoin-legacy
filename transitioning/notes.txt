@@ -1,0 +1,36 @@
+build updated gluwa/creditcoin-processor image, tagged as gluwa/creditcoin-processor:2.0
+	sawtooth library must be updated:
+		src/message_dispatcher.cpp #177
+			Replace
+				message.add(msg_data.data(), msg_data.length()); 
+			With
+				message.add(msg_data.data());
+		src/message_dispatcher.cpp #232
+			Replace
+				zmsg.add(msg_data.data(), msg_data.length()); 
+			With
+				zmsg.add(msg_data.data());
+
+build transition tool for Ubuntu
+	Creditcoin\transitioning\cctt
+
+build new cctt image and deploy it to the docker depot, tagged as gluwa/cctt:1.0
+	use Creditcoin\transitioning\cctt\Dockerfile
+
+update creditcoin settings:
+	sawset proposal create --url <<<http://localhost:8008>>> --key <<<admin.priv>>> sawtooth.validator.transaction_families='[{"family": "creditcoin", "version": "2.0"},{"family": "creditcoin", "version": "1.4"},{"family": "creditcoin", "version": "1.3"},{"family": "creditcoin", "version": "1.2"},{"family": "creditcoin", "version": "1.1"},{"family": "creditcoin", "version": "1.0"}, {"family":"sawtooth_settings", "version":"1.0"}]'
+
+stop validator
+	docker-compose -file creditcoin-default.yaml stop
+	docker-compose -file creditcoin-default.yaml down
+
+from Creditcoin\transitioning run transition.ps1
+	run transcheck.ps1 periodically to check the state of the process
+	if the process has not sucseeded or failed, but output doesn't output lines:
+		Verifying state for block * (block_num:*, state:*, previous_block_id:*)
+	(where some actual values are usen insted of stars) for a few minutes, theare is something wrong.
+	
+build new gluwa/creditcoin-consensus image and deploy it to the docker depot, tagged as gluwa/creditcoin-consensus:2.0
+	Creditcoin\cconsensus, same Dokerfile as for processor should do
+
+update Dockerfile for ccclient to use dotnet-runtime-3.1, and update the image, tagged as gluwa/creditcoin-client:2.0

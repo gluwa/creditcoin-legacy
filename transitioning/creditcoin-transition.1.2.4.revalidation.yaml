@@ -1,0 +1,67 @@
+version: "3.7"
+
+services:
+
+  validator:
+    image: hyperledger/sawtooth-validator:1.2.4
+    container_name: sawtooth-validator
+    volumes:
+      - type: volume
+        source: validator-block-volume
+        target: /var/lib/sawtooth/
+      - type: volume
+        source: validator-key-volume
+        target: /etc/sawtooth/keys/
+    expose:
+      - 4004
+      - 8800
+    ports:
+      - "4004:4004"
+      - "8800:8800"
+    entrypoint: bash -c '
+        sed -i -e "111i\ \ \ \ \ \ \ \ connection_timeout=30000," /usr/lib/python3/dist-packages/sawtooth_validator/server/state_verifier.py;
+       sawtooth-validator -vv --bind component:tcp://eth0:4004'
+
+  settings-tp:
+    image: hyperledger/sawtooth-settings-tp:1.2.4
+    container_name: sawtooth-settings-tp
+    depends_on:
+      - validator
+    entrypoint: settings-tp -vv -C tcp://validator:4004
+
+  rest-api:
+    image: hyperledger/sawtooth-rest-api:1.2.4
+    container_name: sawtooth-rest-api
+    ports:
+      - "8008:8008"
+    depends_on:
+      - validator
+    entrypoint: sawtooth-rest-api -C tcp://validator:4004 --bind rest-api:8008
+
+  processor:
+    image: gluwa/creditcoin-processor-next:nightly
+    container_name: creditcoin-processor
+    volumes:
+      - type: volume
+        source: cctt-volume
+        target: /home/Creditcoin/cctt/data/
+    depends_on:
+      - validator
+    entrypoint: |
+      bash -c '
+        rm /home/Creditcoin/cctt/data/done.txt
+        rm /home/Creditcoin/cctt/data/fail.txt
+        ./ccprocessorLinux.out tcp://validator:4004 tcp://127.0.0.1:55555 http://rest-api:8008
+        if [ -f /home/Creditcoin/cctt/data/transition.txt ]
+        then
+            echo >> /home/Creditcoin/cctt/data/fail.txt
+            while [ -f /home/Creditcoin/cctt/data/fail.txt ]; do sleep 2; done
+        else
+            echo >> /home/Creditcoin/cctt/data/done.txt
+            while [ -f /home/Creditcoin/cctt/data/done.txt ]; do sleep 2; done
+        fi'
+
+volumes:
+  validator-block-volume:
+  validator-key-volume:
+  cctt-volume:

@@ -1,0 +1,68 @@
+version: "3.7"
+
+services:
+
+  validator:
+    image: gluwa/creditcoin-validator:latest
+    container_name: sawtooth-validator
+    volumes:
+      - type: volume
+        source: validator-block-volume
+        target: /var/lib/sawtooth/
+      - type: volume
+        source: validator-key-volume
+        target: /etc/sawtooth/keys/
+    expose:
+      - 4004
+      - 8800
+    ports:
+      - "4004:4004"
+      - "8800:8800"
+    entrypoint: sawtooth-validator -vv --bind component:tcp://eth0:4004 --endpoint tcp://validator:8800 --bind network:tcp://eth0:8800
+
+  rest-api:
+    image: hyperledger/sawtooth-rest-api:1.0
+    container_name: sawtooth-rest-api
+    ports:
+      - "8008:8008"
+    depends_on:
+      - validator
+    entrypoint: sawtooth-rest-api -C tcp://validator:4004 --bind rest-api:8008
+
+  processor:
+    image: gluwa/creditcoin-processor:latest
+    container_name: creditcoin-processor
+    depends_on:
+      - validator
+      - rest-api
+    entrypoint: | 
+      bash -c './ccprocessorLinux.out tcp://validator:4004 tcp://127.0.0.1:55555 http://rest-api:8008'
+
+  cctt:
+    image: gluwa/cctt:latest
+    container_name: cctt
+    volumes:
+      - type: volume
+        source: cctt-volume
+        target: /home/Creditcoin/cctt/data/
+    depends_on:
+      - processor
+    entrypoint: |
+      bash -c '
+        rest_status=$$(curl -s --head -w %{http_code} http://rest-api:8008/state?address=000000 -o /dev/null)
+        while [ "$$rest_status" != "200" ]
+        do
+            echo $$rest_status
+            sleep 2
+            rest_status=$$(curl -s --head -w %{http_code} http://rest-api:8008/state?address=000000 -o /dev/null)
+        done
+        rm /home/Creditcoin/cctt/data/transition.txt
+        rm /home/Creditcoin/cctt/data/done.txt
+        /home/Creditcoin/cctt/cctt http://rest-api:8008 data/transition.txt
+        echo >> /home/Creditcoin/cctt/data/done.txt
+        while [ -f /home/Creditcoin/cctt/data/done.txt ]; do sleep 2; done'
+
+volumes:
+  validator-block-volume:
+  validator-key-volume:
+  cctt-volume:
