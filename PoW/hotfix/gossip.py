@@ -934,7 +934,7 @@ class ConnectionManager(InstrumentedThread):
         """
         Note: Needs sync, ConnectionManager.
         """
-        status = self._connection_statuses[connection_id]
+        status = self._connection_statuses.get(connection_id)
         if status == PeerStatus.TEMP:
             LOGGER.debug("Closing connection to %s", connection_id)
             msg = DisconnectMessage()
