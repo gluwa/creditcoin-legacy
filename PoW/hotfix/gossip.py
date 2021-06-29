@@ -486,7 +486,8 @@ class ConnectionManager(InstrumentedThread):
 
     def start(self):
         # First, attempt to connect to explicit peers
-        for endpoint in self._initial_peer_endpoints:
+        endpoints = set(self._initial_peer_endpoints) - set([self._endpoint])
+        for endpoint in endpoints:
             self._static_peer_status[endpoint] = \
                 StaticPeerInfo(
                     time=0,
