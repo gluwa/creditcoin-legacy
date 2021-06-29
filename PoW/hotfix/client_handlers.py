@@ -21,7 +21,6 @@ import copy
 import logging
 from time import time
 import itertools
-from collections import namedtuple
 from functools import cmp_to_key
 import re
 import threading
