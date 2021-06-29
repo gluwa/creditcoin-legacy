@@ -770,6 +770,10 @@ class RewardListRequest(_ClientRequestHandler):
             block_store = block_store)
         self._block_cache = block_cache
 
+    class BoolWrapper:
+        def __init__(self) -> None:
+            self.found_in_store=False
+
     def _respond(self, request):
         """
         - If the distance between the head block and the first block of interest (padding)
@@ -809,7 +813,7 @@ class RewardListRequest(_ClientRequestHandler):
             assert(0 < padding)
             INTERVAL_LIMIT = 20
             assert(delta < INTERVAL_LIMIT)
-            DEPTH_LIMIT = 120
+            DEPTH_LIMIT = 10000
             #assert(padding < DEPTH_LIMIT)
             if DEPTH_LIMIT < padding:
                 padding_traversal = False
@@ -827,12 +831,23 @@ class RewardListRequest(_ClientRequestHandler):
                 raise _ResponseFailed(self._status.INTERNAL_ERROR)
 
         height = head_block.block_num
+        is_block = self.BoolWrapper()
 
         try:
             #find tip to be rewarded
             while head_block.block_num != first_pred_height and head_block.block_num == height:
-                head_block = self._block_cache[head_block.previous_block_id]
+                head_block = self._block_cache.__getitem__(head_block.previous_block_id, stored=is_block)
                 height -= 1
+                #predecessors are in the store already
+                if is_block.found_in_store:
+                    try:
+                        head_block = self._block_store.get_block_by_number(first_pred_height)
+                        height = first_pred_height
+                        LOGGER.debug("Predecessors found in store, jumping to first_pred at height %s", height)
+                        break
+                    except KeyError:
+                        LOGGER.warning("Block {} not found while skipping padding blocks".format(head_block.header_signature[:8]))
+                        raise _ResponseFailed(self._status.NO_RESOURCE)
 
             blocks = []
             # traverse blocks until we get the last desired block, push blocks until done
