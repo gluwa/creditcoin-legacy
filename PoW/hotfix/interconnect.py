@@ -535,10 +535,10 @@ class _SendReceive(object):
             self._dispatcher.add_send_last_message(self._connection,
                                                    self.send_last_message)
 
-            asyncio.ensure_future(self._receive_message(),
+            asyncio.run_coroutine_threadsafe(self._receive_message(),
                                 loop=self._event_loop)
 
-            asyncio.ensure_future(self._dispatch_message(),
+            asyncio.run_coroutine_threadsafe(self._dispatch_message(),
                                 loop=self._event_loop)
 
             self._dispatcher_queue = asyncio.Queue()
@@ -549,7 +549,7 @@ class _SendReceive(object):
                 self._monitor_sock = self._socket.get_monitor_socket(
                     zmq.EVENT_DISCONNECTED,
                     addr=self._monitor_fd)
-                asyncio.ensure_future(self._monitor_disconnects(),
+                asyncio.run_coroutine_threadsafe(self._monitor_disconnects(),
                                     loop=self._event_loop)
 
         except Exception as e:
@@ -559,12 +559,12 @@ class _SendReceive(object):
             raise
 
         if self._heartbeat:
-            asyncio.ensure_future(self._do_heartbeat(), loop=self._event_loop)
+            asyncio.run_coroutine_threadsafe(self._do_heartbeat(), loop=self._event_loop)
 
         # Put a 'complete with the setup tasks' sentinel on the queue.
         complete_or_error_queue.put_nowait(_STARTUP_COMPLETE_SENTINEL)
 
-        asyncio.ensure_future(self._notify_started(), loop=self._event_loop)
+        asyncio.run_coroutine_threadsafe(self._notify_started(), loop=self._event_loop)
 
         self._event_loop.run_forever()
         # event_loop.stop called elsewhere will cause the loop to break out
