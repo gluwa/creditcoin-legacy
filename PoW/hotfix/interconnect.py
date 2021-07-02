@@ -19,7 +19,7 @@ from functools import partial
 import hashlib
 import logging
 import queue
-from threading import Event
+from threading import Event, Lock
 from threading import RLock
 import time
 import uuid
@@ -163,6 +163,8 @@ class _SendReceive(object):
         self._received_message_counters = {}
         self._dispatcher_queue = None
         self._stopping = False
+
+        self._shutdown_lock = Lock()
 
     @property
     def connection(self):
@@ -628,38 +630,46 @@ class _SendReceive(object):
         self._ready.set()
 
     def shutdown(self):
-        self._dispatcher.remove_send_message(self._connection)
-        self._dispatcher.remove_send_last_message(self._connection)
-        if self._event_loop is None:
-            return
-        if self._event_loop.is_closed():
-            return
+        try:
+            acquired = self._shutdown_lock.acquire(blocking=False)
+            if acquired and not self._stopping:
+                self._stopping = True
+                self._dispatcher.remove_send_message(self._connection)
+                self._dispatcher.remove_send_last_message(self._connection)
+                if not self._event_loop:
+                    return
+                if self._event_loop.is_closed():
+                    return
 
-        if self._event_loop.is_running():
-            if self._auth is not None:
-                self._event_loop.call_soon_threadsafe(self._auth.stop)
-        else:
-            # event loop was never started, so the only Task that is running
-            # is the Auth Task.
-            self._event_loop.run_until_complete(self._stop_auth())
-        # Cancel all running tasks
-        tasks = self._get_tasks_for_cancelling()
-        for task in tasks:
-            self._event_loop.call_soon_threadsafe(task.cancel)
-        while tasks:
-            for task in tasks.copy():
-                if task.done() is True:
-                    tasks.remove(task)
-            time.sleep(.2)
-        if self._event_loop is not None:
-            try:
-                self._event_loop.call_soon_threadsafe(self._event_loop.stop)
-            except RuntimeError:
-                # Depending on the timing of shutdown, the event loop may
-                # already be shutdown from _stop(). If it is,
-                # call_soon_threadsafe will raise a RuntimeError,
-                # which can safely be ignored.
-                pass
+                if self._event_loop.is_running():
+                    if self._auth:
+                        self._event_loop.call_soon_threadsafe(self._auth.stop)
+                else:
+                    # event loop was never started, so the only Task that is running
+                    # is the Auth Task.
+                    if self._auth:
+                        self._auth.stop()
+                # Cancel all running tasks
+                tasks = self._get_tasks_for_cancelling()
+                for task in tasks:
+                    self._event_loop.call_soon_threadsafe(task.cancel)
+                while tasks:
+                    for task in tasks.copy():
+                        if task.done() is True:
+                            tasks.remove(task)
+                    time.sleep(.2)
+                if self._event_loop is not None:
+                    try:
+                        self._event_loop.call_soon_threadsafe(self._event_loop.stop)
+                    except RuntimeError:
+                        # Depending on the timing of shutdown, the event loop may
+                        # already be shutdown from _stop(). If it is,
+                        # call_soon_threadsafe will raise a RuntimeError,
+                        # which can safely be ignored.
+                        pass
+        finally:
+            if acquired:
+                self._shutdown_lock.release()
 
 
 class Interconnect(object):
