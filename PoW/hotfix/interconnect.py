@@ -613,7 +613,6 @@ class _SendReceive(object):
         self._event_loop.stop()
 
     def _get_tasks_for_cancelling(self):
-        self._stopping = True
         while True:
             try:
                 tasks = list(asyncio.Task.all_tasks(self._event_loop).copy())
@@ -639,6 +638,7 @@ class _SendReceive(object):
         try:
             acquired = self._shutdown_lock.acquire(blocking=False)
             if acquired and not self._stopping:
+                self._stopping = True
                 self._dispatcher.remove_send_message(self._connection)
                 self._dispatcher.remove_send_last_message(self._connection)
                 if not self._event_loop:
