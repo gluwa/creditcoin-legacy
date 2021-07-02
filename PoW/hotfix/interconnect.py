@@ -243,9 +243,10 @@ class _SendReceive(object):
                     content=b'',
                     message_type=validator_pb2.Message.PING_REQUEST
                 )
-                fut = future.Future(
+                fut = future.FutureWrapper(
                     message.correlation_id,
                     message.content,
+                    loop=self._event_loop,
                 )
                 self._futures.put(fut)
                 message_frame = [
@@ -459,10 +460,12 @@ class _SendReceive(object):
                 connection_info.connection.stop()
 
         self._ready.wait()
+
         fut = future.FutureWrapper(
             msg.correlation_id,
             msg.content,
-            callback)
+            callback, loop=self._event_loop)
+
         if not one_way:
             self._futures.put(fut)
 
