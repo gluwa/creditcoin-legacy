@@ -101,7 +101,8 @@ class FutureCollection(object):
         self._resolving_threadpool = resolving_threadpool
 
     def put(self, future):
-        self._futures[future.correlation_id] = future
+        with self._lock:
+            self._futures[future.correlation_id] = future
 
     def set_result(self, correlation_id, result):
         with self._lock:
@@ -113,15 +114,17 @@ class FutureCollection(object):
                 future.run_callback()
 
     def get(self, correlation_id):
-        try:
-            return self._futures[correlation_id]
-        except KeyError:
-            raise FutureCollectionKeyError(
-                "no such correlation id: {}".format(correlation_id))
+        with self._lock:
+            try:
+                return self._futures[correlation_id]
+            except KeyError:
+                raise FutureCollectionKeyError(
+                    "no such correlation id: {}".format(correlation_id))
 
     def remove(self, correlation_id):
-        try:
-            del self._futures[correlation_id]
-        except KeyError:
-            raise FutureCollectionKeyError(
-                "no such correlation id: {}".format(correlation_id))
+        with self._lock:
+            try:
+                del self._futures[correlation_id]
+            except KeyError:
+                raise FutureCollectionKeyError(
+                    "no such correlation id: {}".format(correlation_id))
