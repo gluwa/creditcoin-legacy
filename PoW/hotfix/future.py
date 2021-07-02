@@ -13,10 +13,10 @@
 # limitations under the License.
 # ------------------------------------------------------------------------------
 
+from asyncio.events import AbstractEventLoop
 import logging
-from threading import Condition
 from threading import RLock
-import time
+from concurrent.futures import Future
 
 
 LOGGER = logging.getLogger(__name__)
@@ -33,72 +33,42 @@ class FutureTimeoutError(Exception):
     pass
 
 
-class Future(object):
-    def __init__(self, correlation_id, request=None, callback=None,
-                 timer_ctx=None):
+class FutureWrapper(object):
+    def __init__(self, correlation_id, request=None, callback=None, loop=None):
+        self._future = loop.create_future() # type: Future
+        self._event_loop = loop # type : AbstractEventLoop
         self.correlation_id = correlation_id
         self._request = request
-        self._result = None
-        self._condition = Condition()
-        self._create_time = time.time()
-        self._callback_func = callback
-        self._reconcile_time = None
-        self._timer_ctx = timer_ctx
+        self._callback = callback
 
     def done(self):
-        return self._result is not None
+        return self._future.done()
+
+    def cancel(self):
+        return self._future.cancel()
 
     @property
     def request(self):
         return self._request
 
     def result(self, timeout=None):
-        with self._condition:
-            if self._result is None:
-                if not self._condition.wait(timeout):
-                    raise FutureTimeoutError('Future timed out')
-        return self._result
+        self._future.result(timeout=timeout)
 
     def set_result(self, result):
-        with self._condition:
-            self._reconcile_time = time.time()
-            self._result = result
-            self._condition.notify()
-
-    def run_callback(self):
-        """Calls the callback_func, passing in the two positional arguments,
-        conditionally waiting if the callback function hasn't been set yet.
-        Meant to be run in a threadpool owned by the FutureCollection.
-
-        Returns:
-            None
-        """
-
-        if self._callback_func is not None:
-            try:
-                self._callback_func(self._request, self._result)
-            except Exception:  # pylint: disable=broad-except
-                LOGGER.exception('An unhandled error occurred while running '
-                                 'future callback')
-
-    def get_duration(self):
-        return self._reconcile_time - self._create_time
-
-    def timer_stop(self):
-        if self._timer_ctx:
-            self._timer_ctx.stop()
-        self._timer_ctx = None
-
+        if self._callback:
+            l = lambda _: self._event_loop.run_in_executor(None, lambda: self._callback(self._request, result))
+            self._future.add_done_callback(l)
+        self._event_loop.call_soon_threadsafe(self._future.set_result, result)
 
 class FutureCollectionKeyError(Exception):
     pass
 
 
 class FutureCollection(object):
-    def __init__(self, resolving_threadpool=None):
+    def __init__(self, loop=None):
         self._futures = {}
         self._lock = RLock()
-        self._resolving_threadpool = resolving_threadpool
+        self._event_loop = loop
 
     def put(self, future):
         with self._lock:
@@ -106,25 +76,31 @@ class FutureCollection(object):
 
     def set_result(self, correlation_id, result):
         with self._lock:
-            future = self.get(correlation_id)
+            future = self._get(correlation_id)
             future.set_result(result)
-            if self._resolving_threadpool is not None:
-                self._resolving_threadpool.submit(future.run_callback)
-            else:
-                future.run_callback()
+            self._remove(correlation_id)
+    
+    def _get(self, correlation_id):
+        try:
+            return self._futures[correlation_id]
+        except KeyError:
+            raise FutureCollectionKeyError(
+                "no such correlation id: {}".format(correlation_id))
 
     def get(self, correlation_id):
         with self._lock:
-            try:
-                return self._futures[correlation_id]
-            except KeyError:
-                raise FutureCollectionKeyError(
-                    "no such correlation id: {}".format(correlation_id))
+            self._get(correlation_id)
+
+    def _remove(self, correlation_id):
+        if correlation_id in self._futures:
+            f = self._futures[correlation_id]
+            # if not f.done():
+            #     f.cancel()
+            del self._futures[correlation_id]
+        else:
+            raise FutureCollectionKeyError(
+                "no such correlation id: {}".format(correlation_id))
 
     def remove(self, correlation_id):
         with self._lock:
-            try:
-                del self._futures[correlation_id]
-            except KeyError:
-                raise FutureCollectionKeyError(
-                    "no such correlation id: {}".format(correlation_id))
+            self._remove(correlation_id)
