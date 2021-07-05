@@ -786,7 +786,8 @@ class ConnectionManager(InstrumentedThread):
             Note: Needs sync, CManager and Gossip locks
         """
 
-        for conn_id, endpoint in self._gossip._peers.items():
+        peers = copy.copy(self._gossip._peers)
+        for conn_id, endpoint in peers.items():
             try:
                 self._network.get_connection_id_by_endpoint(endpoint)
             except KeyError:
