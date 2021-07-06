@@ -46,13 +46,13 @@ class ILock():
         self._lock = lock()
 
     def __enter__(self):
-        LOGGER.warning("θ;%s;Wait", self._name)
+        #LOGGER.warning("θ;%s;Wait", self._name)
         self._lock.acquire()
-        LOGGER.warning("θ;%s;Acq", self._name)
+        #LOGGER.warning("θ;%s;Acq", self._name)
 
     def __exit__(self, exc_type, exc_value, traceback):
         self._lock.release()
-        LOGGER.warning("θ;%s;Rel", self._name)
+        #LOGGER.warning("θ;%s;Rel", self._name)
 
 class PeerStatus(Enum):
     CLOSED = 1
@@ -215,7 +215,7 @@ class Gossip:
         """
         statuses = self._topology.get_connection_statuses()
         peers = self.get_peers()
-        return {k: v for k, v in peers.items() if statuses[k] == PeerStatus.PEER}
+        return {k: v for k, v in peers.items() if statuses.get(k) == PeerStatus.PEER}
 
     def _try_remove_abandoned_peers(self, connection_id: str, endpoint: str) -> bool:
         """Remove any abandoned peers and return True if any.
@@ -228,7 +228,7 @@ class Gossip:
             bool: returns true (an error) if at least one abandoned peer was found and removed.
         """
         stale_peers = {conn_id: peer for conn_id, peer in self._peers.items()
-                       if peer == endpoint and self._topology._connection_statuses[conn_id] == PeerStatus.PEER}
+                       if peer == endpoint and self._topology._connection_statuses.get(conn_id) == PeerStatus.PEER}
         for id in stale_peers.keys():
             LOGGER.debug("Abandoned peer {} removed.".format(id))
             self._unregister_peer(id)
@@ -296,8 +296,9 @@ class Gossip:
             connection_id (str): A unique identifier which identifies an
                 connection on the network server socket.
         """
-        with self._lock:
-            self._unregister_peer(connection_id)
+        with self._topology._lock:
+            with self._lock:
+                self._unregister_peer(connection_id)
 
     def get_time_to_live(self):
         time_to_live = \
@@ -843,6 +844,8 @@ class ConnectionManager(InstrumentedThread):
             except KeyError:
                 # If the connection does not exist, send a connection request
                 with self._lock:
+                    if endpoint in self._temp_endpoints:
+                        del self._temp_endpoints[endpoint]
 
                     self._temp_endpoints[endpoint] = EndpointInfo(
                         EndpointStatus.TOPOLOGY,
@@ -896,10 +899,11 @@ class ConnectionManager(InstrumentedThread):
             # connections, it raises a KeyError and we need to add
             # a new outbound connection
             # this is done by the main CM thread, doesn't need sync
-            self._temp_endpoints[endpoint] = EndpointInfo(
-                EndpointStatus.PEERING,
-                time.time(),
-                INITIAL_RETRY_FREQUENCY)
+            with self._lock:
+                self._temp_endpoints[endpoint] = EndpointInfo(
+                    EndpointStatus.PEERING,
+                    time.time(),
+                    INITIAL_RETRY_FREQUENCY)
             self._network.add_outbound_connection(endpoint)
 
     def _reset_candidate_peer_endpoints(self):
@@ -982,8 +986,7 @@ class ConnectionManager(InstrumentedThread):
             else:
                 LOGGER.debug("Endpoint has unknown status: %s", endpoint)
 
-        #doesn't need sync; when this function is called temp_endpoint is not needed anymore
-        self._remove_temp_endpoint(endpoint)
+            self._remove_temp_endpoint(endpoint)
 
     def _connect_success_peering(self, connection_id, endpoint):
         """Needs sync"""
