@@ -590,7 +590,7 @@ class ConnectionManager(InstrumentedThread):
         with self._lock:
             with self._gossip._lock:
                 self._refresh_peer_list()
-                peers = self._gossip._peers
+                peers = self._gossip._peers.copy()
         peer_count = len(peers)
         if peer_count < self._min_peers:
             LOGGER.debug(
