@@ -255,11 +255,7 @@ class Gossip:
         Note: Needs sync [ConnectionManager lock]
         """
         with self._lock:
-            found_abandoned_peers = self._try_remove_abandoned_peers(
-                connection_id, endpoint)
-            if found_abandoned_peers:
-                raise PeeringException("Already peered with {}."
-                                       .format(endpoint))
+            self._try_remove_abandoned_peers( connection_id, endpoint)
             if len(self._peers) < self._maximum_peer_connectivity:
                 self._peers[connection_id] = endpoint
                 self._topology.set_connection_status(connection_id, PeerStatus.PEER)
