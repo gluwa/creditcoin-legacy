@@ -395,7 +395,6 @@ class NetworkPermissionHandler(Handler):
             violation = AuthorizationViolation(
                 violation=RoleType.Value("NETWORK"))
             self._gossip.unregister_peer(connection_id)
-            self._network.remove_connection(connection_id)
             return HandlerResult(
                 HandlerStatus.RETURN_AND_CLOSE,
                 message_out=violation,
