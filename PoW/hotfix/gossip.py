@@ -948,12 +948,12 @@ class ConnectionManager(InstrumentedThread):
             try:
                 self._network.send(validator_pb2.Message.NETWORK_DISCONNECT,
                                    msg.SerializeToString(),
-                                   connection_id)
+                                   connection_id,
+                                   one_way=True)
             except ValueError:
                 LOGGER.debug(
                     "remove temporary connection passed on network send.")
             self._remove_connection_status(connection_id)
-            self._network.remove_connection(connection_id)
         elif status == PeerStatus.PEER:
             LOGGER.debug("Connection close request for peer ignored: %s",
                          connection_id)

@@ -59,6 +59,8 @@ from sawtooth_validator.networking.handlers import \
     AuthorizationChallengeSubmitHandler
 from sawtooth_validator.networking.handlers import \
     AuthorizationViolationHandler
+from sawtooth_validator.networking.handlers import \
+    DisconnectAckHandler
 
 LOGGER = logging.getLogger(__name__)
 
@@ -91,6 +93,11 @@ def add(
     dispatcher.add_handler(
         validator_pb2.Message.NETWORK_DISCONNECT,
         DisconnectHandler(network=interconnect),
+        thread_pool)
+
+    dispatcher.add_handler(
+        validator_pb2.Message.NETWORK_ACK,
+        DisconnectAckHandler(network=interconnect),
         thread_pool)
 
     # -- Authorization -- #
