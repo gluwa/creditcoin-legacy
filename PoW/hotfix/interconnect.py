@@ -161,7 +161,6 @@ class _SendReceive(object):
 
         self._metrics_registry = metrics_registry
         self._received_message_counters = {}
-        self._dispatcher_queue = None
         self._stopping = False
 
         self._shutdown_lock = Lock()
@@ -297,52 +296,44 @@ class _SendReceive(object):
                                None,
                                None)
 
-    async def _dispatch_message(self):
-        while not self._stopping:
+    async def _dispatch_message(self, zmq_identity, msg_bytes):
+        try:
+            message = validator_pb2.Message()
             try:
-                queue_size = self._dispatcher_queue.qsize()
-                if queue_size > 10:
-                    LOGGER.debug("Dispatch queue size: %s", queue_size)
-
-                zmq_identity, msg_bytes = \
-                    await self._dispatcher_queue.get()
-                message = validator_pb2.Message()
-                try:
-                    message.ParseFromString(msg_bytes)
-                except:
-                    LOGGER.critical("Incoming message couldn't be processed; dumping raw message\n{}".format(msg_bytes))
-                    raise
-
-                tag = get_enum_name(message.message_type)
-                self._get_received_message_counter(tag).inc()
-
-                if zmq_identity is not None:
-                    connection_id = \
-                        self._identity_to_connection_id(zmq_identity)
-                else:
-                    connection_id = \
-                        self._identity_to_connection_id(
-                            self._connection.encode())
-                try:
-                    self._futures.set_result(
-                        message.correlation_id,
-                        future.FutureResult(
-                            message_type=message.message_type,
-                            content=message.content,
-                            connection_id=connection_id))
-                except future.FutureCollectionKeyError:
-                    self._dispatcher.dispatch(self._connection,
-                                              message,
-                                              connection_id)
-
-            except CancelledError:
-                # The concurrent.futures.CancelledError is caught by asyncio
-                # when the Task associated with the coroutine is cancelled.
-                # The raise is required to stop this component.
+                message.ParseFromString(msg_bytes)
+            except:
+                LOGGER.critical("Incoming message couldn't be processed; dumping raw message\n{}".format(msg_bytes))
                 raise
-            except Exception as e:  # pylint: disable=broad-except
-                LOGGER.exception("Received a message on address %s that "
-                                 "caused an error: %s", self._address, e)
+
+            tag = get_enum_name(message.message_type)
+            self._get_received_message_counter(tag).inc()
+
+            if zmq_identity is not None:
+                connection_id = \
+                    self._identity_to_connection_id(zmq_identity)
+            else:
+                connection_id = \
+                    self._identity_to_connection_id(
+                        self._connection.encode())
+            try:
+                self._futures.set_result(
+                    message.correlation_id,
+                    future.FutureResult(
+                        message_type=message.message_type,
+                        content=message.content,
+                        connection_id=connection_id))
+            except future.FutureCollectionKeyError:
+                self._dispatcher.dispatch(self._connection,
+                                            message,
+                                            connection_id)
+        except CancelledError:
+            # The concurrent.futures.CancelledError is caught by asyncio
+            # when the Task associated with the coroutine is cancelled.
+            # The raise is required to stop this component.
+            raise
+        except Exception as e:  # pylint: disable=broad-except
+            LOGGER.exception("Received a message on address %s that "
+                                "caused an error: %s", self._address, e)
 
     async def _receive_message(self):
         """
@@ -354,12 +345,11 @@ class _SendReceive(object):
                     zmq_identity, msg_bytes = \
                         await self._socket.recv_multipart()
                     self._received_from_identity(zmq_identity)
-                    self._dispatcher_queue.put_nowait(
-                        (zmq_identity, msg_bytes))
+                    await self._dispatch_message(zmq_identity, msg_bytes)
                 else:
                     msg_bytes = await self._socket.recv()
                     self._last_message_time = time.time()
-                    self._dispatcher_queue.put_nowait((None, msg_bytes))
+                    await self._dispatch_message(None, msg_bytes)
 
             except CancelledError:
                 # The concurrent.futures.CancelledError is caught by asyncio
@@ -460,12 +450,10 @@ class _SendReceive(object):
                 connection_info.connection.stop()
 
         self._ready.wait()
-
         fut = future.FutureWrapper(
             msg.correlation_id,
             msg.content,
             callback, loop=self._event_loop)
-
         if not one_way:
             self._futures.put(fut)
 
@@ -553,11 +541,6 @@ class _SendReceive(object):
 
             asyncio.run_coroutine_threadsafe(self._receive_message(),
                                 loop=self._event_loop)
-
-            asyncio.run_coroutine_threadsafe(self._dispatch_message(),
-                                loop=self._event_loop)
-
-            self._dispatcher_queue = asyncio.Queue()
 
             if self._monitor:
                 self._monitor_fd = "inproc://monitor.s-{}".format(
