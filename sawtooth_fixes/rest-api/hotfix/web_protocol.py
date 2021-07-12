@@ -276,6 +276,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
             try:
                 messages, upgraded, tail = self._request_parser.feed_data(data)
             except HttpProcessingError as exc:
+                logging.debug("@data_received::HttpProcessingerror {}".format(data))
                 # something happened during parsing
                 self.close()
                 self._error_handler = ensure_future(
@@ -284,6 +285,7 @@ class RequestHandler(asyncio.streams.FlowControlMixin, asyncio.Protocol):
                         400, exc, exc.message),
                     loop=self._loop)
             except Exception as exc:
+                logging.debug("@data_received::Exception {}".format(data))
                 # 500: internal error
                 self.close()
                 self._error_handler = ensure_future(
