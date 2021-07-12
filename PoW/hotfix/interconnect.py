@@ -568,6 +568,7 @@ class _SendReceive(object):
         self._event_loop.run_forever()
         # event_loop.stop called elsewhere will cause the loop to break out
         # of run_forever then it can be closed and the context destroyed.
+        self._executor.shutdown(wait=True)
         self._event_loop.close()
         self._socket.close(linger=0)
         if self._monitor:
