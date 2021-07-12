@@ -30,3 +30,4 @@ COPY hotfix/route_handlers.py      /usr/lib/python3/dist-packages/sawtooth_rest_
 COPY hotfix/client_block_pb2.py /usr/lib/python3/dist-packages/sawtooth_rest_api/protobuf/client_block_pb2.py
 COPY hotfix/validator_pb2.py /usr/lib/python3/dist-packages/sawtooth_rest_api/protobuf/validator_pb2.py
 COPY hotfix/processor_pb2.py /usr/lib/python3/dist-packages/sawtooth_rest_api/protobuf/processor_pb2.py
+COPY hotfix/web_protocol.py /usr/lib/python3/dist-packages/aiohttp/web_protocol.py
