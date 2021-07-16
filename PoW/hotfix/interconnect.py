@@ -345,11 +345,11 @@ class _SendReceive(object):
                     zmq_identity, msg_bytes = \
                         await self._socket.recv_multipart()
                     self._received_from_identity(zmq_identity)
-                    await self._dispatch_message(zmq_identity, msg_bytes)
+                    asyncio.ensure_future(self._dispatch_message(zmq_identity, msg_bytes))
                 else:
                     msg_bytes = await self._socket.recv()
                     self._last_message_time = time.time()
-                    await self._dispatch_message(None, msg_bytes)
+                    asyncio.ensure_future(self._dispatch_message(None, msg_bytes))
 
             except CancelledError:
                 # The concurrent.futures.CancelledError is caught by asyncio
