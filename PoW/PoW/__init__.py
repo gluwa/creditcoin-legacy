@@ -46,6 +46,7 @@ GLUE = b':'
 EXPECTED_BLOCK_INTERVAL = 60
 DIFFICULTY_ADJUSTMENT_BLOCK_COUNT = 10
 DIFFICULTY_TUNING_BLOCK_COUNT = 100
+DIFFICULTY_TUNING_MARGIN = 20
 INITIAL_DIFFICULTY = 22
 IDX_POW = 0
 IDX_DIFFICULTY = 1
@@ -235,12 +236,13 @@ class _DifficultyValidator():
     """
     A class that is responsible for calculating the difficulty of a Block.
     """
-    def __init__(self, block_cache, expected_block_interval, difficulty_adjustment_block_count, difficulty_tuning_block_count):
+    def __init__(self, block_cache, expected_block_interval, difficulty_adjustment_block_count, difficulty_tuning_block_count, difficulty_tuning_margin):
         self._block_cache = block_cache
 
         self._expected_block_interval = expected_block_interval
         self._difficulty_adjustment_block_count = difficulty_adjustment_block_count
         self._difficulty_tuning_block_count = difficulty_tuning_block_count
+        self._difficulty_tuning_margin = difficulty_tuning_margin
 
     def _get_elapsed_time(self, prev_block, prev_consensus, cur_time, total_count):
         b_last_adjusted_block_time = prev_consensus[IDX_TIME]
@@ -265,13 +267,15 @@ class _DifficultyValidator():
         difficulty = int(prev_consensus[IDX_DIFFICULTY].decode())
         if prev_block.block_num % self._difficulty_tuning_block_count == 0:
             time_taken, time_expected = self._get_elapsed_time(prev_block, prev_consensus, cur_time, self._difficulty_tuning_block_count)
+            percent_difference = abs(time_expected - time_taken) / time_expected * 100
 
-            if time_taken < time_expected:
-                if difficulty < 255:
-                    difficulty = difficulty + 1
-            elif time_taken > time_expected:
-                if difficulty > 0:
-                    difficulty = difficulty - 1
+            if percent_difference > self._difficulty_tuning_margin:
+                if time_taken < time_expected:
+                    if difficulty < 255:
+                        difficulty = difficulty + 1
+                elif time_taken > time_expected:
+                    if difficulty > 0:
+                        difficulty = difficulty - 1
 
         elif prev_block.block_num % self._difficulty_adjustment_block_count == 0:
             time_taken, time_expected = self._get_elapsed_time(prev_block, prev_consensus, cur_time, self._difficulty_adjustment_block_count)
@@ -289,6 +293,7 @@ class _DifficultyValidator():
         self._expected_block_interval = settings_view.get_setting("sawtooth.consensus.pow.seconds_between_blocks", self._expected_block_interval, int)
         self._difficulty_adjustment_block_count = settings_view.get_setting("sawtooth.consensus.pow.difficulty_adjustment_block_count", self._difficulty_adjustment_block_count, int)
         self._difficulty_tuning_block_count = settings_view.get_setting("sawtooth.consensus.pow.difficulty_tuning_block_count", self._difficulty_tuning_block_count, int)
+        self._difficulty_tuning_margin = settings_view.get_setting("sawtooth.consensus.pow.difficulty_tuning_margin", self._difficulty_tuning_margin, int)
 
 
 class BlockPublisher(BlockPublisherInterface):
@@ -333,7 +338,7 @@ class BlockPublisher(BlockPublisherInterface):
         if SOLVER_PERF is None:
             SOLVER_PERF = _Solver()
 
-        self._difficulty_validator = _DifficultyValidator(self._block_cache, EXPECTED_BLOCK_INTERVAL, DIFFICULTY_ADJUSTMENT_BLOCK_COUNT, DIFFICULTY_TUNING_BLOCK_COUNT)
+        self._difficulty_validator = _DifficultyValidator(self._block_cache, EXPECTED_BLOCK_INTERVAL, DIFFICULTY_ADJUSTMENT_BLOCK_COUNT, DIFFICULTY_TUNING_BLOCK_COUNT, DIFFICULTY_TUNING_MARGIN)
         state_view = BlockWrapper.state_view_for_block(self._block_cache.block_store.chain_head, self._state_view_factory)
         self._difficulty_validator.update_difficulty_settings(SettingsView(state_view))
 
