@@ -442,8 +442,8 @@ class _SendReceive(object):
         """
         zmq_identity = None
         with self._connections_lock:
-            LOGGER.debug("{}".format(self._connections))
-            LOGGER.debug("{}".format(connection_id))
+            LOGGER.debug("@SLM SR {}".format(self._connections))
+            LOGGER.debug("@SLM SR {}".format(connection_id))
             if connection_id is not None and self._connections is not None:
                 if connection_id in self._connections:
                     connection_info = self._connections.get(connection_id)
@@ -830,7 +830,7 @@ class Interconnect(object):
         """
         with self._connections_lock:
             connection_count = len(self._connections)
-        LOGGER.debug("{}".format(self._connections))
+        LOGGER.debug("@AIC {}".format(self._connections))
         LOGGER.debug("Determining whether inbound connection should "
                      "be allowed. num connections: %s max %s",
                      connection_count,
