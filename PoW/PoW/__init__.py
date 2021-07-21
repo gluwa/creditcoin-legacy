@@ -334,8 +334,6 @@ class BlockPublisher(BlockPublisherInterface):
             SOLVER_PERF = _Solver()
 
         self._difficulty_validator = _DifficultyValidator(self._block_cache, EXPECTED_BLOCK_INTERVAL, DIFFICULTY_ADJUSTMENT_BLOCK_COUNT, DIFFICULTY_TUNING_BLOCK_COUNT)
-        state_view = BlockWrapper.state_view_for_block(self._block_cache.block_store.chain_head, self._state_view_factory)
-        self._difficulty_validator.update_difficulty_settings(SettingsView(state_view))
 
     def initialize_block(self, block_header):
         """Do initialization necessary for the consensus to claim a block,
@@ -348,9 +346,10 @@ class BlockPublisher(BlockPublisherInterface):
             True
         """
 
-        # Using the current chain head, we need to create a state view so we
+        # Using the previous block, we need to create a state view so we
         # can get our config values.
-        state_view = BlockWrapper.state_view_for_block(self._block_cache.block_store.chain_head, self._state_view_factory)
+        prev_block = self._block_cache[block_header.previous_block_id]
+        state_view = BlockWrapper.state_view_for_block(prev_block, self._state_view_factory)
 
         self._start_time = time.time()
         #LOGGER.debug("init block with time {} in object {}".format(self._start_time,id(self))) #for TRACING
@@ -359,7 +358,6 @@ class BlockPublisher(BlockPublisherInterface):
         self._difficulty_validator.update_difficulty_settings(settings_view)
         self._valid_block_publishers = settings_view.get_setting("sawtooth.consensus.valid_block_publisher", self._valid_block_publishers, list)
 
-        prev_block = self._block_cache[block_header.previous_block_id]
         prev_consensus = prev_block.consensus.split(GLUE)
 
         if prev_consensus[IDX_POW] != POW:
@@ -576,7 +574,7 @@ class BlockVerifier(BlockVerifierInterface):
 
         prev_consensus = prev_block.consensus.split(GLUE)
         if prev_consensus[IDX_POW] == POW:
-            state_view = BlockWrapper.state_view_for_block(self._block_cache.block_store.chain_head, self._state_view_factory)
+            state_view = BlockWrapper.state_view_for_block(prev_block, self._state_view_factory)
             self._difficulty_validator.update_difficulty_settings(SettingsView(state_view))
             difficulty = self._difficulty_validator.get_adjusted_difficulty(prev_block, prev_consensus, float(consensus[IDX_TIME]))
             block_difficulty = consensus[IDX_DIFFICULTY]
