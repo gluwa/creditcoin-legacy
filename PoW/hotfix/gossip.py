@@ -217,7 +217,7 @@ class Gossip:
         peers = self.get_peers()
         return {k: v for k, v in peers.items() if statuses.get(k) == PeerStatus.PEER}
 
-    def _try_remove_abandoned_peers(self, connection_id: str, endpoint: str) -> bool:
+    def _try_remove_abandoned_peers(self, endpoint: str) -> bool:
         """Remove any abandoned peers and return True if any.
 
         If the peering endpoint is already peered, clear abandoned peers under the same endpoint.
@@ -227,14 +227,15 @@ class Gossip:
         Returns:
             bool: returns true (an error) if at least one abandoned peer was found and removed.
         """
-        stale_peers = {conn_id: peer for conn_id, peer in self._peers.items()
-                       if peer == endpoint and self._topology._connection_statuses.get(conn_id) == PeerStatus.PEER}
-        for id in stale_peers.keys():
-            LOGGER.debug("Abandoned peer {} removed.".format(id))
+        stale_connections = [conn_id for conn_id, peer in self._peers.items()
+                             if peer == endpoint and self._topology._connection_statuses.get(conn_id) == PeerStatus.PEER]
+        for id in stale_connections:
             self._unregister_peer(id)
             self._topology._remove_temporary_connection(id)
+            LOGGER.debug(
+                "Abandoned peer {} ({}) removed.".format(id[:8], endpoint))
 
-        return True if len(stale_peers) != 0 else False
+        return True if len(stale_connections) != 0 else False
 
     def register_peer(self, connection_id, endpoint):
         """Register a peer with connection_id if there are no abandoned peers with the same endpoint and the max connected peer count is not reached.
@@ -255,7 +256,7 @@ class Gossip:
         Note: Needs sync [ConnectionManager lock]
         """
         with self._lock:
-            self._try_remove_abandoned_peers( connection_id, endpoint)
+            self._try_remove_abandoned_peers(endpoint)
             if len(self._peers) < self._maximum_peer_connectivity:
                 self._peers[connection_id] = endpoint
                 self._topology.set_connection_status(connection_id, PeerStatus.PEER)
@@ -277,12 +278,11 @@ class Gossip:
         if connection_id in self._peers:
             del self._peers[connection_id]
             LOGGER.debug("Removed connection_id %s, "
-                        "connected identities are now %s",
-                        connection_id, self._peers)
+                         "connected identities are now %s",
+                         connection_id, self._peers)
             self._topology.set_connection_status(connection_id, PeerStatus.TEMP)
         else:
-            LOGGER.debug("Unregister peer failed as peer was not registered: %s",
-                        connection_id)
+            LOGGER.debug("Unregister peer failed as peer was not registered: %s", connection_id)
 
     def unregister_peer(self, connection_id):
         """Removes a connection_id from the registry.
@@ -653,9 +653,9 @@ class ConnectionManager(InstrumentedThread):
             if (time.time() - static_peer_info.time) > \
                     static_peer_info.retry_threshold:
                 LOGGER.debug("Endpoint has not completed authorization in "
-                                "%s seconds: %s",
-                                static_peer_info.retry_threshold,
-                                endpoint)
+                             "%s seconds: %s",
+                             static_peer_info.retry_threshold,
+                             endpoint)
 
                 if static_peer_info.retry_threshold == \
                         MAXIMUM_STATIC_RETRY_FREQUENCY:
@@ -755,16 +755,15 @@ class ConnectionManager(InstrumentedThread):
             if (time.time() - endpoint_info.time) > \
                     endpoint_info.retry_threshold:
                 LOGGER.debug("Endpoint has not completed authorization in "
-                                "%s seconds: %s",
-                                endpoint_info.retry_threshold,
-                                endpoint)
+                             "%s seconds: %s",
+                             endpoint_info.retry_threshold,
+                             endpoint)
                 try:
                     # If the connection exists remove it before retrying to
                     # authorize. If the connection does not exist, a
                     # KeyError will be thrown.
-                    conn_id = \
-                        self._network.get_connection_id_by_endpoint(
-                            endpoint)
+                    conn_id = self._network.get_connection_id_by_endpoint(
+                        endpoint)
                     self._network.remove_connection(conn_id)
                 except KeyError:
                     pass
