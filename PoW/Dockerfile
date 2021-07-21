@@ -42,7 +42,6 @@ COPY hotfix/component_handlers.py  /usr/lib/python3/dist-packages/sawtooth_valid
 COPY hotfix/consensus.py           /usr/lib/python3/dist-packages/sawtooth_validator/journal/consensus/consensus.py
 COPY hotfix/core.py                /usr/lib/python3/dist-packages/sawtooth_validator/server/core.py
 COPY hotfix/executor.py            /usr/lib/python3/dist-packages/sawtooth_validator/execution/executor.py
-COPY hotfix/future.py              /usr/lib/python3/dist-packages/sawtooth_validator/networking/future.py
 COPY hotfix/genesis.py             /usr/lib/python3/dist-packages/sawtooth_validator/journal/genesis.py
 COPY hotfix/gossip.py              /usr/lib/python3/dist-packages/sawtooth_validator/gossip/gossip.py
 COPY hotfix/gossip_handlers.py     /usr/lib/python3/dist-packages/sawtooth_validator/gossip/gossip_handlers.py
