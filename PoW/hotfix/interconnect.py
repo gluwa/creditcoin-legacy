@@ -32,6 +32,7 @@ from zmq.auth.asyncio import AsyncioAuthenticator
 import zmq.asyncio
 import typing
 from typing import Union, Optional
+import warnings
 
 from sawtooth_validator.concurrent.threadpool import \
     InstrumentedThreadPoolExecutor
@@ -307,11 +308,15 @@ class _SendReceive(object):
                 zmq_identity, msg_bytes = \
                     await self._dispatcher_queue.get()
                 message = validator_pb2.Message()
-                try:
-                    message.ParseFromString(msg_bytes)
-                except:
-                    LOGGER.critical("Incoming message couldn't be processed; dumping raw message\n{}".format(msg_bytes))
-                    raise
+                with warnings.catch_warnings():
+                    warnings.filterwarnings('error')
+                    try:
+                        message.ParseFromString(msg_bytes)
+                    except Warning as w:
+                        LOGGER.critical("Incoming message throwed a warning {}; dumping raw message\n{}".format(w, msg_bytes))
+                    except:
+                        LOGGER.critical("Incoming message couldn't be processed; dumping raw message\n{}".format(msg_bytes))
+                        raise
 
                 tag = get_enum_name(message.message_type)
                 self._get_received_message_counter(tag).inc()
