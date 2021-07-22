@@ -231,6 +231,9 @@ class _Helper:
         sha.update(b_nonce)
         return sha.digest()
 
+class DifficultyValidatorOutOfDate(Exception):
+    pass
+
 class _DifficultyValidator():
     """
     A class that is responsible for calculating the difficulty of a Block.
@@ -241,8 +244,14 @@ class _DifficultyValidator():
         self._expected_block_interval = expected_block_interval
         self._difficulty_adjustment_block_count = difficulty_adjustment_block_count
         self._difficulty_tuning_block_count = difficulty_tuning_block_count
+        self._needs_updating = True
+
+    def _ensure_up_to_date(self):
+        if self._needs_updating:
+            raise DifficultyValidatorOutOfDate("Must call `update_difficulty_settings` before using the _DifficultyValidator")
 
     def _get_elapsed_time(self, prev_block, prev_consensus, cur_time, total_count):
+        self._ensure_up_to_date()
         b_last_adjusted_block_time = prev_consensus[IDX_TIME]
         count = 1
 
@@ -262,6 +271,7 @@ class _DifficultyValidator():
         return time_taken, time_expected
 
     def get_adjusted_difficulty(self, prev_block, prev_consensus, cur_time):
+        self._ensure_up_to_date()
         difficulty = int(prev_consensus[IDX_DIFFICULTY].decode())
         if prev_block.block_num % self._difficulty_tuning_block_count == 0:
             time_taken, time_expected = self._get_elapsed_time(prev_block, prev_consensus, cur_time, self._difficulty_tuning_block_count)
@@ -289,6 +299,7 @@ class _DifficultyValidator():
         self._expected_block_interval = settings_view.get_setting("sawtooth.consensus.pow.seconds_between_blocks", self._expected_block_interval, int)
         self._difficulty_adjustment_block_count = settings_view.get_setting("sawtooth.consensus.pow.difficulty_adjustment_block_count", self._difficulty_adjustment_block_count, int)
         self._difficulty_tuning_block_count = settings_view.get_setting("sawtooth.consensus.pow.difficulty_tuning_block_count", self._difficulty_tuning_block_count, int)
+        self._needs_updating = False
 
 
 class BlockPublisher(BlockPublisherInterface):
@@ -335,6 +346,9 @@ class BlockPublisher(BlockPublisherInterface):
 
         self._difficulty_validator = _DifficultyValidator(self._block_cache, EXPECTED_BLOCK_INTERVAL, DIFFICULTY_ADJUSTMENT_BLOCK_COUNT, DIFFICULTY_TUNING_BLOCK_COUNT)
 
+    def _invalidate_settings(self):
+        self._difficulty_validator._needs_updating = True
+
     def initialize_block(self, block_header):
         """Do initialization necessary for the consensus to claim a block,
         this may include initiating voting activates, starting proof of work
@@ -345,6 +359,7 @@ class BlockPublisher(BlockPublisherInterface):
         Returns:
             True
         """
+        self._invalidate_settings()
 
         # Using the previous block, we need to create a state view so we
         # can get our config values.
@@ -559,7 +574,11 @@ class BlockVerifier(BlockVerifierInterface):
         self._state_view_factory = state_view_factory
         self._difficulty_validator = _DifficultyValidator(self._block_cache, EXPECTED_BLOCK_INTERVAL, DIFFICULTY_ADJUSTMENT_BLOCK_COUNT, DIFFICULTY_TUNING_BLOCK_COUNT)
 
+    def _invalidate_settings(self):
+        self._difficulty_validator._needs_updating = True
+
     def verify_block(self, block_wrapper):
+        self._invalidate_settings()
         consensus = block_wrapper.header.consensus.split(GLUE)
         if consensus[IDX_POW] != POW:
             return False
