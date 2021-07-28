@@ -1,7 +1,6 @@
 # Gluwa Creditcoin
 
 ## What is Creditcoin?
----------------------
 
 Creditcoin is a network that enables cross-blockchain credit transaction and credit history building. Creditcoin uses blockchain technology to ensure the objectivity of its credit transaction history: each transaction on the network is distributed and verified by the network.
 
@@ -9,13 +8,20 @@ The Creditcoin protocol was created by Gluwa. Gluwa Creditcoin is the official i
 
 For more information, see https://creditcoin.org, or read the [original whitepaper](https://creditcoin.org/white-paper).
 
+## Other Creditcoin Components
+
+In order to facilitate modular updates, the Creditcoin components have been divided into several repos.
+
+* This repo includes the Sawtooth 1.0.5 PoW consensus engine, Creditcoin Gateway, Creditcoin Processor, and Sawtooth REST API Hotfixes
+* [Sawtooth-Core](https://github.com/gluwa/Sawtooth-Core) contains the Creditcoin fork of Sawtooth 1.2.x and is where most future development will take place
+* [Creditcoin-Shared](https://github.com/gluwa/Creditcoin-Shared) has the CCCore, CCPlugin framework, and several plugins such as Bitcoin, ERC20, Ethereum and Ethless
+* [Creditcoin-Client](https://github.com/gluwa/Creditcoin-Client) houses the command-line client for communicating with the Creditcoin blockchain
 
 ## License
------------
 
 Creditcoin is licensed under the [GNU Lesser General Public License](COPYING.LESSER) software license.
 
-Licenses of dependencies distributed with this repository are provided under the Creditcoin\DependencyLicense directory.
+Licenses of dependencies distributed with this repository are provided under the `\DependencyLicense` directory.
 
 
 ## Development Process
@@ -26,7 +32,6 @@ Tags are created regularly from release branches to indicate new official, stabl
 
 
 ## Prerequisite for Windows
-------------------------
 
 #### Boost 1.67.0 source
 
@@ -103,11 +108,10 @@ cppnetlib-uri
 
 #### Sawtooth:
 
-Follow the instructions in `\Creditcoin\SDK\sawtooth.lib rebuild instructions.txt` to build the sawtooth.lib file
+Follow the instructions in `\SDK\sawtooth.lib rebuild instructions.txt` to build the sawtooth.lib file
 
 
 ## Prerequisite for Ubuntu 16.04
------------------------------
 
 ### Visual Studio's Workload for Linux development with C++
 
@@ -162,7 +166,7 @@ With
 
     Build and install
 
-4. Copy headers from `Creditcoin\SDK` and `Creditcoin\xtern` to `/usr/local/include`
+4. Copy headers from `\SDK` and `\xtern` to `/usr/local/include`
 
 ### Building the processor
 
