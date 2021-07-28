@@ -1,0 +1,26 @@
+name: container
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+
+jobs:
+  sanity:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Build container image
+      run: |
+        docker build -t gluwa/container-under-test PoW/
+
+    - name: Execute container image
+      run: |
+        docker run -d --rm --name container-under-test gluwa/container-under-test
+
+    - name: Verify healthcheck
+      run: |
+        docker inspect -f '{{.State.Health.Status}}' container-under-test
