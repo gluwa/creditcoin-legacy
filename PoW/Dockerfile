@@ -46,7 +46,6 @@ COPY hotfix/gossip_handlers.py     /usr/lib/python3/dist-packages/sawtooth_valid
 COPY hotfix/handlers.py            /usr/lib/python3/dist-packages/sawtooth_validator/networking/handlers.py
 COPY hotfix/interconnect.py        /usr/lib/python3/dist-packages/sawtooth_validator/networking/interconnect.py
 COPY hotfix/merkle.py              /usr/lib/python3/dist-packages/sawtooth_validator/state/merkle.py
-COPY hotfix/network_handlers.py    /usr/lib/python3/dist-packages/sawtooth_validator/server/network_handlers.py
 COPY hotfix/permission_verifier.py /usr/lib/python3/dist-packages/sawtooth_validator/gossip/permission_verifier.py
 COPY hotfix/processor_pb2.py       /usr/lib/python3/dist-packages/sawtooth_validator/protobuf/processor_pb2.py
 COPY hotfix/publisher.py           /usr/lib/python3/dist-packages/sawtooth_validator/journal/publisher.py
