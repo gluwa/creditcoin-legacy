@@ -209,17 +209,12 @@ class DisconnectHandler(Handler):
     def handle(self, connection_id, message_content):
         message = DisconnectMessage()
         message.ParseFromString(message_content)
-        LOGGER.debug("got disconnect message from %s. sending ack",
+        LOGGER.debug("got disconnect message from %s",
                      connection_id)
 
-        ack = NetworkAcknowledgement()
-        ack.status = ack.OK
         self._network.remove_connection(connection_id)
 
-        return HandlerResult(
-            HandlerStatus.RETURN,
-            message_out=ack,
-            message_type=validator_pb2.Message.NETWORK_ACK)
+        return HandlerResult(HandlerStatus.DROP)
 
 
 class PingHandler(Handler):

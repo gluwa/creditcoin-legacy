@@ -277,9 +277,9 @@ class Gossip:
         """
         if connection_id in self._peers:
             del self._peers[connection_id]
-            LOGGER.debug("Removed connection_id %s, "
-                         "connected identities are now %s",
-                         connection_id, self._peers)
+            LOGGER.debug("Removed peer with Id %s, "
+                        "connected identities are now %s",
+                        connection_id, self._peers)
             self._topology.set_connection_status(connection_id, PeerStatus.TEMP)
         else:
             LOGGER.debug("Unregister peer failed as peer was not registered: %s", connection_id)
@@ -947,8 +947,9 @@ class ConnectionManager(InstrumentedThread):
             except ValueError:
                 LOGGER.debug(
                     "remove temporary connection passed on network send.")
+            else:
+                self._network.remove_connection(connection_id)
             self._remove_connection_status(connection_id)
-            self._network.remove_connection(connection_id)
         elif status == PeerStatus.PEER:
             LOGGER.debug("Connection close request for peer ignored: %s",
                          connection_id)
