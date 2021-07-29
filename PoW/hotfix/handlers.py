@@ -214,20 +214,12 @@ class DisconnectHandler(Handler):
 
         ack = NetworkAcknowledgement()
         ack.status = ack.OK
+        self._network.remove_connection(connection_id)
 
         return HandlerResult(
-            HandlerStatus.RETURN_AND_CLOSE,
+            HandlerStatus.RETURN,
             message_out=ack,
             message_type=validator_pb2.Message.NETWORK_ACK)
-
-
-class DisconnectAckHandler(Handler):
-    def __init__(self, network):
-        self._network = network
-
-    def handle(self, connection_id, message_content):
-        self._network.remove_connection(connection_id)
-        return HandlerResult( HandlerStatus.DROP)
 
 
 class PingHandler(Handler):
