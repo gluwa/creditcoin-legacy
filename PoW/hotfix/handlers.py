@@ -533,5 +533,5 @@ class AuthorizationViolationHandler(Handler):
         # Close the connection
         endpoint = self._network.connection_id_to_endpoint(connection_id)
         self._network.remove_connection(connection_id)
-        self._gossip.remove_temp_endpoint(endpoint)
+        self._gossip.remove_temp_connection_info(connection_id)
         return HandlerResult(HandlerStatus.DROP)

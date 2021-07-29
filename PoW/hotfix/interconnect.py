@@ -818,6 +818,18 @@ class Interconnect(object):
                 return connection_info.status
         return None
 
+    def is_connection_handshake_complete(self, connection_id):
+        """
+        Indicates whether or not a connection has completed the authorization
+        handshake.
+
+        Returns:
+            bool - True if the connection handshake is complete, False
+                otherwise
+        """
+        return self.get_connection_status(connection_id) == \
+            ConnectionStatus.CONNECTED
+
     def set_check_connections(self, function):
         self._send_receive_thread.set_check_connections(function)
 
@@ -1095,7 +1107,7 @@ class Interconnect(object):
             conn.stop()
         self._future_callback_threadpool.shutdown(wait=True)
 
-    def get_connection_id_by_endpoint(self, endpoint):
+    def __get_connection_id_by_endpoint(self, endpoint):
         """Returns the connection id associated with a publically
         reachable endpoint or raises KeyError if the endpoint is not
         found.
@@ -1126,6 +1138,22 @@ class Interconnect(object):
                 if connection_info.uri == endpoint and connection_info.connection_type == ConnectionType.OUTBOUND_CONNECTION:
                     return connection_id
         raise KeyError()
+
+
+    def get_outbound_connections_id_by_endpoint(self, endpoint) -> "list[str]":
+        """Returns a list of the connection id associated with a publically
+        reachable endpoint.
+
+        Args:
+            endpoint (str): A zmq-style uri which identifies a publically
+                reachable endpoint.
+
+        Returns:
+            list[str]: a list with the connection ids associated with the endpoint.
+        """
+
+        with self._connections_lock:
+            return [connection_id for connection_id, info in self._connections.items() if info.uri == endpoint and info.connection_type == ConnectionType.OUTBOUND_CONNECTION]
 
     def update_connection_endpoint(self, connection_id, endpoint):
         """Adds the endpoint to the connection definition. When the
