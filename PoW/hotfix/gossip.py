@@ -518,7 +518,7 @@ class ConnectionManager(InstrumentedThread):
                 StaticPeerInfo(
                     None,
                     time=0,
-                    retry_threshold=INITIAL_RETRY_FREQUENCY,
+                    retry_threshold=INITIAL_RETRY_FREQUENCY/2,
                     count=0)
 
         super().start()
@@ -665,7 +665,7 @@ class ConnectionManager(InstrumentedThread):
                 StaticPeerInfo(
                     self._static_peer_status[endpoint].connection_id,
                     time=0,
-                    retry_threshold=INITIAL_RETRY_FREQUENCY,
+                    retry_threshold=INITIAL_RETRY_FREQUENCY/2,
                     count=0)
 
         for endpoint in candidates:
@@ -674,11 +674,13 @@ class ConnectionManager(InstrumentedThread):
 
             if (time.time() - static_peer_info.time) > \
                     static_peer_info.retry_threshold:
-                LOGGER.debug("Endpoint (%s) %s has not completed authorization in "
-                             "%s seconds",
-                             endpoint,
-                             connection_id,
-                             static_peer_info.retry_threshold)
+                #the first pass has the elapsed time wrong
+                if static_peer_info.time != 0:
+                    LOGGER.debug("Endpoint (%s) %s has not completed authorization in "
+                                "%s seconds",
+                                endpoint,
+                                connection_id,
+                                static_peer_info.retry_threshold)
 
                 if static_peer_info.retry_threshold == \
                         MAXIMUM_STATIC_RETRY_FREQUENCY:
@@ -720,7 +722,12 @@ class ConnectionManager(InstrumentedThread):
                     LOGGER.debug("attempting to peer with %s", endpoint)
                     new_conn = self._network.add_outbound_connection(
                         endpoint).connection_id
-
+                    old_info = self._static_peer_status[endpoint]
+                    self._static_peer_status[endpoint] = StaticPeerInfo(
+                        connection_id=new_conn,
+                        time=old_info.time,
+                        retry_threshold=old_info.retry_threshold,
+                        count=old_info.count)
                     self._temp_connections[new_conn] = EndpointInfo(
                         endpoint,
                         ConnectionStatus.PEERING,
@@ -1038,6 +1045,9 @@ class ConnectionManager(InstrumentedThread):
 
         def callback(request, result):
             # request, result are ignored, but required by the callback
+            # disconnect races with topology response.
+            # response can be lost and triggers an AuthViolation
+            # Risk: Low, no lingering connections, can be retried
             with self._lock:
                 self._remove_temporary_connection(connection_id)
 
