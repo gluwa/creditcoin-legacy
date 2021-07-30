@@ -19,7 +19,7 @@ from functools import partial
 import hashlib
 import logging
 import queue
-from threading import Event
+from threading import Event, Lock
 from threading import RLock
 import time
 import uuid
@@ -30,6 +30,8 @@ import zmq
 import zmq.auth
 from zmq.auth.asyncio import AsyncioAuthenticator
 import zmq.asyncio
+import typing
+from typing import Union, Optional
 
 from sawtooth_validator.concurrent.threadpool import \
     InstrumentedThreadPoolExecutor
@@ -72,9 +74,9 @@ class AuthorizationType(Enum):
     CHALLENGE = 2
 
 
-ConnectionInfo = namedtuple('ConnectionInfo',
-                            ['connection_type', 'connection', 'uri',
-                             'status', 'public_key'])
+ConnectionInfo = typing.NamedTuple('ConnectionInfo',
+                            [('connection_type', ConnectionType), ('connection', 'OutboundConnection'), ('uri', str),
+                             ('status', ConnectionStatus), ('public_key', bytes)])
 
 
 def _generate_id():
@@ -89,11 +91,11 @@ _STARTUP_COMPLETE_SENTINEL = 1
 
 
 class _SendReceive(object):
-    def __init__(self, connection, address, futures, connections, connections_lock,
-                 zmq_identity=None, dispatcher=None, secured=False,
+    def __init__(self, connection, address, connections, connections_lock,
+                 zmq_identity: Optional[bytes] = None, dispatcher = None, secured: bool = False,
                  server_public_key=None, server_private_key=None,
-                 heartbeat=False, heartbeat_interval=10,
-                 connection_timeout=60, monitor=False,
+                 heartbeat: bool = False, heartbeat_interval: int =10,
+                 connection_timeout: int = 60, monitor: bool = False,
                  metrics_registry=None):
         """
         Constructor for _SendReceive.
@@ -102,8 +104,6 @@ class _SendReceive(object):
             connection (str): A locally unique identifier for this
                 thread's connection. Used to identify the connection
                 in the dispatcher for transmitting responses.
-            futures (future.FutureCollection): A Map of correlation ids to
-                futures
             connections (dict): A dictionary that uses a
                 sha512 hash as the keys and either an OutboundConnection
                 or string identity as values.
@@ -124,10 +124,10 @@ class _SendReceive(object):
             connection_timeout (int): Number of seconds after which a
                 connection is considered timed out.
         """
-        self._connection = connection
+        self._connection = connection # type: str
         self._dispatcher = dispatcher
-        self._futures = futures
-        self._address = address
+        self._futures = None # type: future.FutureCollection
+        self._address = address # type: str
         self._zmq_identity = zmq_identity
         self._secured = secured
         self._server_public_key = server_public_key
@@ -135,11 +135,11 @@ class _SendReceive(object):
         self._heartbeat = heartbeat
         self._heartbeat_interval = heartbeat_interval
         self._connection_timeout = connection_timeout
-
-        self._event_loop = None
-        self._context = None
-        self._socket = None
-        self._auth = None
+        self._event_loop = None # type: Optional[zmq.asyncio.ZMQEventLoop]
+        self._executor = None
+        self._context = None # type: Optional[zmq.asyncio.Context]
+        self._socket = None # type: Optional[zmq.asyncio.Socket]
+        self._auth = None # type: Optional[AsyncioAuthenticator]
         self._ready = Event()
 
         # The last time a message was received over an outbound
@@ -150,8 +150,8 @@ class _SendReceive(object):
         # for inbound connections to our zmq.ROUTER socket.
         self._last_message_times = {}
 
-        self._connections = connections
-        self._connections_lock = connections_lock
+        self._connections = connections # type: typing.Mapping[str, ConnectionInfo]
+        self._connections_lock = connections_lock # type: RLock
         self._identities_to_connection_ids = {}
         self._monitor = monitor
 
@@ -163,6 +163,8 @@ class _SendReceive(object):
         self._received_message_counters = {}
         self._dispatcher_queue = None
         self._stopping = False
+
+        self._shutdown_lock = Lock()
 
     @property
     def connection(self):
@@ -189,15 +191,14 @@ class _SendReceive(object):
                 self._received_message_counters[tag] = CounterWrapper()
         return self._received_message_counters[tag]
 
-    @asyncio.coroutine
-    def _do_heartbeat(self):
-        while True:
+    async def _do_heartbeat(self):
+        while not self._stopping:
             try:
                 if self._socket.getsockopt(zmq.TYPE) == zmq.ROUTER:
-                    yield from self._do_router_heartbeat()
+                    await self._do_router_heartbeat()
                 elif self._socket.getsockopt(zmq.TYPE) == zmq.DEALER:
-                    yield from self._do_dealer_heartbeat()
-                yield from asyncio.sleep(self._heartbeat_interval)
+                    await self._do_dealer_heartbeat()
+                await asyncio.sleep(self._heartbeat_interval)
             except CancelledError:
                 # The concurrent.futures.CancelledError is caught by asyncio
                 # when the Task associated with the coroutine is cancelled.
@@ -207,8 +208,7 @@ class _SendReceive(object):
                 LOGGER.exception(
                     "An error occurred while sending heartbeat: %s", e)
 
-    @asyncio.coroutine
-    def _do_router_heartbeat(self):
+    async def _do_router_heartbeat(self):
         check_time = time.time()
         with self._connections_lock:
             expired = \
@@ -243,19 +243,19 @@ class _SendReceive(object):
                     content=b'',
                     message_type=validator_pb2.Message.PING_REQUEST
                 )
-                fut = future.Future(
+                fut = future.FutureWrapper(
                     message.correlation_id,
                     message.content,
+                    loop=self._event_loop,
                 )
                 self._futures.put(fut)
                 message_frame = [
                     bytes(zmq_identity),
                     message.SerializeToString()
                 ]
-                yield from self._send_message_frame(message_frame)
+                await self._send_message_frame(message_frame)
 
-    @asyncio.coroutine
-    def _do_dealer_heartbeat(self):
+    async def _do_dealer_heartbeat(self):
         if self._last_message_time and \
                 self._is_connection_lost(self._last_message_time):
             elapsed = time.time() - self._last_message_time
@@ -273,7 +273,7 @@ class _SendReceive(object):
                     del self._connections[connection_id]
             if connection_info:
                 connection_info.connection.stop()
-            yield from self._stop()
+            await self._stop()
 
     def remove_connected_identity(self, zmq_identity):
         if zmq_identity in self._last_message_times:
@@ -297,16 +297,15 @@ class _SendReceive(object):
                                None,
                                None)
 
-    @asyncio.coroutine
-    def _dispatch_message(self):
-        while True:
+    async def _dispatch_message(self):
+        while not self._stopping:
             try:
                 queue_size = self._dispatcher_queue.qsize()
                 if queue_size > 10:
                     LOGGER.debug("Dispatch queue size: %s", queue_size)
 
                 zmq_identity, msg_bytes = \
-                    yield from self._dispatcher_queue.get()
+                    await self._dispatcher_queue.get()
                 message = validator_pb2.Message()
                 try:
                     message.ParseFromString(msg_bytes)
@@ -335,10 +334,6 @@ class _SendReceive(object):
                     self._dispatcher.dispatch(self._connection,
                                               message,
                                               connection_id)
-                else:
-                    my_future = self._futures.get(message.correlation_id)
-                    my_future.timer_stop()
-                    self._futures.remove(message.correlation_id)
 
             except CancelledError:
                 # The concurrent.futures.CancelledError is caught by asyncio
@@ -349,21 +344,20 @@ class _SendReceive(object):
                 LOGGER.exception("Received a message on address %s that "
                                  "caused an error: %s", self._address, e)
 
-    @asyncio.coroutine
-    def _receive_message(self):
+    async def _receive_message(self):
         """
         Internal coroutine for receiving messages
         """
-        while True:
+        while not self._stopping:
             try:
                 if self._socket.getsockopt(zmq.TYPE) == zmq.ROUTER:
                     zmq_identity, msg_bytes = \
-                        yield from self._socket.recv_multipart()
+                        await self._socket.recv_multipart()
                     self._received_from_identity(zmq_identity)
                     self._dispatcher_queue.put_nowait(
                         (zmq_identity, msg_bytes))
                 else:
-                    msg_bytes = yield from self._socket.recv()
+                    msg_bytes = await self._socket.recv()
                     self._last_message_time = time.time()
                     self._dispatcher_queue.put_nowait((None, msg_bytes))
 
@@ -376,11 +370,10 @@ class _SendReceive(object):
                 LOGGER.exception("Received a message on address %s that "
                                  "caused an error: %s", self._address, e)
 
-    @asyncio.coroutine
-    def _send_message_frame(self, message_frame):
-        yield from self._socket.send_multipart(message_frame)
+    async def _send_message_frame(self, message_frame):
+        await self._socket.send_multipart(message_frame)
 
-    def send_message(self, msg, connection_id=None):
+    def send_message(self, msg, connection_id=None, callback=None, one_way=False):
         """
         :param msg: protobuf validator_pb2.Message
         """
@@ -395,7 +388,15 @@ class _SendReceive(object):
                 else:
                     LOGGER.debug("Can't send to %s, not in self._connections", connection_id)
 
+
+
         self._ready.wait()
+        fut = future.FutureWrapper(
+            msg.correlation_id,
+            msg.content,
+            callback=callback, loop=self._event_loop)
+        if not one_way:
+            self._futures.put(fut)
 
         if zmq_identity is None:
             message_bundle = [msg.SerializeToString()]
@@ -413,8 +414,9 @@ class _SendReceive(object):
             # the eventloop is closed. This occurs on shutdown.
             pass
 
-    @asyncio.coroutine
-    def _send_last_message(self, identity, msg):
+        return fut
+
+    async def _send_last_message(self, identity, msg):
         LOGGER.debug("%s sending last message %s to %s",
                      self._connection,
                      get_enum_name(msg.message_type),
@@ -426,14 +428,14 @@ class _SendReceive(object):
             message_bundle = [bytes(identity),
                               msg.SerializeToString()]
 
-        yield from self._socket.send_multipart(message_bundle)
+        await self._socket.send_multipart(message_bundle)
         if identity is None:
             if self._connection != "ServerThread":
                 self.shutdown()
         else:
             self.remove_connected_identity(identity)
 
-    def send_last_message(self, msg, connection_id=None):
+    def send_last_message(self, msg, connection_id=None, callback=None, one_way=False):
         """
         Should be used instead of send_message, when you want to close the
         connection once the message is sent.
@@ -459,6 +461,15 @@ class _SendReceive(object):
 
         self._ready.wait()
 
+        fut = future.FutureWrapper(
+            msg.correlation_id,
+            msg.content,
+            callback, loop=self._event_loop)
+
+        if not one_way:
+            self._futures.put(fut)
+
+
         try:
             if self._stopping == False:
                 asyncio.run_coroutine_threadsafe(
@@ -468,6 +479,8 @@ class _SendReceive(object):
             # run_coroutine_threadsafe will throw a RuntimeError if
             # the eventloop is closed. This occurs on shutdown.
             pass
+        
+        return fut
 
     def setup(self, socket_type, complete_or_error_queue):
         """Setup the asyncio event loop.
@@ -491,6 +504,9 @@ class _SendReceive(object):
 
             self._event_loop = zmq.asyncio.ZMQEventLoop()
             asyncio.set_event_loop(self._event_loop)
+            self._executor = InstrumentedThreadPoolExecutor()
+            self._event_loop.set_default_executor(self._executor)
+            self._futures = future.FutureCollection(loop=self._event_loop)
             self._context = zmq.asyncio.Context()
             self._socket = self._context.socket(socket_type)
 
@@ -535,10 +551,10 @@ class _SendReceive(object):
             self._dispatcher.add_send_last_message(self._connection,
                                                    self.send_last_message)
 
-            asyncio.ensure_future(self._receive_message(),
+            asyncio.run_coroutine_threadsafe(self._receive_message(),
                                 loop=self._event_loop)
 
-            asyncio.ensure_future(self._dispatch_message(),
+            asyncio.run_coroutine_threadsafe(self._dispatch_message(),
                                 loop=self._event_loop)
 
             self._dispatcher_queue = asyncio.Queue()
@@ -549,7 +565,7 @@ class _SendReceive(object):
                 self._monitor_sock = self._socket.get_monitor_socket(
                     zmq.EVENT_DISCONNECTED,
                     addr=self._monitor_fd)
-                asyncio.ensure_future(self._monitor_disconnects(),
+                asyncio.run_coroutine_threadsafe(self._monitor_disconnects(),
                                     loop=self._event_loop)
 
         except Exception as e:
@@ -559,12 +575,12 @@ class _SendReceive(object):
             raise
 
         if self._heartbeat:
-            asyncio.ensure_future(self._do_heartbeat(), loop=self._event_loop)
+            asyncio.run_coroutine_threadsafe(self._do_heartbeat(), loop=self._event_loop)
 
         # Put a 'complete with the setup tasks' sentinel on the queue.
         complete_or_error_queue.put_nowait(_STARTUP_COMPLETE_SENTINEL)
 
-        asyncio.ensure_future(self._notify_started(), loop=self._event_loop)
+        asyncio.run_coroutine_threadsafe(self._notify_started(), loop=self._event_loop)
 
         self._event_loop.run_forever()
         # event_loop.stop called elsewhere will cause the loop to break out
@@ -575,11 +591,10 @@ class _SendReceive(object):
             self._monitor_sock.close(linger=0)
         self._context.destroy(linger=0)
 
-    @asyncio.coroutine
-    def _monitor_disconnects(self):
-        while True:
+    async def _monitor_disconnects(self):
+        while not self._stopping:
             try:
-                yield from self._monitor_sock.recv_multipart()
+                await self._monitor_sock.recv_multipart()
                 self._check_connections()
             except CancelledError:
                 # The concurrent.futures.CancelledError is caught by asyncio
@@ -593,17 +608,14 @@ class _SendReceive(object):
     def set_check_connections(self, function):
         self._check_connections = function
 
-    @asyncio.coroutine
-    def _stop_auth(self):
+    async def _stop_auth(self):
         if self._auth is not None:
             self._auth.stop()
 
-    @asyncio.coroutine
-    def _stop_event_loop(self):
+    async def _stop_event_loop(self):
         self._event_loop.stop()
 
     def _get_tasks_for_cancelling(self):
-        self._stopping = True
         while True:
             try:
                 tasks = list(asyncio.Task.all_tasks(self._event_loop).copy())
@@ -612,54 +624,60 @@ class _SendReceive(object):
             break
         return tasks
 
-    @asyncio.coroutine
-    def _stop(self):
+    async def _stop(self):
         self._dispatcher.remove_send_message(self._connection)
         self._dispatcher.remove_send_last_message(self._connection)
-        yield from self._stop_auth()
+        await self._stop_auth()
         tasks = self._get_tasks_for_cancelling()
         for task in tasks:
             task.cancel()
 
         asyncio.ensure_future(self._stop_event_loop())
 
-    @asyncio.coroutine
-    def _notify_started(self):
+    async def _notify_started(self):
         self._ready.set()
 
     def shutdown(self):
-        self._dispatcher.remove_send_message(self._connection)
-        self._dispatcher.remove_send_last_message(self._connection)
-        if self._event_loop is None:
-            return
-        if self._event_loop.is_closed():
-            return
+        try:
+            acquired = self._shutdown_lock.acquire(blocking=False)
+            if acquired and not self._stopping:
+                self._stopping = True
+                self._dispatcher.remove_send_message(self._connection)
+                self._dispatcher.remove_send_last_message(self._connection)
+                if not self._event_loop:
+                    return
+                if self._event_loop.is_closed():
+                    return
 
-        if self._event_loop.is_running():
-            if self._auth is not None:
-                self._event_loop.call_soon_threadsafe(self._auth.stop)
-        else:
-            # event loop was never started, so the only Task that is running
-            # is the Auth Task.
-            self._event_loop.run_until_complete(self._stop_auth())
-        # Cancel all running tasks
-        tasks = self._get_tasks_for_cancelling()
-        for task in tasks:
-            self._event_loop.call_soon_threadsafe(task.cancel)
-        while tasks:
-            for task in tasks.copy():
-                if task.done() is True:
-                    tasks.remove(task)
-            time.sleep(.2)
-        if self._event_loop is not None:
-            try:
-                self._event_loop.call_soon_threadsafe(self._event_loop.stop)
-            except RuntimeError:
-                # Depending on the timing of shutdown, the event loop may
-                # already be shutdown from _stop(). If it is,
-                # call_soon_threadsafe will raise a RuntimeError,
-                # which can safely be ignored.
-                pass
+                if self._event_loop.is_running():
+                    if self._auth:
+                        self._event_loop.call_soon_threadsafe(self._auth.stop)
+                else:
+                    # event loop was never started, so the only Task that is running
+                    # is the Auth Task.
+                    if self._auth:
+                        self._auth.stop()
+                # Cancel all running tasks
+                tasks = self._get_tasks_for_cancelling()
+                for task in tasks:
+                    self._event_loop.call_soon_threadsafe(task.cancel)
+                while tasks:
+                    for task in tasks.copy():
+                        if task.done() is True:
+                            tasks.remove(task)
+                    time.sleep(.2)
+                if self._event_loop is not None:
+                    try:
+                        self._event_loop.call_soon_threadsafe(self._event_loop.stop)
+                    except RuntimeError:
+                        # Depending on the timing of shutdown, the event loop may
+                        # already be shutdown from _stop(). If it is,
+                        # call_soon_threadsafe will raise a RuntimeError,
+                        # which can safely be ignored.
+                        pass
+        finally:
+            if acquired:
+                self._shutdown_lock.release()
 
 
 class Interconnect(object):
@@ -700,11 +718,6 @@ class Interconnect(object):
         """
         self._endpoint = endpoint
         self._public_endpoint = public_endpoint
-        self._future_callback_threadpool = InstrumentedThreadPoolExecutor(
-            max_workers=max_future_callback_workers,
-            name='FutureCallback')
-        self._futures = future.FutureCollection(
-            resolving_threadpool=self._future_callback_threadpool)
         self._dispatcher = dispatcher
         self._zmq_identity = zmq_identity
         self._secured = secured
@@ -713,7 +726,7 @@ class Interconnect(object):
         self._heartbeat = heartbeat
         self._connection_timeout = connection_timeout
         self._connections_lock = RLock()
-        self._connections = {}
+        self._connections = {} # type: typing.Mapping[str, ConnectionInfo]
         self.outbound_connections = {}
         self._max_incoming_connections = max_incoming_connections
         self._roles = {}
@@ -737,7 +750,6 @@ class Interconnect(object):
             connections_lock=self._connections_lock,
             address=endpoint,
             dispatcher=dispatcher,
-            futures=self._futures,
             secured=secured,
             server_public_key=server_public_key,
             server_private_key=server_private_key,
@@ -851,7 +863,6 @@ class Interconnect(object):
             secured=self._secured,
             server_public_key=self._server_public_key,
             server_private_key=self._server_private_key,
-            future_callback_threadpool=self._future_callback_threadpool,
             heartbeat=True,
             connection_timeout=self._connection_timeout,
             metrics_registry=self._metrics_registry)
@@ -1053,20 +1064,8 @@ class Interconnect(object):
                 content=data,
                 message_type=message_type)
 
-            timer_tag = get_enum_name(message.message_type)
-            timer_ctx = self._get_send_response_timer(timer_tag).time()
-            fut = future.Future(
-                message.correlation_id,
-                message.content,
-                callback,
-                timer_ctx=timer_ctx)
-            if not one_way:
-                self._futures.put(fut)
-
-            self._send_receive_thread.send_message(msg=message,
-                                                   connection_id=connection_id)
-            return fut
-
+            return self._send_receive_thread.send_message(msg=message,
+                                                   connection_id=connection_id, callback=callback, one_way=one_way)
         return connection_info.connection.send(
             message_type,
             data,
@@ -1090,7 +1089,6 @@ class Interconnect(object):
         self._send_receive_thread.shutdown()
         for conn in self.outbound_connections.values():
             conn.stop()
-        self._future_callback_threadpool.shutdown(wait=True)
 
     def get_connection_id_by_endpoint(self, endpoint):
         """Returns the connection id associated with a publically
@@ -1204,7 +1202,7 @@ class Interconnect(object):
                             status,
                             connection_id)
 
-    def _add_connection(self, connection, uri=None):
+    def _add_connection(self, connection: 'OutboundConnection', uri: Optional[str] = None):
         with self._connections_lock:
             connection_id = connection.connection_id
             if connection_id not in self._connections:
@@ -1255,16 +1253,9 @@ class Interconnect(object):
                 content=data,
                 message_type=message_type)
 
-            fut = future.Future(message.correlation_id, message.content,
-                                callback)
-
-            if not one_way:
-                self._futures.put(fut)
-
-            self._send_receive_thread.send_last_message(
+            return self._send_receive_thread.send_last_message(
                 msg=message,
                 connection_id=connection_id)
-            return fut
 
         with self._connections_lock:
             if connection_id in self._connections:
@@ -1310,12 +1301,9 @@ class OutboundConnection(object):
                  secured,
                  server_public_key,
                  server_private_key,
-                 future_callback_threadpool,
                  heartbeat=True,
                  connection_timeout=60,
                  metrics_registry=None):
-        self._futures = future.FutureCollection(
-            resolving_threadpool=future_callback_threadpool)
         self._zmq_identity = zmq_identity
         self._endpoint = endpoint
         self._dispatcher = dispatcher
@@ -1332,7 +1320,6 @@ class OutboundConnection(object):
             connections=connections,
             connections_lock=connections_lock,
             dispatcher=self._dispatcher,
-            futures=self._futures,
             zmq_identity=zmq_identity,
             secured=secured,
             server_public_key=server_public_key,
@@ -1369,13 +1356,7 @@ class OutboundConnection(object):
             content=data,
             message_type=message_type)
 
-        fut = future.Future(message.correlation_id, message.content,
-                            callback)
-        if not one_way:
-            self._futures.put(fut)
-
-        self._send_receive_thread.send_message(message)
-        return fut
+        return self._send_receive_thread.send_message(message, callback=callback, one_way=one_way)
 
     def send_last_message(self, message_type, data, callback=None,
                           one_way=False):
@@ -1395,14 +1376,7 @@ class OutboundConnection(object):
             content=data,
             message_type=message_type)
 
-        fut = future.Future(message.correlation_id, message.content,
-                            callback)
-
-        if not one_way:
-            self._futures.put(fut)
-
-        self._send_receive_thread.send_last_message(message)
-        return fut
+        return self._send_receive_thread.send_last_message(message, callback=callback, one_way=one_way)
 
     def start(self):
         complete_or_error_queue = queue.Queue()
