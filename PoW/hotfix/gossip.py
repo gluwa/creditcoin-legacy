@@ -819,15 +819,11 @@ class ConnectionManager(InstrumentedThread):
             new_threshold = connection_info.retry_threshold if connection_info.retry_threshold != MAXIMUM_RETRY_FREQUENCY else INITIAL_RETRY_FREQUENCY / 2
             new_threshold = min(new_threshold * 2,
                                 MAXIMUM_RETRY_FREQUENCY)
-            # create first before deleting the old conn to generate a diff conn_id
-            new_conn = self._network.add_outbound_connection(
-                endpoint).connection_id
-
             status = connection_info.status
             self._remove_temp_connection_info(connection)
-
-            if new_conn != connection:
-                self._network.remove_connection(connection)
+            self._network.remove_connection(connection)
+            new_conn = self._network.add_outbound_connection(
+                endpoint).connection_id
 
             self._temp_connections[new_conn] = EndpointInfo(
                 endpoint,
@@ -907,7 +903,7 @@ class ConnectionManager(InstrumentedThread):
             # There is not point in sending a GOSSIP_GET_PEERS_REQUEST because:
             # The temp connection was downgraded on purpose.
             # A connect_success callback may be on the flight either trying to peer or requesting peers already.
-            # the temporal connectin is about to het killed or upgraded to a peering connection.
+            # the temporal connectin is about to get killed or upgraded to a peering connection.
 
     def _attempt_to_peer_with_endpoint(self, endpoint):
         """There could be an inbound peering connection in flight.
