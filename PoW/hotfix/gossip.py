@@ -520,7 +520,8 @@ class ConnectionManager(InstrumentedThread):
         self._static_peer_status = {}
 
     def start(self):
-        for endpoint in self._initial_peer_endpoints:
+        endpoints = set(self._initial_peer_endpoints) - set([self._endpoint])
+        for endpoint in endpoints:
             self._static_peer_status[endpoint] = \
                 StaticPeerInfo(
                     None,

@@ -31,15 +31,18 @@ RUN python3 -m pip install --upgrade protobuf
 
 # Copy sawtooth validator hotfix files to docker image
 COPY hotfix/batch_injector.py      /usr/lib/python3/dist-packages/sawtooth_validator/journal/batch_injector.py
+COPY hotfix/block_cache.py         /usr/lib/python3/dist-packages/sawtooth_validator/journal/block_cache.py
 COPY hotfix/block_validator.py     /usr/lib/python3/dist-packages/sawtooth_validator/journal/block_validator.py
 COPY hotfix/chain.py               /usr/lib/python3/dist-packages/sawtooth_validator/journal/chain.py
 COPY hotfix/cli.py                 /usr/lib/python3/dist-packages/sawtooth_validator/server/cli.py
 COPY hotfix/client_block_pb2.py    /usr/lib/python3/dist-packages/sawtooth_validator/protobuf/client_block_pb2.py
 COPY hotfix/client_handlers.py     /usr/lib/python3/dist-packages/sawtooth_validator/state/client_handlers.py
+COPY hotfix/completer.py           /usr/lib/python3/dist-packages/sawtooth_validator/journal/completer.py
 COPY hotfix/component_handlers.py  /usr/lib/python3/dist-packages/sawtooth_validator/server/component_handlers.py
 COPY hotfix/consensus.py           /usr/lib/python3/dist-packages/sawtooth_validator/journal/consensus/consensus.py
 COPY hotfix/core.py                /usr/lib/python3/dist-packages/sawtooth_validator/server/core.py
 COPY hotfix/executor.py            /usr/lib/python3/dist-packages/sawtooth_validator/execution/executor.py
+COPY hotfix/future.py              /usr/lib/python3/dist-packages/sawtooth_validator/networking/future.py
 COPY hotfix/genesis.py             /usr/lib/python3/dist-packages/sawtooth_validator/journal/genesis.py
 COPY hotfix/gossip.py              /usr/lib/python3/dist-packages/sawtooth_validator/gossip/gossip.py
 COPY hotfix/gossip_handlers.py     /usr/lib/python3/dist-packages/sawtooth_validator/gossip/gossip_handlers.py
