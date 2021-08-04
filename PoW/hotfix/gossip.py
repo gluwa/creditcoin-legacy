@@ -235,7 +235,8 @@ class Gossip:
         Returns:
             bool: returns true (an error) if at least one abandoned peer was found and removed.
         """
-        stale_connections = [conn_id for conn_id, peer in self._peers.items() if peer == endpoint]
+        stale_connections = [conn_id for conn_id,
+                             peer in self._peers.items() if peer == endpoint]
         for id in stale_connections:
             self._unregister_peer(id)
             self._topology._remove_temporary_connection(id)
@@ -266,7 +267,8 @@ class Gossip:
             self._try_remove_abandoned_peers(endpoint)
             if len(self._peers) < self._maximum_peer_connectivity:
                 self._peers[connection_id] = endpoint
-                self._topology.set_connection_status(connection_id, PeerStatus.PEER)
+                self._topology.set_connection_status(
+                    connection_id, PeerStatus.PEER)
                 LOGGER.debug("Added connection_id {} with endpoint {}, connected identities are now {}."
                              .format(connection_id, endpoint, self._peers))
             else:
@@ -285,11 +287,13 @@ class Gossip:
         if connection_id in self._peers:
             del self._peers[connection_id]
             LOGGER.debug("Removed peer with Id %s, "
-                        "connected identities are now %s",
-                        connection_id, self._peers)
-            self._topology.set_connection_status(connection_id, PeerStatus.TEMP)
+                         "connected identities are now %s",
+                         connection_id, self._peers)
+            self._topology.set_connection_status(
+                connection_id, PeerStatus.TEMP)
         else:
-            LOGGER.debug("Unregister peer failed as peer was not registered: %s", connection_id)
+            LOGGER.debug(
+                "Unregister peer failed as peer was not registered: %s", connection_id)
 
     def unregister_peer(self, connection_id):
         """Removes a connection_id from the registry.
@@ -516,7 +520,6 @@ class ConnectionManager(InstrumentedThread):
         self._static_peer_status = {}
 
     def start(self):
-        # First, attempt to connect to explicit peers
         for endpoint in self._initial_peer_endpoints:
             self._static_peer_status[endpoint] = \
                 StaticPeerInfo(
@@ -636,7 +639,7 @@ class ConnectionManager(InstrumentedThread):
 
     CandidatesAndRevPeers = Tuple['set[str]', 'dict[str,str]']
 
-    def _endpoints_not_peered(self,initial_endpoints) -> CandidatesAndRevPeers:
+    def _endpoints_not_peered(self, initial_endpoints) -> CandidatesAndRevPeers:
         """
         Creates a set of the initial endpoints that are not yet peered and
         an inverse map[endpoint_uri:connection_id] of the 'peers structure' dictionary.
@@ -662,7 +665,8 @@ class ConnectionManager(InstrumentedThread):
             self._refresh_connection_states()
             with self._gossip._lock(self.retry_static_peering.__name__):
                 self._refresh_peer_list()
-                candidates, peers_rev_map = self._endpoints_not_peered(self._initial_peer_endpoints)
+                candidates, peers_rev_map = self._endpoints_not_peered(
+                    self._initial_peer_endpoints)
 
         for endpoint in peers_rev_map.keys():
             self._static_peer_status[endpoint] = \
@@ -678,13 +682,13 @@ class ConnectionManager(InstrumentedThread):
 
             if (time.time() - static_peer_info.time) > \
                     static_peer_info.retry_threshold:
-                #the first pass has the elapsed time wrong
+                # the first pass has the elapsed time wrong
                 if static_peer_info.time != 0:
                     LOGGER.debug("Endpoint (%s) %s has not completed authorization in "
-                                "%s seconds",
-                                endpoint,
-                                connection_id,
-                                static_peer_info.retry_threshold)
+                                 "%s seconds",
+                                 endpoint,
+                                 connection_id,
+                                 static_peer_info.retry_threshold)
 
                 if static_peer_info.retry_threshold == \
                         MAXIMUM_STATIC_RETRY_FREQUENCY:
@@ -877,7 +881,8 @@ class ConnectionManager(InstrumentedThread):
         """
         with self._lock(self._get_peers_of_endpoints.__name__):
             with self._gossip._lock(self._get_peers_of_endpoints.__name__):
-                endpoints, peers_rev = self._endpoints_not_peered(self._initial_seed_endpoints)
+                endpoints, peers_rev = self._endpoints_not_peered(
+                    self._initial_seed_endpoints)
         peered_endpoints = peers_rev.keys()
         for endpoint in endpoints:
             if endpoint in peered_endpoints:
@@ -900,10 +905,10 @@ class ConnectionManager(InstrumentedThread):
                         INITIAL_RETRY_FREQUENCY)
 
             # A not-peered connection with a complete handshake is a temporal connection.
-            # There is not point in sending a GOSSIP_GET_PEERS_REQUEST because:
+            # There is no point in sending a GOSSIP_GET_PEERS_REQUEST because:
             # The temp connection was downgraded on purpose.
             # A connect_success callback may be on the flight either trying to peer or requesting peers already.
-            # the temporal connectin is about to get killed or upgraded to a peering connection.
+            # the temporal connection is about to get killed or upgraded to a peering connection.
 
     def _attempt_to_peer_with_endpoint(self, endpoint):
         """There could be an inbound peering connection in flight.
@@ -914,15 +919,16 @@ class ConnectionManager(InstrumentedThread):
             endpoint ([uri]): endpoint in the zmq form tcp://address:port
         """
 
-        connections = self._network.get_outbound_connections_id_by_endpoint(endpoint)
+        connections = self._network.get_outbound_connections_id_by_endpoint(
+            endpoint)
         with self._lock(self._attempt_to_peer_with_endpoint.__name__):
             peering_conn_count = reduce(lambda c, conn: c +
-                1 if self._temp_connections.get(conn) and  self._temp_connections[conn].status == ConnectionStatus.PEERING else c, connections, 0)
+                                        1 if self._temp_connections.get(conn) and self._temp_connections[conn].status == ConnectionStatus.PEERING else c, connections, 0)
 
-            #there shouldn't be more than one outbound peering connection at any given time
+            # there shouldn't be more than one outbound peering connection at any given time
             assert(peering_conn_count <= 1)
 
-            #if a peering connection does not exist, create it
+            # if a peering connection does not exist, create it
             if peering_conn_count == 0:
                 LOGGER.debug("Attempting to connect/peer with %s", endpoint)
                 new_conn = self._network.add_outbound_connection(
@@ -930,8 +936,8 @@ class ConnectionManager(InstrumentedThread):
                 self._temp_connections[new_conn] = EndpointInfo(
                     endpoint, ConnectionStatus.PEERING, time.time(), INITIAL_RETRY_FREQUENCY)
             else:
-                LOGGER.debug("endpoint %s has %s outstanding peering connections",endpoint,connections)
-
+                LOGGER.debug(
+                    "endpoint %s has %s outstanding peering connections", endpoint, connections)
 
     def _reset_candidate_peer_endpoints(self):
         """Needs sync"""
