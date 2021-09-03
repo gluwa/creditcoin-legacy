@@ -120,7 +120,7 @@ namespace gbitcoin
 
                 var sourceAddress = BitcoinAddress.Create(sourceAddressString, network);
                 var input = transactionInfoResponse.Transaction.Inputs[0];
-                if (!Script.VerifyScript(input.ScriptSig, sourceAddress.ScriptPubKey, transactionInfoResponse.Transaction, 0))
+                if (!Script.VerifyScript(input.ScriptSig, transactionInfoResponse.Transaction, 0, new TxOut(null, sourceAddress)))
                 {
                     msg = "Invalid transaction: wrong sourceAddressString";
                     return false;
