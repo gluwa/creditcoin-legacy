@@ -20,7 +20,7 @@
 FROM hyperledger/sawtooth-rest-api:1.0
 
 RUN apt-get update
-RUN apt-get -y install python3-pip python3
+RUN apt-get -y install python3-pip python3 iputils-ping curl jq
 RUN python3 -m pip install --upgrade protobuf
 
 WORKDIR /
