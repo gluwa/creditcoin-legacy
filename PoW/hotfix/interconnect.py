@@ -75,8 +75,8 @@ class AuthorizationType(Enum):
 
 
 ConnectionInfo = typing.NamedTuple('ConnectionInfo',
-                            [('connection_type', ConnectionType), ('connection', 'OutboundConnection'), ('uri', str),
-                             ('status', ConnectionStatus), ('public_key', bytes)])
+                                   [('connection_type', ConnectionType), ('connection', 'OutboundConnection'), ('uri', str),
+                                    ('status', ConnectionStatus), ('public_key', bytes)])
 
 
 def _generate_id():
@@ -92,9 +92,9 @@ _STARTUP_COMPLETE_SENTINEL = 1
 
 class _SendReceive(object):
     def __init__(self, connection, address, connections, connections_lock,
-                 zmq_identity: Optional[bytes] = None, dispatcher = None, secured: bool = False,
+                 zmq_identity: Optional[bytes] = None, dispatcher=None, secured: bool = False,
                  server_public_key=None, server_private_key=None,
-                 heartbeat: bool = False, heartbeat_interval: int =10,
+                 heartbeat: bool = False, heartbeat_interval: int = 10,
                  connection_timeout: int = 60, monitor: bool = False,
                  metrics_registry=None):
         """
@@ -124,10 +124,10 @@ class _SendReceive(object):
             connection_timeout (int): Number of seconds after which a
                 connection is considered timed out.
         """
-        self._connection = connection # type: str
+        self._connection = connection  # type: str
         self._dispatcher = dispatcher
-        self._futures = None # type: future.FutureCollection
-        self._address = address # type: str
+        self._futures = None  # type: future.FutureCollection
+        self._address = address  # type: str
         self._zmq_identity = zmq_identity
         self._secured = secured
         self._server_public_key = server_public_key
@@ -135,11 +135,11 @@ class _SendReceive(object):
         self._heartbeat = heartbeat
         self._heartbeat_interval = heartbeat_interval
         self._connection_timeout = connection_timeout
-        self._event_loop = None # type: Optional[zmq.asyncio.ZMQEventLoop]
+        self._event_loop = None  # type: Optional[zmq.asyncio.ZMQEventLoop]
         self._executor = None
-        self._context = None # type: Optional[zmq.asyncio.Context]
-        self._socket = None # type: Optional[zmq.asyncio.Socket]
-        self._auth = None # type: Optional[AsyncioAuthenticator]
+        self._context = None  # type: Optional[zmq.asyncio.Context]
+        self._socket = None  # type: Optional[zmq.asyncio.Socket]
+        self._auth = None  # type: Optional[AsyncioAuthenticator]
         self._ready = Event()
 
         # The last time a message was received over an outbound
@@ -150,8 +150,9 @@ class _SendReceive(object):
         # for inbound connections to our zmq.ROUTER socket.
         self._last_message_times = {}
 
-        self._connections = connections # type: typing.Mapping[str, ConnectionInfo]
-        self._connections_lock = connections_lock # type: RLock
+        # type: typing.Mapping[str, ConnectionInfo]
+        self._connections = connections
+        self._connections_lock = connections_lock  # type: RLock
         self._identities_to_connection_ids = {}
         self._monitor = monitor
 
@@ -213,8 +214,8 @@ class _SendReceive(object):
         with self._connections_lock:
             expired = \
                 [(ident, check_time - timestamp)
-                for ident, timestamp in self._last_message_times.items()
-                if check_time - timestamp > self._heartbeat_interval]
+                 for ident, timestamp in self._last_message_times.items()
+                 if check_time - timestamp > self._heartbeat_interval]
         for zmq_identity, elapsed in expired:
             check_time = self._last_message_times.get(zmq_identity)
             if check_time is None:
@@ -292,10 +293,10 @@ class _SendReceive(object):
             if connection_id not in self._connections:
                 self._connections[connection_id] = \
                     ConnectionInfo(ConnectionType.ZMQ_IDENTITY,
-                               zmq_identity,
-                               None,
-                               None,
-                               None)
+                                   zmq_identity,
+                                   None,
+                                   None,
+                                   None)
 
     async def _dispatch_message(self):
         while not self._stopping:
@@ -310,7 +311,8 @@ class _SendReceive(object):
                 try:
                     message.ParseFromString(msg_bytes)
                 except:
-                    LOGGER.critical("Incoming message couldn't be processed; dumping raw message\n{}".format(msg_bytes))
+                    LOGGER.critical(
+                        "Incoming message couldn't be processed; dumping raw message\n{}".format(msg_bytes))
                     raise
 
                 tag = get_enum_name(message.message_type)
@@ -386,9 +388,8 @@ class _SendReceive(object):
                             ConnectionType.ZMQ_IDENTITY:
                         zmq_identity = connection_info.connection
                 else:
-                    LOGGER.debug("Can't send to %s, not in self._connections", connection_id)
-
-
+                    LOGGER.debug(
+                        "Can't send to %s, not in self._connections", connection_id)
 
         self._ready.wait()
         fut = future.FutureWrapper(
@@ -451,7 +452,8 @@ class _SendReceive(object):
                     connection_info = self._connections.get(connection_id)
                     del self._connections[connection_id]
                 else:
-                    LOGGER.debug("Can't send to %s, not in self._connections", connection_id)
+                    LOGGER.debug(
+                        "Can't send to %s, not in self._connections", connection_id)
                     return
         if connection_info:
             if connection_info.connection_type == \
@@ -471,7 +473,6 @@ class _SendReceive(object):
         if not one_way:
             self._futures.put(fut)
 
-
         try:
             if self._stopping == False:
                 asyncio.run_coroutine_threadsafe(
@@ -481,7 +482,7 @@ class _SendReceive(object):
             # run_coroutine_threadsafe will throw a RuntimeError if
             # the eventloop is closed. This occurs on shutdown.
             pass
-        
+
         return fut
 
     def setup(self, socket_type, complete_or_error_queue):
@@ -554,10 +555,10 @@ class _SendReceive(object):
                                                    self.send_last_message)
 
             asyncio.run_coroutine_threadsafe(self._receive_message(),
-                                loop=self._event_loop)
+                                             loop=self._event_loop)
 
             asyncio.run_coroutine_threadsafe(self._dispatch_message(),
-                                loop=self._event_loop)
+                                             loop=self._event_loop)
 
             self._dispatcher_queue = asyncio.Queue()
 
@@ -568,7 +569,7 @@ class _SendReceive(object):
                     zmq.EVENT_DISCONNECTED,
                     addr=self._monitor_fd)
                 asyncio.run_coroutine_threadsafe(self._monitor_disconnects(),
-                                    loop=self._event_loop)
+                                                 loop=self._event_loop)
 
         except Exception as e:
             # Put the exception on the queue where in start we are waiting
@@ -577,12 +578,14 @@ class _SendReceive(object):
             raise
 
         if self._heartbeat:
-            asyncio.run_coroutine_threadsafe(self._do_heartbeat(), loop=self._event_loop)
+            asyncio.run_coroutine_threadsafe(
+                self._do_heartbeat(), loop=self._event_loop)
 
         # Put a 'complete with the setup tasks' sentinel on the queue.
         complete_or_error_queue.put_nowait(_STARTUP_COMPLETE_SENTINEL)
 
-        asyncio.run_coroutine_threadsafe(self._notify_started(), loop=self._event_loop)
+        asyncio.run_coroutine_threadsafe(
+            self._notify_started(), loop=self._event_loop)
 
         self._event_loop.run_forever()
         # event_loop.stop called elsewhere will cause the loop to break out
@@ -670,7 +673,8 @@ class _SendReceive(object):
                     time.sleep(.2)
                 if self._event_loop is not None:
                     try:
-                        self._event_loop.call_soon_threadsafe(self._event_loop.stop)
+                        self._event_loop.call_soon_threadsafe(
+                            self._event_loop.stop)
                     except RuntimeError:
                         # Depending on the timing of shutdown, the event loop may
                         # already be shutdown from _stop(). If it is,
@@ -728,7 +732,7 @@ class Interconnect(object):
         self._heartbeat = heartbeat
         self._connection_timeout = connection_timeout
         self._connections_lock = RLock()
-        self._connections = {} # type: typing.Mapping[str, ConnectionInfo]
+        self._connections = {}  # type: typing.Mapping[str, ConnectionInfo]
         self.outbound_connections = {}
         self._max_incoming_connections = max_incoming_connections
         self._roles = {}
@@ -1070,7 +1074,8 @@ class Interconnect(object):
         """
         with self._connections_lock:
             if connection_id not in self._connections:
-                raise ValueError("Unknown connection id: {}".format(connection_id))
+                raise ValueError(
+                    "Unknown connection id: {}".format(connection_id))
             connection_info = self._connections.get(connection_id)
         if connection_info.connection_type == \
                 ConnectionType.ZMQ_IDENTITY:
@@ -1080,7 +1085,7 @@ class Interconnect(object):
                 message_type=message_type)
 
             return self._send_receive_thread.send_message(msg=message,
-                                                   connection_id=connection_id, callback=callback, one_way=one_way)
+                                                          connection_id=connection_id, callback=callback, one_way=one_way)
         return connection_info.connection.send(
             message_type,
             data,
@@ -1105,7 +1110,7 @@ class Interconnect(object):
         for conn in self.outbound_connections.values():
             conn.stop()
 
-    def __get_connection_id_by_endpoint(self, endpoint):
+    def get_connection_id_by_endpoint(self, endpoint):
         """Returns the connection id associated with a publically
         reachable endpoint or raises KeyError if the endpoint is not
         found.
@@ -1136,7 +1141,6 @@ class Interconnect(object):
                 if connection_info.uri == endpoint and connection_info.connection_type == ConnectionType.OUTBOUND_CONNECTION:
                     return connection_id
         raise KeyError()
-
 
     def get_outbound_connections_id_by_endpoint(self, endpoint) -> "list[str]":
         """Returns a list of the connection id associated with a publically
@@ -1169,17 +1173,17 @@ class Interconnect(object):
                 connection_info = self._connections[connection_id]
                 self._connections[connection_id] = \
                     ConnectionInfo(connection_info.connection_type,
-                                connection_info.connection,
-                                endpoint,
-                                connection_info.status,
-                                connection_info.public_key)
+                                   connection_info.connection,
+                                   endpoint,
+                                   connection_info.status,
+                                   connection_info.public_key)
 
             else:
                 LOGGER.debug("Could not update the endpoint %s for "
-                            "connection_id %s. The connection does not "
-                            "exist.",
-                            endpoint,
-                            connection_id)
+                             "connection_id %s. The connection does not "
+                             "exist.",
+                             endpoint,
+                             connection_id)
 
     def update_connection_public_key(self, connection_id, public_key):
         """Adds the public_key to the connection definition.
@@ -1195,16 +1199,16 @@ class Interconnect(object):
                 connection_info = self._connections[connection_id]
                 self._connections[connection_id] = \
                     ConnectionInfo(connection_info.connection_type,
-                                connection_info.connection,
-                                connection_info.uri,
-                                connection_info.status,
-                                public_key)
+                                   connection_info.connection,
+                                   connection_info.uri,
+                                   connection_info.status,
+                                   public_key)
             else:
                 LOGGER.debug("Could not update the public key %s for "
-                            "connection_id %s. The connection does not "
-                            "exist.",
-                            public_key,
-                            connection_id)
+                             "connection_id %s. The connection does not "
+                             "exist.",
+                             public_key,
+                             connection_id)
 
     def update_connection_status(self, connection_id, status):
         """Adds a status to the connection definition. This allows the handlers
@@ -1222,16 +1226,16 @@ class Interconnect(object):
                 connection_info = self._connections[connection_id]
                 self._connections[connection_id] = \
                     ConnectionInfo(connection_info.connection_type,
-                                connection_info.connection,
-                                connection_info.uri,
-                                status,
-                                connection_info.public_key)
+                                   connection_info.connection,
+                                   connection_info.uri,
+                                   status,
+                                   connection_info.public_key)
             else:
                 LOGGER.debug("Could not update the status to %s for "
-                            "connection_id %s. The connection does not "
-                            "exist.",
-                            status,
-                            connection_id)
+                             "connection_id %s. The connection does not "
+                             "exist.",
+                             status,
+                             connection_id)
 
     def _add_connection(self, connection: 'OutboundConnection', uri: Optional[str] = None):
         with self._connections_lock:
@@ -1275,7 +1279,8 @@ class Interconnect(object):
         """
         with self._connections_lock:
             if connection_id not in self._connections:
-                raise ValueError("Unknown connection id: {}".format(connection_id))
+                raise ValueError(
+                    "Unknown connection id: {}".format(connection_id))
             connection_info = self._connections.get(connection_id)
         if connection_info.connection_type == \
                 ConnectionType.ZMQ_IDENTITY:
