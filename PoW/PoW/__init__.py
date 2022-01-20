@@ -46,6 +46,7 @@ GLUE = b':'
 EXPECTED_BLOCK_INTERVAL = 60
 DIFFICULTY_ADJUSTMENT_BLOCK_COUNT = 10
 DIFFICULTY_TUNING_BLOCK_COUNT = 100
+DIFFICULTY_ENFORCING_INTERVAL = EXPECTED_BLOCK_INTERVAL * 30 #must be greater than EXPECTED_BLOCK_INTERVAL
 INITIAL_DIFFICULTY = 22
 IDX_POW = 0
 IDX_DIFFICULTY = 1
@@ -60,11 +61,12 @@ class _SolverCommand:
 class _SolverState:
     HASH = 3
     WORKING = 4
-    STOPPED = 5
+    STOPPED = 5 #must have the same payload structure as HASH
     ERROR = 6
 
 SOLVER_PRIM = None
 SOLVER_PERF = None
+DIFFICULTY_VALIDATOR = None
 
 @atexit.register
 def _cleanup():
@@ -79,7 +81,7 @@ class _Solver:
         self._comm, responder = ctx.Pipe()
         self._process = ctx.Process(target=self.process, args=(responder,))
         self._state = _SolverState.STOPPED
-        self._payload = [_SolverState.STOPPED,"uninit","uninit","Unitialized"]
+        self._payload = [_SolverState.STOPPED, 'solver:Unitialized', 'actual_solver:Unitialized', 'id:Unitialized', 'difficulty:Unitialized', 'b_nonce:Unitialized']
         self._process.start()
         responder.close()
 
@@ -105,21 +107,12 @@ class _Solver:
                     encodedPublicKey = command[5]
                     nonce = random.randrange(sys.maxsize)
 
+                    difficulty_so_far = 0
+                    b_nonce_so_far = None
+
                     responder.send([_SolverState.WORKING,solver,actual_solver])
                     # working event loop
                     while True:
-                        if responder.poll():
-                            command = responder.recv()
-                            action = command[0]
-                            actual_solver = command[1]
-                            if action == _SolverCommand.SWAP:
-                                responder.send([_SolverState.WORKING,solver,actual_solver])
-                                continue
-                            elif action == _SolverCommand.STOP:
-                                responder.send([_SolverState.STOPPED, solver, actual_solver, 'Stopped'])
-                            else:
-                                responder.send([_SolverState.ERROR, solver, actual_solver, 'unhandled event {}'.format(action)])
-                            break
                         b_nonce = str(nonce).encode()
                         digest = _Helper.build_digest_with_encoded_data(encodedBlockID, encodedPublicKey, b_nonce)
                         digest_difficulty = _Helper._count_leading_zeroes(digest)
@@ -129,11 +122,26 @@ class _Solver:
                             nonce = random.randrange(sys.maxsize)
                         else:
                             nonce = nonce + 1
+                        if digest_difficulty >= difficulty_so_far:
+                            difficulty_so_far = digest_difficulty
+                            b_nonce_so_far = b_nonce
+                        if responder.poll():
+                            command = responder.recv()
+                            action = command[0]
+                            actual_solver = command[1]
+                            if action == _SolverCommand.SWAP:
+                                responder.send([_SolverState.WORKING,solver,actual_solver])
+                                continue
+                            elif action == _SolverCommand.STOP:
+                                responder.send([_SolverState.STOPPED, solver, actual_solver, id, difficulty_so_far, b_nonce_so_far])
+                            else:
+                                responder.send([_SolverState.ERROR, solver, actual_solver, 'unhandled event {}'.format(action)])
+                            break
                 else:
                     responder.send([_SolverState.ERROR, solver, actual_solver, 'Unhandled event {}'.format(action)])
 
         except KeyboardInterrupt:
-            responder.send([_SolverState.STOPPED, solver, actual_solver, 'KeyboardInterrrupt: Shutting down'])
+            responder.send([_SolverState.STOPPED, solver, actual_solver, 'KeyboardInterrrupt: Shutting down', 'difficulty:Ignored', 'b_nonce:Ignored'])
             return
         except BaseException:
             responder.send([_SolverState.ERROR, solver, actual_solver, 'Critical: unhandled exception in solver, exiting process()'])
@@ -284,6 +292,18 @@ class _DifficultyValidator():
                     difficulty = difficulty - 1
 
         return difficulty
+    
+    def validate_difficulty(self, prev_block, prev_consensus, consensus):
+        expected_difficulty = self.get_adjusted_difficulty(prev_block, prev_consensus, float(consensus[IDX_TIME]))
+        block_difficulty = consensus[IDX_DIFFICULTY]
+        if int(block_difficulty) < int(expected_difficulty):
+            now = time.time()
+            prev_block_time = float(prev_consensus[IDX_TIME].decode())
+            this_block_time = float(consensus[IDX_TIME].decode())
+            if this_block_time >= now or this_block_time <= prev_block_time or (this_block_time - prev_block_time) < DIFFICULTY_ENFORCING_INTERVAL:
+                LOGGER.debug("Block difficulty differs from expected difficulty: received: %s, expected: %s", block_difficulty, expected_difficulty)
+                return False
+        return True
 
     def update_difficulty_settings(self, settings_view):
         self._expected_block_interval = settings_view.get_setting("sawtooth.consensus.pow.seconds_between_blocks", self._expected_block_interval, int)
@@ -317,6 +337,7 @@ class BlockPublisher(BlockPublisherInterface):
 
         global SOLVER_PRIM
         global SOLVER_PERF
+        global DIFFICULTY_VALIDATOR
 
         self._block_cache = block_cache
         self._state_view_factory = state_view_factory
@@ -332,10 +353,10 @@ class BlockPublisher(BlockPublisherInterface):
             SOLVER_PRIM = _Solver()
         if SOLVER_PERF is None:
             SOLVER_PERF = _Solver()
-
-        self._difficulty_validator = _DifficultyValidator(self._block_cache, EXPECTED_BLOCK_INTERVAL, DIFFICULTY_ADJUSTMENT_BLOCK_COUNT, DIFFICULTY_TUNING_BLOCK_COUNT)
-        state_view = BlockWrapper.state_view_for_block(self._block_cache.block_store.chain_head, self._state_view_factory)
-        self._difficulty_validator.update_difficulty_settings(SettingsView(state_view))
+        if DIFFICULTY_VALIDATOR is None:
+            DIFFICULTY_VALIDATOR = _DifficultyValidator(self._block_cache, EXPECTED_BLOCK_INTERVAL, DIFFICULTY_ADJUSTMENT_BLOCK_COUNT, DIFFICULTY_TUNING_BLOCK_COUNT)
+            state_view = BlockWrapper.state_view_for_block(self._block_cache.block_store.chain_head, self._state_view_factory)
+            DIFFICULTY_VALIDATOR.update_difficulty_settings(SettingsView(state_view))
 
     def initialize_block(self, block_header):
         """Do initialization necessary for the consensus to claim a block,
@@ -356,7 +377,6 @@ class BlockPublisher(BlockPublisherInterface):
         #LOGGER.debug("init block with time {} in object {}".format(self._start_time,id(self))) #for TRACING
 
         settings_view = SettingsView(state_view)
-        self._difficulty_validator.update_difficulty_settings(settings_view)
         self._valid_block_publishers = settings_view.get_setting("sawtooth.consensus.valid_block_publisher", self._valid_block_publishers, list)
 
         prev_block = self._block_cache[block_header.previous_block_id]
@@ -365,7 +385,8 @@ class BlockPublisher(BlockPublisherInterface):
         if prev_consensus[IDX_POW] != POW:
             difficulty = INITIAL_DIFFICULTY
         else:
-            difficulty = self._difficulty_validator.get_adjusted_difficulty(prev_block, prev_consensus, self._start_time)
+            global DIFFICULTY_VALIDATOR
+            difficulty = DIFFICULTY_VALIDATOR.get_adjusted_difficulty(prev_block, prev_consensus, self._start_time)
         # difficulty = INITIAL_DIFFICULTY #this is for debugging (LOW DIFFICULTY) 
         global SOLVER_PRIM
 
@@ -401,7 +422,14 @@ class BlockPublisher(BlockPublisherInterface):
             try:
                 result = self._read_solver(SOLVER_PRIM, 'SOLVER_PRIM', block_header)
                 if result == _SolverState.WORKING:
-                    return False
+                    if time.time() - self._start_time < DIFFICULTY_ENFORCING_INTERVAL:
+                        return False
+                    SOLVER_PRIM._stop_solver("SOLVER_PRIM") #it won't be running as a performance solver either, as DIFFICULTY_ENFORCING_INTERVAL is greater than EXPECTED_BLOCK_INTERVAL
+                    while True:
+                        result = self._read_solver(SOLVER_PRIM, 'SOLVER_PRIM', block_header)
+                        if result == _SolverState.STOPPED:
+                            self._update_consensus(SOLVER_PRIM, 'SOLVER_PRIM', block_header)
+                            break
                 elif result == _SolverState.STOPPED:
                     LOGGER.debug("CPB consensus stopped")
                     return False
@@ -432,11 +460,26 @@ class BlockPublisher(BlockPublisherInterface):
 
     def get_remaining_time(self):
         #settings not updated because this function is always called after initialize_block which updates settings for the current candidate_block
-        remaining_time = self._difficulty_validator._expected_block_interval - (time.time() - self._start_time)
+        global DIFFICULTY_VALIDATOR
+        remaining_time = DIFFICULTY_VALIDATOR._expected_block_interval - (time.time() - self._start_time)
         if remaining_time < 0:
             remaining_time = 0
         self._remaining_time = remaining_time
         return remaining_time
+
+    def _update_consensus(self, solver, solver_str, block_header):
+        difficulty = None
+        b_nonce = None
+        if self._start_time != solver._payload[3]:
+            LOGGER.error('---_read_solver {} error: Stale hash  {} -- Current start_time {}'.format(solver_str, solver._payload, self._start_time))
+            raise AssertionError
+        difficulty = solver._payload[4]
+        b_nonce = solver._payload[5]
+        #LOGGER.info('--- polling %s - found a hash', solver_str)
+        consensus = GLUE.join([POW, str(difficulty).encode(), b_nonce, str(self._start_time).encode()])
+        block_header.consensus = consensus
+        LOGGER.info("Built PoW consensus {}".format(consensus))
+        #LOGGER.info('--- polling %s - has data', solver_str)
 
     def _read_solver(self, solver, solver_str, block_header):
         """Build consensus if a solution is available.
@@ -454,9 +497,6 @@ class BlockPublisher(BlockPublisherInterface):
         Returns:
             _SolverState: Propagate the state.
         """
-        difficulty = None
-        b_nonce = None
-        hash_available = False
         # LOGGER.info('--- polling %s', solver_str)
         try:
             state = solver.state
@@ -464,21 +504,8 @@ class BlockPublisher(BlockPublisherInterface):
             LOGGER.error('---_read_solver {} payload: {}'.format(solver_str, solver._payload))
 
         if state == _SolverState.HASH:
-            if self._start_time == solver._payload[3]:
-                hash_available = True
-                difficulty = solver._payload[4]
-                b_nonce = solver._payload[5]
-            else:
-                LOGGER.error('---_read_solver {} error: Stale hash  {} -- Current start_time {}'.format(solver_str, solver._payload, self._start_time))
-                raise AssertionError
-
-            if hash_available:
-                #LOGGER.info('--- polling %s - found a hash', solver_str)
-                consensus = GLUE.join([POW, str(difficulty).encode(), b_nonce, str(self._start_time).encode()])
-                block_header.consensus = consensus
-                LOGGER.info("Built PoW consensus {}".format(consensus))
-                #LOGGER.info('--- polling %s - has data', solver_str)
-                return _SolverState.HASH
+            self._update_consensus(solver, solver_str, block_header)
+            return _SolverState.HASH
         elif state == _SolverState.WORKING or state == _SolverState.STOPPED:
             return state
         else:
@@ -559,7 +586,6 @@ class BlockVerifier(BlockVerifierInterface):
 
         self._block_cache = block_cache
         self._state_view_factory = state_view_factory
-        self._difficulty_validator = _DifficultyValidator(self._block_cache, EXPECTED_BLOCK_INTERVAL, DIFFICULTY_ADJUSTMENT_BLOCK_COUNT, DIFFICULTY_TUNING_BLOCK_COUNT)
 
     def verify_block(self, block_wrapper):
         consensus = block_wrapper.header.consensus.split(GLUE)
@@ -576,14 +602,8 @@ class BlockVerifier(BlockVerifierInterface):
 
         prev_consensus = prev_block.consensus.split(GLUE)
         if prev_consensus[IDX_POW] == POW:
-            state_view = BlockWrapper.state_view_for_block(self._block_cache.block_store.chain_head, self._state_view_factory)
-            self._difficulty_validator.update_difficulty_settings(SettingsView(state_view))
-            difficulty = self._difficulty_validator.get_adjusted_difficulty(prev_block, prev_consensus, float(consensus[IDX_TIME]))
-            block_difficulty = consensus[IDX_DIFFICULTY]
-
-            if int(block_difficulty) < int(difficulty):
-                LOGGER.debug(
-                    "Block difficulty differs from expected difficulty: received: %s, expected: %s", block_difficulty, difficulty)
+            global DIFFICULTY_VALIDATOR
+            if not DIFFICULTY_VALIDATOR.validate_difficulty(prev_block, prev_consensus, consensus):
                 return False
 
         b_nonce = consensus[IDX_NONCE]
@@ -629,17 +649,21 @@ class ForkResolver(ForkResolverInterface):
             fork_size_diff = fork_size_diff - 1
         return block
 
-    def _get_difficulties(self, block, id):
-        difficulties = []
+    def _verify_difficulties(self, block, id):
         while block.header_signature != id:
-            consensus = block.header.consensus.split(GLUE)
-            difficulties.append(int(consensus[IDX_DIFFICULTY].decode()))
             try:
-                block = self._block_cache[block.previous_block_id]
+                prev_block = self._block_cache[block.previous_block_id]
             except KeyError:
                 LOGGER.debug("missing predecessor {}".format(block.previous_block_id))
-                raise BlockValidationAborted("Getting difficulties failed in PoW consensus.")
-        return difficulties
+                raise BlockValidationAborted("difficulty verification failed in PoW consensus.")
+
+            consensus = block.header.consensus.split(GLUE)
+            prev_consensus = prev_block.header.consensus.split(GLUE)
+            global DIFFICULTY_VALIDATOR
+            if not DIFFICULTY_VALIDATOR.validate_difficulty(prev_block, prev_consensus, consensus):
+                return False
+            block = prev_block
+        return True
 
     def _process_fork(self, block, id):
         difficulty = 0
@@ -719,18 +743,10 @@ class ForkResolver(ForkResolverInterface):
             common_ancestop_time = float(new_consensus[IDX_TIME].decode())
 
             new_fork_len = new_fork_head.block_num - common_ancestop_height
-            minimal_difficulty = common_ancestop_difficulty - \
-                new_fork_len % DIFFICULTY_ADJUSTMENT_BLOCK_COUNT - \
-                new_fork_len % DIFFICULTY_TUNING_BLOCK_COUNT - 3
-            if minimal_difficulty < 0:
-                minimal_difficulty = 0
 
-            new_difficulties = self._get_difficulties(new_fork_head, common_ancestop_id)
-            # comment out for debugging (LOW DIFFICULTY)
-            for d in new_difficulties:
-                if d < minimal_difficulty:
-                    LOGGER.warning("Blocks in new fork failed to meet the minimal difficulty")
-                    return False
+            if not self._verify_difficulties(new_fork_head, common_ancestop_id):
+                LOGGER.warning("Blocks in new fork failed to meet the minimal difficulty")
+                return False
 
             cur_fork_len = cur_fork_head.block_num - common_ancestop_height
 
