@@ -1,3 +1,12 @@
+<div align="center">
+
+|⚠️| The Sawtooth implementation of Creditcoin has been replaced by a Substate-based version. Please see https://medium.com/creditcoin-foundation and https://github.com/gluwa/creditcoin for more information. |
+|-|-|
+
+</div>
+
+---
+
 # Gluwa Creditcoin
 
 ## What is Creditcoin?
